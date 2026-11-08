@@ -9,5 +9,10 @@
     "logs": "wrangler tail",
     "db:migrate:remote": "wrangler d1 migrations apply odonto-db --remote",
     "db:migrate:local": "wrangler d1 migrations apply odonto-db --local"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250204.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^4.158.0"
   }
 }

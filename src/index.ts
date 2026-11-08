@@ -15,6 +15,44 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/health") return new Response("ok");
+
+    // Rota de simulação para testar o fluxo de ponta a ponta sem depender do bloqueio dos EUA da Meta
+    if (url.pathname === "/simulate") {
+      const q = url.searchParams.get("q") ?? "Olá! Gostaria de saber os procedimentos que vocês fazem e o horário de atendimento.";
+      const job: InboundJob = {
+        phoneNumberId: "1459702903890342",
+        from: "5521973401655",
+        contactName: "Pedro (Paciente Teste)",
+        waMessageId: "sim_" + Date.now(),
+        type: "text",
+        text: q,
+      };
+      await env.INBOX.send(job);
+      return new Response(
+        JSON.stringify(
+          {
+            status: "Mensagem do paciente recebida e enfileirada!",
+            paciente: "Pedro (Paciente Teste)",
+            pergunta: q,
+            dica: "Acesse /history em 2 segundos para ver a resposta que o Claude gerou e gravou no banco D1.",
+          },
+          null,
+          2,
+        ),
+        { headers: { "content-type": "application/json; charset=utf-8" } },
+      );
+    }
+
+    // Rota para visualizar o histórico de conversas gravadas no banco D1
+    if (url.pathname === "/history") {
+      const { results } = await env.DB.prepare(
+        "SELECT id, tenant_id, contact_name, direction, body, status, created_at FROM messages ORDER BY id DESC LIMIT 20",
+      ).all();
+      return new Response(JSON.stringify(results, null, 2), {
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    }
+
     if (url.pathname !== "/webhook") return new Response("not found", { status: 404 });
 
     // 1) Verificação inicial: a Meta pergunta "esse endereço é seu?" e espera o desafio de volta.
@@ -92,7 +130,13 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
 
   reply = reply.slice(0, 4000); // limite do WhatsApp é 4096 caracteres
 
-  const sentId = await sendText(env, job.phoneNumberId, token, job.from, reply);
+  let sentId: string | null = null;
+  try {
+    sentId = await sendText(env, job.phoneNumberId, token, job.from, reply);
+  } catch (err) {
+    console.warn("Aviso: WhatsApp não entregou (ex: restrição geográfica de número de teste da Meta):", String(err));
+  }
+
   await saveOutbound(env.DB, tenant.id, job.from, reply, sentId);
   await markAnswered(env.DB, job.waMessageId);
 }
