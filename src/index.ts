@@ -207,27 +207,30 @@ const CHAT_HTML = `<!DOCTYPE html>
   <script>
     const chat = document.getElementById('chat');
     const input = document.getElementById('userInput');
-    let lastIds = new Set();
+    let lastLoadedCount = 0;
+
+    function renderMessages(messages) {
+      chat.innerHTML = '';
+      messages.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'bubble ' + m.direction;
+        div.innerText = m.body;
+        const time = document.createElement('div');
+        time.className = 'time';
+        time.innerText = new Date(m.created_at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        div.appendChild(time);
+        chat.appendChild(div);
+      });
+      chat.scrollTop = chat.scrollHeight;
+      lastLoadedCount = messages.length;
+    }
 
     async function loadHistory() {
       try {
         const res = await fetch('/history');
         const data = await res.json();
-        // Ordena por id crescente para mostrar as mais antigas no topo
         data.sort((a, b) => a.id - b.id);
-        
-        chat.innerHTML = '';
-        data.forEach(m => {
-          const div = document.createElement('div');
-          div.className = 'bubble ' + m.direction;
-          div.innerText = m.body;
-          const time = document.createElement('div');
-          time.className = 'time';
-          time.innerText = new Date(m.created_at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          div.appendChild(time);
-          chat.appendChild(div);
-        });
-        chat.scrollTop = chat.scrollHeight;
+        renderMessages(data);
       } catch (err) {
         console.error(err);
       }
@@ -239,13 +242,13 @@ const CHAT_HTML = `<!DOCTYPE html>
       if (!text) return;
       input.value = '';
 
-      // Mostra mensagem do paciente na hora
+      // Mostra a pergunta na tela imediatamente
       const userBubble = document.createElement('div');
       userBubble.className = 'bubble in';
       userBubble.innerText = text;
       chat.appendChild(userBubble);
 
-      // Mostra aviso digitando
+      // Mostra o "Digitando..." da atendente
       const typing = document.createElement('div');
       typing.className = 'bubble out typing';
       typing.id = 'typingBubble';
@@ -253,23 +256,36 @@ const CHAT_HTML = `<!DOCTYPE html>
       chat.appendChild(typing);
       chat.scrollTop = chat.scrollHeight;
 
-      // Dispara simulação
+      // Guarda quantas mensagens tínhamos antes
+      const targetCount = lastLoadedCount + 2; // Espera a do paciente + resposta da IA
+
+      // Envia para a fila da Cloudflare
       await fetch('/simulate?q=' + encodeURIComponent(text));
 
-      // Fica checando o histórico a cada 1.5s até o Claude responder
+      // Polling inteligente: checa a cada 1 segundo até a resposta da IA chegar no banco
       let attempts = 0;
-      const interval = setInterval(async () => {
+      const pollInterval = setInterval(async () => {
         attempts++;
-        await loadHistory();
-        if (!document.getElementById('typingBubble') || attempts > 8) {
-          clearInterval(interval);
+        try {
+          const res = await fetch('/history');
+          const data = await res.json();
+          data.sort((a, b) => a.id - b.id);
+
+          // Se o banco já recebeu novas mensagens
+          if (data.length >= targetCount || attempts >= 10) {
+            clearInterval(pollInterval);
+            renderMessages(data);
+          }
+        } catch (err) {
+          console.error(err);
         }
-      }, 1500);
+      }, 1000);
     }
 
     async function clearHistory() {
       if (confirm('Deseja apagar o histórico de conversa de teste?')) {
         await fetch('/clear');
+        lastLoadedCount = 0;
         loadHistory();
       }
     }
