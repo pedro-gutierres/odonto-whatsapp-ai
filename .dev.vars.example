@@ -1,0 +1,6 @@
+# Copie este arquivo para ".dev.vars" (sem .example) para testar no seu computador.
+# NUNCA suba o .dev.vars para o GitHub (ele já está no .gitignore).
+META_APP_SECRETS=cole_o_app_secret_do_app_lab
+WA_VERIFY_TOKEN=invente_uma_frase_longa_e_aleatoria
+ANTHROPIC_API_KEY=sk-ant-...
+WA_LAB_TOKEN=cole_o_token_da_meta

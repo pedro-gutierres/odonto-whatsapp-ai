@@ -1,0 +1,37 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "odonto-whatsapp-ai",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+
+  // Valores que NÃO são secretos (pode ficar no GitHub)
+  "vars": {
+    "GRAPH_VERSION": "v26.0",
+    "CLAUDE_MODEL": "claude-haiku-5-5",
+    "CLAUDE_EFFORT": "low"
+  },
+
+  // Banco de dados. Cole o ID que o comando "wrangler d1 create" mostrar.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "odonto-db",
+      "database_id": "COLE_AQUI_O_ID_DO_BANCO"
+    }
+  ],
+
+  // Fila: o webhook coloca mensagens aqui; o mesmo Worker as processa depois.
+  "queues": {
+    "producers": [{ "binding": "INBOX", "queue": "odonto-inbox" }],
+    "consumers": [
+      {
+        "queue": "odonto-inbox",
+        "max_batch_size": 5,
+        "max_batch_timeout": 2,
+        "max_retries": 4,
+        "dead_letter_queue": "odonto-inbox-dlq"
+      }
+    ]
+  }
+}
