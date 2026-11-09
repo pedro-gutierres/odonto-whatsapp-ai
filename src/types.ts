@@ -38,6 +38,14 @@ export interface Tenant {
   active: number;
 }
 
+export interface ProcedureItem {
+  name: string;
+  checked: boolean;
+  duration?: string;
+  note?: string;
+  category?: string;
+}
+
 export interface CustomProcedure {
   name: string;
   category?: string;
@@ -53,6 +61,7 @@ export interface BotConfig {
   specialties?: string[];
   tone?: "acolhedor" | "sofisticado" | "clinico" | string;
   procedures?: string[];
+  procedure_items?: ProcedureItem[];
   custom_procedures?: CustomProcedure[];
   price_strategy?: "avaliacao" | "a_partir_de" | "tabela_fixa" | string;
   prices_note?: string;
@@ -61,6 +70,7 @@ export interface BotConfig {
   address?: string;
   parking?: string;
   hours?: string;
+  holiday_service?: boolean;
   delay_tolerance?: string;
   emergency_contact?: string;
   clinical_rules?: string;

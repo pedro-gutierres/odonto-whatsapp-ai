@@ -109,7 +109,14 @@ export function buildSystemPrompt(cfg: BotConfig): string {
     linhas.push(`- Estacionamento: ${cfg.parking}`);
   }
   if (cfg.hours) {
-    linhas.push(`- Horários de atendimento: ${cfg.hours}`);
+    linhas.push(`- Horários e dias de atendimento: ${cfg.hours}`);
+  }
+  if (cfg.holiday_service !== undefined) {
+    linhas.push(
+      cfg.holiday_service
+        ? "- Atendimento em Feriados: A clínica realiza atendimentos ou plantões especiais em feriados."
+        : "- Feriados: A clínica não possui atendimento regular em feriados, exceto urgências graves previamente alinhadas."
+    );
   }
   if (cfg.delay_tolerance) {
     linhas.push(`- Tolerância para atrasos: ${cfg.delay_tolerance}`);
@@ -118,11 +125,23 @@ export function buildSystemPrompt(cfg: BotConfig): string {
     linhas.push(`- Contato da equipe humana/urgência: ${cfg.emergency_contact}`);
   }
 
-  if (cfg.procedures && cfg.procedures.length > 0) {
+  // Se tiver lista rica de procedimentos com duração e observações:
+  if (cfg.procedure_items && cfg.procedure_items.length > 0) {
+    const ativos = cfg.procedure_items.filter(p => p.checked !== false);
+    if (ativos.length > 0) {
+      linhas.push("", "PROCEDIMENTOS E SERVIÇOS OFERECIDOS PELA CLÍNICA:");
+      for (const p of ativos) {
+        let det = `- ${p.name}`;
+        if (p.duration) det += ` (Duração aproximada: ${p.duration})`;
+        if (p.note) det += ` [Observações: ${p.note}]`;
+        linhas.push(det);
+      }
+    }
+  } else if (cfg.procedures && cfg.procedures.length > 0) {
     linhas.push(`- Procedimentos oferecidos: ${cfg.procedures.join(", ")}`);
   }
 
-  if (cfg.custom_procedures && cfg.custom_procedures.length > 0) {
+  if (cfg.custom_procedures && cfg.custom_procedures.length > 0 && (!cfg.procedure_items || cfg.procedure_items.length === 0)) {
     linhas.push("- Procedimentos adicionais personalizados:");
     for (const p of cfg.custom_procedures) {
       linhas.push(`  * ${p.name} ${p.duration ? `(Duração: ${p.duration})` : ""} ${p.note ? `- Obs: ${p.note}` : ""}`);

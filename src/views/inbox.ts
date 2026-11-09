@@ -437,29 +437,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
   <!-- ======================================================================= -->
   <main id="viewConfig" class="flex-1 overflow-y-auto custom-scroll p-4 lg:p-8 hidden bg-slate-50 dark:bg-[#0b0f17]">
     <div class="max-w-5xl mx-auto space-y-6">
-      
-      <!-- TOPO COM AÇÃO DE SALVAR -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm sticky top-0 z-20 backdrop-blur-md">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></span>
-            <h2 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">Treinamento & Regras da Secretária IA</h2>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Personalize o cérebro da sua IA para Odontologia & Estética. Todas as alterações entram em vigor instantaneamente no WhatsApp.
-          </p>
-        </div>
-        <div class="flex items-center gap-2.5">
-          <a href="/simulador" target="_blank" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition">
-            <i class="fa-solid fa-mobile-screen text-emerald-500"></i>
-            <span>Simulador</span>
-          </a>
-          <button onclick="saveClinicConfig()" id="btnSaveConfig" class="px-5 py-2 rounded-xl bg-gradient-to-r from-[#008069] to-emerald-600 hover:from-[#006a57] hover:to-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-2 transition">
-            <i class="fa-solid fa-floppy-disk"></i>
-            <span id="btnSaveConfigText">Salvar Alterações</span>
-          </button>
-        </div>
-      </div>
 
       <!-- FORMULÁRIO COMPLETO DO QUESTIONÁRIO -->
       <form id="clinicConfigForm" onsubmit="event.preventDefault(); saveClinicConfig();" class="space-y-6">
@@ -480,22 +457,22 @@ export const INBOX_HTML = `<!DOCTYPE html>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Nome Oficial da Clínica</label>
               <input type="text" id="cfgClinicName" placeholder="Ex: Clínica Sorriso & Estética Integrada" required
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Doutor(a) Responsável Técnico</label>
               <input type="text" id="cfgDoctorName" placeholder="Ex: Dra. Fernanda Alves"
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Registro Profissional (CRO / CRM)</label>
               <input type="text" id="cfgDoctorCro" placeholder="Ex: CRO-SP 102.450 / Harmonização Orofacial"
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Tom de Voz da Secretária IA</label>
               <select id="cfgTone" 
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] font-medium">
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] font-medium">
                 <option value="acolhedor">🌸 Acolhedor & Gentil (Caloroso, empático, ideal para clínica geral)</option>
                 <option value="sofisticado">✨ Sofisticado & Exclusivo (Boutique, foco em estética de alto padrão)</option>
                 <option value="clinico">🩺 Clínico & Técnico (Objetivo, seguro, rigor científico e formal)</option>
@@ -504,70 +481,55 @@ export const INBOX_HTML = `<!DOCTYPE html>
           </div>
         </div>
 
-        <!-- CARD 2: CATÁLOGO DE PROCEDIMENTOS (ODONTO + ESTÉTICA + ADICIONAR PERSONALIZADO) -->
-        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <!-- CARD 2: CATÁLOGO DE PROCEDIMENTOS (ODONTO + ESTÉTICA) -->
+        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
                 2
               </div>
               <div>
-                <h3 class="text-sm font-bold text-slate-900 dark:text-white">Catálogo de Procedimentos & Serviços Oferecidos</h3>
-                <p class="text-[11px] text-slate-500 dark:text-slate-400">Marque o que sua clínica realiza e adicione serviços customizados com duração e regras.</p>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white">Procedimentos, Duração & Observações</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Ative os procedimentos oferecidos, defina o tempo médio e regras clínicas para a IA informar aos pacientes com precisão.</p>
               </div>
             </div>
           </div>
 
-          <!-- GRUPO ODONTOLOGIA -->
-          <div>
-            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mb-2.5">
-              <i class="fa-solid fa-tooth"></i> Especialidades Odontológicas
-            </span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs" id="odontoCheckboxes">
-              <!-- Checkboxes Odonto via JS -->
+          <!-- SEÇÃO 1: ODONTOLOGIA -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-tooth"></i> Procedimentos Odontológicos
+              </span>
+              <button type="button" onclick="addNewProcedureRow('odonto')" 
+                class="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition border border-emerald-200 dark:border-emerald-800/60">
+                <i class="fa-solid fa-plus text-[10px]"></i>
+                <span>Adicionar Linha em Odonto</span>
+              </button>
             </div>
-          </div>
-
-          <!-- GRUPO ESTÉTICA OROFACIAL & CORPORAL -->
-          <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
-            <span class="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5 mb-2.5">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> Estética Avançada & Harmonização Orofacial
-            </span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs" id="esteticaCheckboxes">
-              <!-- Checkboxes Estética via JS -->
-            </div>
-          </div>
-
-          <!-- ADICIONAR NOVO PROCEDIMENTO PERSONALIZADO -->
-          <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
-            <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-2">
-              <i class="fa-solid fa-plus-circle text-slate-400 mr-1"></i> Adicionar Outro Procedimento Personalizado
-            </span>
             
-            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60">
-              <div class="sm:col-span-5">
-                <input type="text" id="customProcName" placeholder="Nome do procedimento (ex: Fios de PDO de Sustentação)"
-                  class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
-              </div>
-              <div class="sm:col-span-3">
-                <input type="text" id="customProcDuration" placeholder="Duração (ex: 45 min)"
-                  class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
-              </div>
-              <div class="sm:col-span-3">
-                <input type="text" id="customProcNote" placeholder="Obs / Regra (ex: avaliação prévia)"
-                  class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
-              </div>
-              <div class="sm:col-span-1 flex items-center">
-                <button type="button" onclick="handleAddCustomProcedure()" 
-                  class="w-full h-full py-1.5 bg-[#008069] hover:bg-[#006a57] text-white rounded-lg font-bold flex items-center justify-center text-xs transition">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
+            <!-- LISTA VERTICAL DE ODONTO -->
+            <div id="odontoList" class="space-y-2">
+              <!-- Linhas geradas dinamicamente via JS -->
+            </div>
+          </div>
+
+          <!-- SEÇÃO 2: ESTÉTICA OROFACIAL & CORPORAL -->
+          <div class="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Procedimentos de Estética & Harmonização
+              </span>
+              <button type="button" onclick="addNewProcedureRow('estetica')" 
+                class="px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center gap-1.5 transition border border-purple-200 dark:border-purple-800/60">
+                <i class="fa-solid fa-plus text-[10px]"></i>
+                <span>Adicionar Linha em Estética</span>
+              </button>
             </div>
 
-            <!-- LISTA DE PROCEDIMENTOS PERSONALIZADOS ADICIONADOS -->
-            <div id="customProceduresList" class="mt-3 space-y-1.5 text-xs">
-              <!-- Itens customizados renderizados dinamicamente -->
+            <!-- LISTA VERTICAL DE ESTÉTICA -->
+            <div id="esteticaList" class="space-y-2">
+              <!-- Linhas geradas dinamicamente via JS -->
             </div>
           </div>
         </div>
@@ -585,7 +547,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
           </div>
 
           <div class="space-y-2.5 text-xs">
-            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
+            <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
               <input type="radio" name="priceStrategyRadio" value="avaliacao" checked class="mt-0.5 text-[#008069] focus:ring-0">
               <div>
                 <span class="font-bold text-slate-900 dark:text-white block">🔒 Apenas Avaliação Presencial (Padrão Ouro Recomendado)</span>
@@ -593,7 +555,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
               </div>
             </label>
 
-            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
+            <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
               <input type="radio" name="priceStrategyRadio" value="a_partir_de" class="mt-0.5 text-[#008069] focus:ring-0">
               <div>
                 <span class="font-bold text-slate-900 dark:text-white block">📊 Informar Faixa Inicial ("A partir de R$...")</span>
@@ -601,7 +563,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
               </div>
             </label>
 
-            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
+            <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
               <input type="radio" name="priceStrategyRadio" value="tabela_fixa" class="mt-0.5 text-[#008069] focus:ring-0">
               <div>
                 <span class="font-bold text-slate-900 dark:text-white block">🏷️ Tabela Fixa Aberta</span>
@@ -611,13 +573,18 @@ export const INBOX_HTML = `<!DOCTYPE html>
           </div>
 
           <div class="pt-2">
-            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300 text-xs">Observações Específicas de Preços / Custos da Avaliação</label>
-            <input type="text" id="cfgPricesNote" placeholder="Ex: A avaliação custa R$ 150, mas esse valor é 100% dedutível caso o tratamento seja iniciado."
-              class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300 text-xs">
+              A Consulta de Avaliação Inicial é Paga ou Gratuita? (Regras de Cobrança da Consulta)
+            </label>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
+              Explique aqui se a clínica cobra pela primeira consulta de avaliação e se esse valor é abatido no tratamento. Assim, a IA responde com precisão quando o paciente perguntar sobre custos da consulta.
+            </p>
+            <textarea id="cfgPricesNote" rows="4" placeholder="Ex: A primeira avaliação é gratuita e sem compromisso.&#10;Ex: A consulta de avaliação custa R$ 150 com raio-X incluso, mas esse valor é 100% deduzido caso o tratamento seja iniciado."
+              class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
           </div>
         </div>
 
-        <!-- CARD 4: FORMAS DE PAGAMENTO, PARCELAMENTO & CONVÊNIOS -->
+        <!-- CARD 4: FORMAS DE PAGAMENTO, PARCELAMENTO & CONVÊNIOS (12 LINHAS) -->
         <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
@@ -632,18 +599,20 @@ export const INBOX_HTML = `<!DOCTYPE html>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Condições de Pagamento & Parcelamento</label>
-              <input type="text" id="cfgPaymentMethods" placeholder="Ex: Pix com 10% de desconto ou em até 12x sem juros no cartão de crédito"
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">Descontos no Pix/à vista, parcelas no cartão, boleto ou financiamento.</p>
+              <textarea id="cfgPaymentMethods" rows="12" placeholder="Ex:&#10;- Pix ou Dinheiro: 10% de desconto à vista.&#10;- Cartão de Crédito: Em até 12x sem juros (parcela mínima de R$ 150).&#10;- Financiamento odontológico/estético: Em até 24x com aprovação imediata no consultório.&#10;- Aceitamos cartões de débito e crédito de todas as bandeiras."
+                class="w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed font-mono text-[11px]"></textarea>
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Política de Convênios & Reembolso</label>
-              <input type="text" id="cfgInsurance" placeholder="Ex: Particular exclusivo. Emitimos nota fiscal detalhada e relatório para reembolso"
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">Particular exclusivo com recibo para reembolso ou convênios atendidos.</p>
+              <textarea id="cfgInsurance" rows="12" placeholder="Ex:&#10;- Atendimento Particular Exclusivo.&#10;- Emitimos nota fiscal detalhada, prontuário e relatório técnico para o paciente solicitar reembolso integral ou parcial no seu plano de saúde/odontológico (como Bradesco, Amil, SulAmérica, Porto Seguro).&#10;- Nossa equipe auxilia no processo de pedido de reembolso caso o paciente precise."
+                class="w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed font-mono text-[11px]"></textarea>
             </div>
           </div>
         </div>
 
-        <!-- CARD 5: HORÁRIOS, LOCALIZAÇÃO & ESTACIONAMENTO -->
+        <!-- CARD 5: HORÁRIOS, LOCALIZAÇÃO & ESTACIONAMENTO (6 LINHAS) -->
         <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
@@ -657,29 +626,35 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Horários de Atendimento</label>
-              <input type="text" id="cfgHours" placeholder="Ex: Segunda a Sexta das 08h às 19h | Sábados das 08h às 13h"
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-semibold text-slate-700 dark:text-slate-300">Horários e Dias de Atendimento</label>
+                <label class="flex items-center gap-1.5 cursor-pointer text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                  <input type="checkbox" id="cfgHolidayService" class="rounded text-[#008069] focus:ring-0">
+                  <span>Atende em Feriados</span>
+                </label>
+              </div>
+              <textarea id="cfgHours" rows="6" placeholder="Ex:&#10;Segunda a Sexta: das 08:00 às 19:30&#10;Sábados: das 08:00 às 13:00&#10;Domingos: Fechado"
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
             </div>
             <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Tolerância para Atrasos</label>
-              <input type="text" id="cfgDelayTolerance" placeholder="Ex: Tolerância de até 15 minutos para pontualidade de todos"
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Tolerância para Atrasos & Políticas de Comparecimento</label>
+              <textarea id="cfgDelayTolerance" rows="6" placeholder="Ex:&#10;- Tolerância máxima de 15 minutos para pontualidade de todos os atendimentos.&#10;- Pedimos aviso prévio de 24 horas em caso de reagendamento para liberar a grade para outros pacientes."
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
             </div>
             <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Endereço Completo (com andar/sala)</label>
-              <input type="text" id="cfgAddress" placeholder="Ex: Av. Paulista, 1800, Conjunto 124 - Bela Vista, São Paulo/SP"
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Endereço Completo & Pontos de Referência</label>
+              <textarea id="cfgAddress" rows="6" placeholder="Ex:&#10;Av. Paulista, 1800 - Conjunto 124, 12º Andar&#10;Bela Vista - São Paulo/SP&#10;Ponto de referência: Em frente ao metrô Trianon-Masp"
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
             </div>
             <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Estacionamento / Manobrista</label>
-              <input type="text" id="cfgParking" placeholder="Ex: Estacionamento conveniado com manobrista no próprio edifício"
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Estacionamento, Valet & Logística de Chegada</label>
+              <textarea id="cfgParking" rows="6" placeholder="Ex:&#10;- Estacionamento conveniado no subsolo do edifício com manobrista (cortesia para pacientes na primeira hora).&#10;- Acesso com rampa e elevadores para cadeirantes."
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
             </div>
           </div>
         </div>
 
-        <!-- CARD 6: REGRAS DE OURO CLÍNICAS & SEGURANÇA JURÍDICA -->
+        <!-- CARD 6: REGRAS DE OURO CLÍNICAS & SEGURANÇA JURÍDICA (ESPAÇO AMPLO) -->
         <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
@@ -691,38 +666,47 @@ export const INBOX_HTML = `<!DOCTYPE html>
             </div>
           </div>
 
-          <div class="space-y-3 text-xs">
+          <div class="space-y-4 text-xs">
             <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Regras Clínicas Especiais & Contraindicações</label>
-              <textarea id="cfgClinicalRules" rows="2" placeholder="Ex: Gestantes e lactantes não realizam procedimentos injetáveis. Em caso de dor de dente aguda, colocar na fila prioritária de encaixe no mesmo dia."
-                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]"></textarea>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Regras Clínicas Especiais, Contraindicações & Prioridades</label>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">Orientações de biossegurança que a IA deve respeitar rigidamente antes de agendar qualquer tratamento.</p>
+              <textarea id="cfgClinicalRules" rows="8" placeholder="Ex:&#10;- Gestantes e lactantes não podem realizar toxina botulínica, preenchedores ou procedimentos invasivos.&#10;- Pacientes com dor de dente aguda, inchaço visível ou trauma têm prioridade absoluta de encaixe no mesmo dia.&#10;- Proibido prescrever analgésicos, anti-inflamatórios ou antibióticos pelo chat.&#10;- Pacientes menores de 18 anos precisam de acompanhante legal."
+                class="w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">WhatsApp de Transbordo Humano / Urgências</label>
-                <input type="text" id="cfgEmergencyContact" placeholder="Ex: (11) 98888-0000 (Dra. Fernanda)"
-                  class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">Telefone para onde a IA direciona casos graves ou quando o paciente solicita a recepção.</p>
+                <textarea id="cfgEmergencyContact" rows="5" placeholder="Ex:&#10;WhatsApp de Urgência: (11) 98888-0000 (Dra. Fernanda)&#10;Telefone Fixo da Recepção: (11) 3333-2222&#10;Horário de plantão telefônico: 24h para pós-operatório."
+                  class="w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
               </div>
               <div>
-                <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Diferenciais & Tecnologia da Clínica</label>
-                <input type="text" id="cfgExtra" placeholder="Ex: Scanner 3D intraoral, anestesia sem dor computadorizada, espaço café premium"
-                  class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+                <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Diferenciais Tecnológicos & Estrutura da Clínica</label>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">Equipamentos e comodidades que a IA pode citar para encantar e converter o paciente.</p>
+                <textarea id="cfgExtra" rows="5" placeholder="Ex:&#10;- Escaneamento 3D intraoral sem moldeira de massa.&#10;- Anestesia computadorizada sem dor.&#10;- Ambiente climatizado com aromaterapia e lounge café premium.&#10;- Sedação consciente com óxido nitroso disponível para pacientes ansiosos."
+                  class="w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- BARRA FINAL DE SALVAR -->
-        <div class="flex items-center justify-end gap-3 pt-2 pb-8">
-          <button type="button" onclick="selectNavigationTab('chat', 'Atendimento WhatsApp', 'fa-solid fa-comments', 'emerald')" 
-            class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-            Voltar ao Atendimento
-          </button>
-          <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#008069] to-emerald-600 hover:from-[#006a57] hover:to-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition">
-            <i class="fa-solid fa-floppy-disk"></i>
-            <span>Salvar & Atualizar IA no WhatsApp</span>
-          </button>
+        <!-- BARRA FINAL DE SALVAR (NO RODAPÉ) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 pb-12 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">As alterações entram em vigor instantaneamente para todas as próximas mensagens.</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="/simulador" target="_blank" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-mobile-screen text-emerald-500"></i>
+              <span>Abrir Simulador</span>
+            </a>
+            <button type="submit" id="btnSaveConfig" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#008069] to-emerald-600 hover:from-[#006a57] hover:to-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span id="btnSaveConfigText">Salvar Alterações na IA</span>
+            </button>
+          </div>
         </div>
 
       </form>
@@ -838,7 +822,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
     let activeAiPaused = false;
     let appointments = [];
     let currentConfig = null;
-    let customProceduresList = [];
 
     // Otimização de polling
     let highestKnownMsgId = 0;
@@ -848,33 +831,33 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
     // PROCEDIMENTOS PRÉ-CONFIGURADOS (ODONTO & ESTÉTICA)
     const DEFAULT_ODONTO_SERVICES = [
-      "Limpeza & Profilaxia",
-      "Clareamento Dental a Laser",
-      "Clareamento Caseiro com Moldeira",
-      "Alinhadores Invisíveis / Ortodontia",
-      "Aparelho Fixo Estético / Metálico",
-      "Lentes de Resina / Facetas",
-      "Lentes de Contato de Porcelana",
-      "Implantes Dentários & Próteses",
-      "Tratamento de Canal (Endodontia)",
-      "Extração do Siso",
-      "Restaurações Estéticas",
-      "Tratamento de Gengiva (Periodontia)"
+      { name: "Limpeza & Profilaxia", duration: "30 min", note: "Remoção de tártaro e jato de bicarbonato" },
+      { name: "Clareamento Dental a Laser", duration: "45 min", note: "Resultados nítidos na primeira sessão" },
+      { name: "Clareamento Caseiro com Moldeira", duration: "30 min", note: "Moldeira personalizada para uso noturno" },
+      { name: "Alinhadores Invisíveis / Ortodontia", duration: "45 min", note: "Escaneamento 3D inicial e planejamento digital" },
+      { name: "Aparelho Fixo Estético / Metálico", duration: "45 min", note: "Manutenção mensal" },
+      { name: "Lentes de Resina / Facetas", duration: "2h", note: "Transformação estética sem desgaste dental" },
+      { name: "Lentes de Contato de Porcelana", duration: "1h30", note: "Lentes ultrafinas de alta durabilidade" },
+      { name: "Implantes Dentários & Próteses", duration: "1h", note: "Cirurgia guiada com anestesia sem dor" },
+      { name: "Tratamento de Canal (Endodontia)", duration: "1h", note: "Tecnologia mecanizada em sessão única" },
+      { name: "Extração do Siso", duration: "45 min", note: "Avaliação radiográfica prévia obrigatória" },
+      { name: "Restaurações Estéticas", duration: "40 min", note: "Resinas com a cor exata do dente" },
+      { name: "Tratamento de Gengiva (Periodontia)", duration: "45 min", note: "Controle de sangramentos e inflamações" }
     ];
 
     const DEFAULT_ESTETICA_SERVICES = [
-      "Toxina Botulínica (Botox Facial)",
-      "Preenchimento Labial com Ácido Hialurônico",
-      "Preenchimento de Malar / Olheiras",
-      "Bioestimulador de Colágeno (Sculptra / Radiesse)",
-      "Fios de PDO de Sustentação",
-      "Fios de PDO de Estímulo de Colágeno",
-      "Lipoaspiração Enzimática de Papada",
-      "Rinomodelação sem Cirurgia",
-      "Skinbooster / Hidratação Injetável",
-      "Microagulhamento com Drug Delivery",
-      "Peeling Químico Renovador",
-      "Drenagem Linfática Facial Pós-Procedimento"
+      { name: "Toxina Botulínica (Botox Facial)", duration: "30 min", note: "Prevenção e suavização de rugas dinâmicas" },
+      { name: "Preenchimento Labial com Ácido Hialurônico", duration: "45 min", note: "Definição, contorno e volume natural" },
+      { name: "Preenchimento de Malar / Olheiras", duration: "45 min", note: "Efeito lifting e rejuvenescimento do olhar" },
+      { name: "Bioestimulador de Colágeno (Sculptra / Radiesse)", duration: "45 min", note: "Firmeza progressiva e combate à flacidez" },
+      { name: "Fios de PDO de Sustentação", duration: "1h", note: "Tração tecidual imediata e estímulo de colágeno" },
+      { name: "Fios de PDO de Estímulo de Colágeno", duration: "40 min", note: "Melhora da textura e linhas finas" },
+      { name: "Lipoaspiração Enzimática de Papada", duration: "30 min", note: "Redução de gordura localizada submentoniana" },
+      { name: "Rinomodelação sem Cirurgia", duration: "45 min", note: "Harmonização do dorso e ponta nasal" },
+      { name: "Skinbooster / Hidratação Injetável", duration: "30 min", note: "Luminosidade e hidratação profunda da pele" },
+      { name: "Microagulhamento com Drug Delivery", duration: "45 min", note: "Tratamento de manchas, poros e cicatrizes" },
+      { name: "Peeling Químico Renovador", duration: "30 min", note: "Renovação celular e uniformização do tom" },
+      { name: "Drenagem Linfática Facial Pós-Procedimento", duration: "40 min", note: "Redução de edema e recuperação acelerada" }
     ];
 
     // 1. TEMA (DARK / LIGHT)
@@ -966,7 +949,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
     // 3. INICIALIZAÇÃO GERAL
     async function init() {
       initTheme();
-      renderCheckboxesInitial();
       await loadConversations(false);
       await loadAppointments();
       await loadClinicConfig();
@@ -1473,27 +1455,74 @@ export const INBOX_HTML = `<!DOCTYPE html>
       }
     }
 
-    // 6. QUESTIONÁRIO DE CONFIGURAÇÃO & TREINAMENTO DA IA (ODONTO & ESTÉTICA)
-    function renderCheckboxesInitial() {
-      const odontoContainer = document.getElementById('odontoCheckboxes');
-      const esteticaContainer = document.getElementById('esteticaCheckboxes');
+    // 6. QUESTIONÁRIO DE CONFIGURAÇÃO & TREINAMENTO DA IA (ODONTO & ESTÉTICA REFINADO)
+    function createProcedureRowHtml(proc, category) {
+      const isChecked = proc.checked !== false;
+      const name = proc.name || '';
+      const duration = proc.duration || '';
+      const note = proc.note || '';
 
-      if (odontoContainer) {
-        odontoContainer.innerHTML = DEFAULT_ODONTO_SERVICES.map((s, idx) => \`
-          <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer">
-            <input type="checkbox" name="procedureCheckbox" value="\${s}" class="rounded text-[#008069] focus:ring-0">
-            <span class="text-slate-700 dark:text-slate-300">\${s}</span>
-          </label>
-        \`).join('');
+      return \`
+        <div class="proc-row flex flex-col md:flex-row md:items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 transition" data-category="\${category}">
+          <!-- Checkbox + Nome -->
+          <div class="flex items-center gap-2 md:w-5/12 min-w-0">
+            <input type="checkbox" class="proc-checkbox rounded text-[#008069] focus:ring-0 w-4 h-4 shrink-0 cursor-pointer" \${isChecked ? 'checked' : ''}>
+            <input type="text" class="proc-name w-full bg-transparent font-bold text-xs text-slate-800 dark:text-slate-100 border-b border-transparent hover:border-slate-300 focus:border-[#008069] focus:outline-none px-1" value="\${escapeHtml(name)}" placeholder="Nome do procedimento">
+          </div>
+          
+          <!-- Duração -->
+          <div class="md:w-3/12">
+            <input type="text" class="proc-duration w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Duração (ex: 45 min)" value="\${escapeHtml(duration)}">
+          </div>
+
+          <!-- Observações + Remover -->
+          <div class="flex-1 flex items-center gap-2">
+            <input type="text" class="proc-note w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Obs / Regras (ex: pré-requisito)" value="\${escapeHtml(note)}">
+            <button type="button" onclick="removeProcedureRow(this)" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition" title="Remover procedimento">
+              <i class="fa-regular fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        </div>
+      \`;
+    }
+
+    function addNewProcedureRow(category) {
+      const containerId = category === 'odonto' ? 'odontoList' : 'esteticaList';
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const newRowHtml = createProcedureRowHtml({ name: '', checked: true, duration: '', note: '' }, category);
+      container.insertAdjacentHTML('beforeend', newRowHtml);
+
+      const rows = container.querySelectorAll('.proc-row');
+      const lastRow = rows[rows.length - 1];
+      if (lastRow) {
+        const inputName = lastRow.querySelector('.proc-name');
+        if (inputName) inputName.focus();
       }
+    }
 
-      if (esteticaContainer) {
-        esteticaContainer.innerHTML = DEFAULT_ESTETICA_SERVICES.map((s, idx) => \`
-          <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer">
-            <input type="checkbox" name="procedureCheckbox" value="\${s}" class="rounded text-purple-600 focus:ring-0">
-            <span class="text-slate-700 dark:text-slate-300">\${s}</span>
-          </label>
-        \`).join('');
+    function removeProcedureRow(btn) {
+      const row = btn.closest('.proc-row');
+      if (row) row.remove();
+    }
+
+    function renderProceduresLists(savedItems) {
+      const odontoContainer = document.getElementById('odontoList');
+      const esteticaContainer = document.getElementById('esteticaList');
+
+      if (!odontoContainer || !esteticaContainer) return;
+
+      if (savedItems && savedItems.length > 0) {
+        const odontoItems = savedItems.filter(p => p.category === 'odonto');
+        const esteticaItems = savedItems.filter(p => p.category === 'estetica' || p.category !== 'odonto');
+
+        odontoContainer.innerHTML = odontoItems.map(p => createProcedureRowHtml(p, 'odonto')).join('');
+        esteticaContainer.innerHTML = esteticaItems.map(p => createProcedureRowHtml(p, 'estetica')).join('');
+      } else {
+        // Usa os padrões iniciais de Odonto & Estética
+        odontoContainer.innerHTML = DEFAULT_ODONTO_SERVICES.map(p => createProcedureRowHtml({ ...p, checked: true }, 'odonto')).join('');
+        esteticaContainer.innerHTML = DEFAULT_ESTETICA_SERVICES.map(p => createProcedureRowHtml({ ...p, checked: true }, 'estetica')).join('');
       }
     }
 
@@ -1515,6 +1544,9 @@ export const INBOX_HTML = `<!DOCTYPE html>
         if (currentConfig.payment_methods) document.getElementById('cfgPaymentMethods').value = currentConfig.payment_methods;
         if (currentConfig.insurance) document.getElementById('cfgInsurance').value = currentConfig.insurance;
         if (currentConfig.hours) document.getElementById('cfgHours').value = currentConfig.hours;
+        if (document.getElementById('cfgHolidayService')) {
+          document.getElementById('cfgHolidayService').checked = !!currentConfig.holiday_service;
+        }
         if (currentConfig.delay_tolerance) document.getElementById('cfgDelayTolerance').value = currentConfig.delay_tolerance;
         if (currentConfig.address) document.getElementById('cfgAddress').value = currentConfig.address;
         if (currentConfig.parking) document.getElementById('cfgParking').value = currentConfig.parking;
@@ -1530,69 +1562,12 @@ export const INBOX_HTML = `<!DOCTYPE html>
           }
         }
 
-        // Checkboxes de procedimentos
-        const activeProcs = currentConfig.procedures || [];
-        const checkboxes = document.getElementsByName('procedureCheckbox');
-        for (const cb of checkboxes) {
-          cb.checked = activeProcs.includes(cb.value);
-        }
-
-        // Procedimentos customizados
-        customProceduresList = currentConfig.custom_procedures || [];
-        renderCustomProceduresList();
+        // Renderiza listas verticais detalhadas de procedimentos
+        renderProceduresLists(currentConfig.procedure_items);
 
       } catch (err) {
         console.error("Erro ao carregar configurações da clínica:", err);
       }
-    }
-
-    function renderCustomProceduresList() {
-      const container = document.getElementById('customProceduresList');
-      if (!container) return;
-
-      if (customProceduresList.length === 0) {
-        container.innerHTML = '<span class="text-slate-400 text-[11px] italic">Nenhum procedimento extra adicionado ainda.</span>';
-        return;
-      }
-
-      container.innerHTML = customProceduresList.map((p, idx) => \`
-        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
-          <div>
-            <span class="font-bold text-slate-800 dark:text-slate-200 mr-2">\${escapeHtml(p.name)}</span>
-            \${p.duration ? \`<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 mr-2">\${escapeHtml(p.duration)}</span>\` : ''}
-            \${p.note ? \`<span class="text-[10px] text-slate-400">\${escapeHtml(p.note)}</span>\` : ''}
-          </div>
-          <button type="button" onclick="handleRemoveCustomProcedure(\${idx})" class="text-slate-400 hover:text-rose-500 p-1">
-            <i class="fa-regular fa-trash-can"></i>
-          </button>
-        </div>
-      \`).join('');
-    }
-
-    function handleAddCustomProcedure() {
-      const nameInput = document.getElementById('customProcName');
-      const durationInput = document.getElementById('customProcDuration');
-      const noteInput = document.getElementById('customProcNote');
-
-      const name = nameInput.value.trim();
-      if (!name) return;
-
-      customProceduresList.push({
-        name,
-        duration: durationInput.value.trim() || undefined,
-        note: noteInput.value.trim() || undefined
-      });
-
-      nameInput.value = '';
-      durationInput.value = '';
-      noteInput.value = '';
-
-      renderCustomProceduresList();
-    }
-
-    function handleRemoveCustomProcedure(idx) {
-      customProceduresList.splice(idx, 1);
-      renderCustomProceduresList();
     }
 
     async function saveClinicConfig() {
@@ -1602,12 +1577,25 @@ export const INBOX_HTML = `<!DOCTYPE html>
       if (btnText) btnText.innerText = "Salvando na IA...";
       if (btn) btn.disabled = true;
 
-      // Colhe procedimentos selecionados
-      const selectedProcedures = [];
-      const checkboxes = document.getElementsByName('procedureCheckbox');
-      for (const cb of checkboxes) {
-        if (cb.checked) selectedProcedures.push(cb.value);
-      }
+      // Colhe procedimentos de todas as linhas verticais
+      const procedureItems = [];
+      document.querySelectorAll('.proc-row').forEach(row => {
+        const isChecked = row.querySelector('.proc-checkbox').checked;
+        const name = row.querySelector('.proc-name').value.trim();
+        const duration = row.querySelector('.proc-duration').value.trim();
+        const note = row.querySelector('.proc-note').value.trim();
+        const category = row.dataset.category || 'odonto';
+
+        if (name) {
+          procedureItems.push({
+            name,
+            checked: isChecked,
+            duration: duration || undefined,
+            note: note || undefined,
+            category
+          });
+        }
+      });
 
       // Colhe estratégia de preço
       let priceStrategy = 'avaliacao';
@@ -1616,18 +1604,21 @@ export const INBOX_HTML = `<!DOCTYPE html>
         if (r.checked) priceStrategy = r.value;
       }
 
+      const holidayService = document.getElementById('cfgHolidayService')?.checked || false;
+
       const configPayload = {
         clinic_name: document.getElementById('cfgClinicName').value.trim() || "Clínica Sorriso & Estética",
         doctor_name: document.getElementById('cfgDoctorName').value.trim() || undefined,
         doctor_cro: document.getElementById('cfgDoctorCro').value.trim() || undefined,
         tone: document.getElementById('cfgTone').value,
-        procedures: selectedProcedures,
-        custom_procedures: customProceduresList,
+        procedure_items: procedureItems,
+        procedures: procedureItems.filter(p => p.checked).map(p => p.name),
         price_strategy: priceStrategy,
         prices_note: document.getElementById('cfgPricesNote').value.trim() || undefined,
         payment_methods: document.getElementById('cfgPaymentMethods').value.trim() || undefined,
         insurance: document.getElementById('cfgInsurance').value.trim() || undefined,
         hours: document.getElementById('cfgHours').value.trim() || undefined,
+        holiday_service: holidayService,
         delay_tolerance: document.getElementById('cfgDelayTolerance').value.trim() || undefined,
         address: document.getElementById('cfgAddress').value.trim() || undefined,
         parking: document.getElementById('cfgParking').value.trim() || undefined,
@@ -1654,7 +1645,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       } catch (err) {
         alert("Erro na requisição ao salvar dados da clínica");
       } finally {
-        if (btnText) btnText.innerText = "Salvar Alterações";
+        if (btnText) btnText.innerText = "Salvar Alterações na IA";
         if (btn) btn.disabled = false;
       }
     }
