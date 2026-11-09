@@ -520,7 +520,7 @@ const INBOX_HTML = `<!DOCTYPE html>
     async function init() {
       await loadConversations(false);
 
-      // Polling a cada 2.5s para sincronizar novas mensagens
+      // Polling a cada 3s para sincronizar novas mensagens sem conflito
       setInterval(async () => {
         if (isPollingBusy) return;
         isPollingBusy = true;
@@ -529,10 +529,26 @@ const INBOX_HTML = `<!DOCTYPE html>
           if (activePhone) {
             await loadMessages(activePhone, true);
           }
+        } catch (err) {
+          console.error("Erro no polling:", err);
         } finally {
           isPollingBusy = false;
         }
-      }, 2500);
+      }, 3000);
+    }
+
+    async function fetchMessages(phone) {
+      try {
+        const res = await fetch('/api/messages?phone=' + encodeURIComponent(phone));
+        const data = await res.json();
+        if (data && data.messages) {
+          messageCache[String(phone)] = data.messages;
+        }
+        return data || { messages: [], ai_paused: false };
+      } catch (err) {
+        console.error("Erro ao buscar mensagens de " + phone, err);
+        return { messages: messageCache[String(phone)] || [], ai_paused: false };
+      }
     }
 
     async function loadConversations(isBackground = false) {
@@ -542,9 +558,21 @@ const INBOX_HTML = `<!DOCTYPE html>
         conversations = data.conversations || [];
         renderConversationList();
 
-        // Se não tiver nenhum chat ativo selecionado e houver conversas, seleciona a primeira
+        // Se nenhum chat ativo foi selecionado ainda, abre o primeiro
         if (!activePhone && conversations.length > 0 && !isBackground) {
-          selectChat(conversations[0].contact_wa_id);
+          await selectChat(conversations[0].contact_wa_id);
+        }
+
+        // PRE-CACHE AUTOMÁTICO EM SEGUNDO PLANO:
+        // Ao carregar a tela, pré-carrega as mensagens dos outros contatos em segundo plano
+        // para que a troca entre chats seja 100% instantânea (0ms)!
+        if (!isBackground && conversations.length > 0) {
+          for (const c of conversations) {
+            const p = String(c.contact_wa_id);
+            if (!messageCache[p]) {
+              fetchMessages(p).catch(() => {});
+            }
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar conversas:", err);
@@ -609,7 +637,8 @@ const INBOX_HTML = `<!DOCTYPE html>
 
     async function selectChat(phone) {
       if (!phone) return;
-      activePhone = String(phone);
+      const p = String(phone);
+      activePhone = p;
 
       renderConversationList();
 
@@ -617,56 +646,47 @@ const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('chatFooter').classList.remove('hidden');
       document.getElementById('patientSidebar').classList.remove('hidden');
 
-      const conv = conversations.find(c => String(c.contact_wa_id) === String(phone));
-      const name = conv ? (conv.contact_name || conv.contact_wa_id) : phone;
+      const conv = conversations.find(c => String(c.contact_wa_id) === p);
+      const name = conv ? (conv.contact_name || conv.contact_wa_id) : p;
 
       document.getElementById('activeName').innerText = name;
-      document.getElementById('activePhone').innerText = phone;
+      document.getElementById('activePhone').innerText = p;
       document.getElementById('activeAvatar').innerText = name.charAt(0).toUpperCase();
 
       document.getElementById('sideName').innerText = name;
-      document.getElementById('sidePhone').innerText = phone;
+      document.getElementById('sidePhone').innerText = p;
       document.getElementById('sideAvatar').innerText = name.charAt(0).toUpperCase();
 
-      // TRANSIÇÃO INSTANTÂNEA: Se já temos mensagens no cache, desenha NA MESMA HORA (0ms)
-      if (messageCache[activePhone] && messageCache[activePhone].length > 0) {
-        renderMessagesToContainer(messageCache[activePhone]);
+      // 1. TRANSIÇÃO INSTANTÂNEA: Se já temos mensagens no cache, renderiza NA MESMA HORA (0ms)
+      if (messageCache[p] && messageCache[p].length > 0) {
+        renderMessagesToContainer(messageCache[p]);
+        detectInterest(messageCache[p]);
       } else {
-        // Se ainda não estava no cache, limpa e aguarda a busca
+        // Se ainda não estava no cache, exibe indicador sutil
         document.getElementById('messagesArea').innerHTML = \`
           <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
             <i class="fa-solid fa-circle-notch fa-spin text-xl text-[#008069] mb-2"></i>
-            <p class="font-medium text-slate-500">Abrindo conversa...</p>
+            <p class="font-medium text-slate-500">Carregando conversa...</p>
           </div>
         \`;
       }
 
-      await loadMessages(phone, false);
+      // 2. Busca mensagens mais atualizadas da API e atualiza a tela
+      await loadMessages(p, false);
     }
 
     async function loadMessages(phone, isPolling = false) {
-      try {
-        const res = await fetch('/api/messages?phone=' + encodeURIComponent(phone));
-        const data = await res.json();
-        const msgs = data.messages || [];
+      if (!phone) return;
+      const p = String(phone);
+      const data = await fetchMessages(p);
+      const msgs = data.messages || [];
 
-        // Atualiza o cache local
-        messageCache[String(phone)] = msgs;
-
-        // Se o usuário já alternou para outro contato enquanto a requisição viajava, não toca na tela
-        if (String(phone) !== String(activePhone)) {
-          return;
-        }
-
+      // Só atualiza a tela se o usuário ainda estiver com este chat aberto
+      if (activePhone === p) {
         activeAiPaused = !!data.ai_paused;
         updateAiButtons(activeAiPaused);
-
-        // Preenche procedimento de interesse no Mini-CRM da barra lateral
         detectInterest(msgs);
-
         renderMessagesToContainer(msgs, isPolling);
-      } catch (err) {
-        console.error("Erro ao carregar mensagens:", err);
       }
     }
 
