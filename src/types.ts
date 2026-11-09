@@ -48,3 +48,25 @@ export interface BotConfig {
   emergency_contact?: string;
   extra?: string; // qualquer regra específica da clínica
 }
+
+export interface ConversationSummary {
+  contact_wa_id: string;
+  contact_name: string;
+  last_body: string | null;
+  last_direction: "in" | "out";
+  last_status: string;
+  last_created_at: string;
+  ai_paused: number;
+  message_count: number;
+}
+
+export interface ConversationMessage {
+  id: number;
+  tenant_id: string;
+  contact_wa_id: string;
+  contact_name: string | null;
+  direction: "in" | "out";
+  body: string | null;
+  status: string;
+  created_at: string;
+}
