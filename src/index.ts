@@ -513,16 +513,24 @@ const INBOX_HTML = `<!DOCTYPE html>
     let conversations = [];
     let activePhone = null;
     let activeAiPaused = false;
-    let pollInterval = null;
+    let currentRequestId = 0;
+    let isPollingBusy = false;
 
     // Inicialização
     async function init() {
-      await loadConversations();
-      // Polling a cada 2.5 segundos para atualizar mensagens e status
-      pollInterval = setInterval(async () => {
-        await loadConversations(true);
-        if (activePhone) {
-          await loadMessages(activePhone, true);
+      await loadConversations(false);
+
+      // Polling inteligente e seguro a cada 2.5s (sem engolir cliques ou re-renderizar fora de hora)
+      setInterval(async () => {
+        if (isPollingBusy) return;
+        isPollingBusy = true;
+        try {
+          await loadConversations(true);
+          if (activePhone) {
+            await loadMessages(activePhone, true);
+          }
+        } finally {
+          isPollingBusy = false;
         }
       }, 2500);
     }
@@ -546,11 +554,11 @@ const INBOX_HTML = `<!DOCTYPE html>
     function renderConversationList() {
       const container = document.getElementById('chatList');
       const countEl = document.getElementById('chatCount');
-      const search = document.getElementById('searchInput').value.toLowerCase().trim();
+      const search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
 
       const filtered = conversations.filter(c => 
         (c.contact_name && c.contact_name.toLowerCase().includes(search)) ||
-        c.contact_wa_id.includes(search) ||
+        String(c.contact_wa_id).includes(search) ||
         (c.last_body && c.last_body.toLowerCase().includes(search))
       );
 
@@ -567,8 +575,9 @@ const INBOX_HTML = `<!DOCTYPE html>
       }
 
       container.innerHTML = filtered.map(c => {
-        const isSelected = c.contact_wa_id === activePhone;
-        const initial = (c.contact_name || c.contact_wa_id).charAt(0).toUpperCase();
+        const isSelected = String(c.contact_wa_id) === String(activePhone);
+        const name = c.contact_name || c.contact_wa_id;
+        const initial = name.charAt(0).toUpperCase();
         const time = formatTime(c.last_created_at);
         const isPaused = c.ai_paused === 1;
 
@@ -580,7 +589,7 @@ const INBOX_HTML = `<!DOCTYPE html>
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between mb-0.5">
-                <h4 class="text-xs font-semibold text-slate-900 truncate">\${escapeHtml(c.contact_name || c.contact_wa_id)}</h4>
+                <h4 class="text-xs font-semibold text-slate-900 truncate">\${escapeHtml(name)}</h4>
                 <span class="text-[10px] text-slate-400 shrink-0 ml-1">\${time}</span>
               </div>
               <p class="text-[11px] text-slate-500 truncate mb-1">
@@ -588,8 +597,8 @@ const INBOX_HTML = `<!DOCTYPE html>
               </p>
               <div class="flex items-center gap-1.5">
                 \${isPaused 
-                  ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-700 font-semibold flex items-center gap-1"><i class="fa-solid fa-pause text-[8px]"></i> IA Pausada</span>'
-                  : '<span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 font-semibold flex items-center gap-1"><i class="fa-solid fa-robot text-[8px]"></i> IA Ativa</span>'
+                  ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold flex items-center gap-1"><i class="fa-solid fa-pause text-[8px]"></i> IA Pausada</span>'
+                  : '<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold flex items-center gap-1"><i class="fa-solid fa-robot text-[8px]"></i> IA Ativa</span>'
                 }
               </div>
             </div>
@@ -599,14 +608,17 @@ const INBOX_HTML = `<!DOCTYPE html>
     }
 
     async function selectChat(phone) {
-      activePhone = phone;
+      if (!phone) return;
+      activePhone = String(phone);
+      const reqId = ++currentRequestId;
+
       renderConversationList();
 
       document.getElementById('chatHeader').classList.remove('hidden');
       document.getElementById('chatFooter').classList.remove('hidden');
       document.getElementById('patientSidebar').classList.remove('hidden');
 
-      const conv = conversations.find(c => c.contact_wa_id === phone);
+      const conv = conversations.find(c => String(c.contact_wa_id) === String(phone));
       const name = conv ? (conv.contact_name || conv.contact_wa_id) : phone;
 
       document.getElementById('activeName').innerText = name;
@@ -617,60 +629,50 @@ const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('sidePhone').innerText = phone;
       document.getElementById('sideAvatar').innerText = name.charAt(0).toUpperCase();
 
-      await loadMessages(phone, false);
+      // Feedback visual imediato na área central ao alternar
+      const container = document.getElementById('messagesArea');
+      container.innerHTML = \`
+        <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+          <i class="fa-solid fa-circle-notch fa-spin text-2xl text-[#008069] mb-2"></i>
+          <p class="font-medium text-slate-500">Carregando conversa com \${escapeHtml(name)}...</p>
+        </div>
+      \`;
+
+      await loadMessages(phone, false, reqId);
     }
 
-    async function loadMessages(phone, isPolling = false) {
+    async function loadMessages(phone, isPolling = false, reqId = null) {
+      const thisReq = reqId !== null ? reqId : ++currentRequestId;
       try {
         const res = await fetch('/api/messages?phone=' + encodeURIComponent(phone));
         const data = await res.json();
-        activeAiPaused = data.ai_paused;
 
+        // GUARDA ANTI-RACE-CONDITION: Se o usuário já alternou para outro contato, descarta este retorno atrasado!
+        if (String(phone) !== String(activePhone) || thisReq !== currentRequestId) {
+          return;
+        }
+
+        activeAiPaused = !!data.ai_paused;
         updateAiButtons(activeAiPaused);
+
+        // Preenche procedimento de interesse no Mini-CRM da barra lateral
+        detectInterest(data.messages || []);
 
         const container = document.getElementById('messagesArea');
         const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 80;
 
-        container.innerHTML = (data.messages || []).map(m => {
-          const isPatient = m.direction === 'in';
-          const isHuman = m.direction === 'out' && m.status === 'human';
-          const time = formatTime(m.created_at);
+        const msgs = data.messages || [];
+        if (msgs.length === 0) {
+          container.innerHTML = \`
+            <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+              <i class="fa-regular fa-comment-dots text-2xl mb-2 text-slate-300"></i>
+              <p class="font-medium text-slate-600">Nenhuma mensagem neste chat ainda</p>
+            </div>
+          \`;
+          return;
+        }
 
-          if (isPatient) {
-            return \`
-              <div class="flex justify-start">
-                <div class="max-w-[75%] bg-white rounded-lg rounded-tl-none p-2.5 shadow-sm border border-slate-100 text-xs">
-                  <p class="text-slate-800 whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
-                  <div class="text-[9px] text-slate-400 text-right mt-1">\${time}</div>
-                </div>
-              </div>
-            \`;
-          } else if (isHuman) {
-            return \`
-              <div class="flex justify-end">
-                <div class="max-w-[75%] bg-sky-100 rounded-lg rounded-tr-none p-2.5 shadow-sm border border-sky-200 text-xs">
-                  <div class="text-[9px] text-sky-700 font-bold mb-0.5 flex items-center gap-1">
-                    <i class="fa-solid fa-user-tie"></i> Recepcionista (Manual)
-                  </div>
-                  <p class="text-slate-800 whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
-                  <div class="text-[9px] text-sky-600/70 text-right mt-1">\${time}</div>
-                </div>
-              </div>
-            \`;
-          } else {
-            return \`
-              <div class="flex justify-end">
-                <div class="max-w-[75%] bg-[#d9fdd3] rounded-lg rounded-tr-none p-2.5 shadow-sm text-xs border border-emerald-100">
-                  <div class="text-[9px] text-emerald-800 font-bold mb-0.5 flex items-center gap-1">
-                    <i class="fa-solid fa-robot"></i> Secretária IA (Claude)
-                  </div>
-                  <p class="text-slate-800 whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
-                  <div class="text-[9px] text-emerald-700/70 text-right mt-1">\${time}</div>
-                </div>
-              </div>
-            \`;
-          }
-        }).join('');
+        container.innerHTML = msgs.map(m => renderBubble(m)).join('');
 
         if (!isPolling || wasAtBottom) {
           container.scrollTop = container.scrollHeight;
@@ -678,6 +680,61 @@ const INBOX_HTML = `<!DOCTYPE html>
       } catch (err) {
         console.error("Erro ao carregar mensagens:", err);
       }
+    }
+
+    function renderBubble(m) {
+      const isPatient = m.direction === 'in';
+      const isHuman = m.direction === 'out' && m.status === 'human';
+      const time = formatTime(m.created_at);
+
+      if (isPatient) {
+        return \`
+          <div class="flex justify-start">
+            <div class="max-w-[78%] bg-white rounded-lg rounded-tl-none p-3 shadow-sm border border-slate-100 text-xs">
+              <p class="text-slate-800 whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
+              <div class="text-[9px] text-slate-400 text-right mt-1">\${time}</div>
+            </div>
+          </div>
+        \`;
+      } else if (isHuman) {
+        return \`
+          <div class="flex justify-end">
+            <div class="max-w-[78%] bg-sky-100 rounded-lg rounded-tr-none p-3 shadow-sm border border-sky-200 text-xs">
+              <div class="text-[9px] text-sky-700 font-bold mb-1 flex items-center gap-1">
+                <i class="fa-solid fa-user-tie"></i> Recepcionista (Atendimento Manual)
+              </div>
+              <p class="text-slate-800 whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
+              <div class="text-[9px] text-sky-600/70 text-right mt-1">\${time}</div>
+            </div>
+          </div>
+        \`;
+      } else {
+        return \`
+          <div class="flex justify-end">
+            <div class="max-w-[78%] bg-[#d9fdd3] rounded-lg rounded-tr-none p-3 shadow-sm text-xs border border-emerald-100">
+              <div class="text-[9px] text-emerald-800 font-bold mb-1 flex items-center gap-1">
+                <i class="fa-solid fa-robot"></i> Secretária IA (Claude 24h)
+              </div>
+              <p class="text-slate-800 whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
+              <div class="text-[9px] text-emerald-700/70 text-right mt-1">\${time}</div>
+            </div>
+          </div>
+        \`;
+      }
+    }
+
+    function detectInterest(messages) {
+      const allText = messages.map(m => (m.body || '').toLowerCase()).join(' ');
+      let interest = 'Avaliação Geral';
+      if (allText.includes('botox') || allText.includes('toxina')) interest = 'Botox / Toxina Botulínica';
+      else if (allText.includes('clareamento')) interest = 'Clareamento Dental';
+      else if (allText.includes('implante')) interest = 'Implantes Dentários';
+      else if (allText.includes('aparelho') || allText.includes('ortodontia')) interest = 'Ortodontia / Aparelho';
+      else if (allText.includes('harmoniz')) interest = 'Harmonização Facial';
+      else if (allText.includes('sangramento') || allText.includes('dor') || allText.includes('urg')) interest = 'Urgência / Emergência';
+
+      const el = document.getElementById('sideInterest');
+      if (el) el.innerText = interest;
     }
 
     function updateAiButtons(paused) {
@@ -689,7 +746,7 @@ const INBOX_HTML = `<!DOCTYPE html>
       const notice = document.getElementById('aiStatusNotice');
 
       if (paused) {
-        btn.className = "text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition";
+        btn.className = "text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition";
         btn.innerHTML = '<i class="fa-solid fa-play"></i><span>Reativar IA neste Chat</span>';
 
         badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold";
@@ -698,10 +755,10 @@ const INBOX_HTML = `<!DOCTYPE html>
         sideIcon.innerHTML = '<i class="fa-solid fa-user-check text-amber-600"></i>';
         sideText.innerText = "Atendimento Humano";
         sideToggle.innerText = "Reativar IA";
-        notice.innerText = "IA pausada: você está no controle total.";
+        notice.innerText = "IA pausada neste chat: você está no controle total.";
         notice.className = "text-amber-600 font-medium";
       } else {
-        btn.className = "text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition";
+        btn.className = "text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition";
         btn.innerHTML = '<i class="fa-solid fa-pause"></i><span>Pausar IA (Assumir)</span>';
 
         badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold";
@@ -739,14 +796,13 @@ const INBOX_HTML = `<!DOCTYPE html>
       if (!text || !activePhone) return;
       input.value = '';
 
-      // Opcional: Se enviar mensagem manual, pode automaticamente pausar a IA para não dar colisão
       try {
         await fetch('/api/send', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ phone: activePhone, text: text })
         });
-        await loadMessages(activePhone);
+        await loadMessages(activePhone, false);
         await loadConversations(true);
       } catch (err) {
         alert("Erro ao enviar mensagem");
@@ -760,7 +816,7 @@ const INBOX_HTML = `<!DOCTYPE html>
       if (!text || !activePhone) return;
       input.value = '';
 
-      const conv = conversations.find(c => c.contact_wa_id === activePhone);
+      const conv = conversations.find(c => String(c.contact_wa_id) === String(activePhone));
       const name = conv ? conv.contact_name : "Paciente";
 
       await fetch('/api/simulate-patient', {
@@ -771,7 +827,7 @@ const INBOX_HTML = `<!DOCTYPE html>
 
       // Recarrega as mensagens após 1.8 segundos
       setTimeout(async () => {
-        await loadMessages(activePhone);
+        await loadMessages(activePhone, false);
         await loadConversations(true);
       }, 1800);
     }
@@ -827,7 +883,7 @@ const INBOX_HTML = `<!DOCTYPE html>
       const icon = document.getElementById('refreshIcon');
       icon.classList.add('fa-spin');
       await loadConversations();
-      if (activePhone) await loadMessages(activePhone);
+      if (activePhone) await loadMessages(activePhone, false);
       setTimeout(() => icon.classList.remove('fa-spin'), 600);
     }
 
@@ -838,16 +894,18 @@ const INBOX_HTML = `<!DOCTYPE html>
     function formatTime(isoString) {
       if (!isoString) return '';
       try {
-        const d = new Date(isoString.endsWith('Z') ? isoString : isoString + 'Z');
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const normalized = isoString.replace(' ', 'T') + (isoString.endsWith('Z') ? '' : 'Z');
+        const d = new Date(normalized);
+        return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       } catch {
         return '';
       }
     }
 
     function escapeHtml(text) {
+      if (!text) return '';
       const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-      return text.replace(/[&<>"']/g, m => map[m]);
+      return String(text).replace(/[&<>"']/g, m => map[m]);
     }
 
     init();

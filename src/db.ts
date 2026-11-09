@@ -132,7 +132,7 @@ export async function listConversations(db: D1Database, tenantId: string): Promi
     .prepare(
       `SELECT 
          m.contact_wa_id,
-         COALESCE(m.contact_name, m.contact_wa_id) as contact_name,
+         COALESCE(names.contact_name, m.contact_name, m.contact_wa_id) as contact_name,
          m.body as last_body,
          m.direction as last_direction,
          m.status as last_status,
@@ -146,6 +146,12 @@ export async function listConversations(db: D1Database, tenantId: string): Promi
          WHERE tenant_id = ?1
          GROUP BY contact_wa_id
        ) latest ON m.id = latest.max_id
+       LEFT JOIN (
+         SELECT contact_wa_id, contact_name
+         FROM messages
+         WHERE tenant_id = ?1 AND contact_name IS NOT NULL AND contact_name != ''
+         GROUP BY contact_wa_id
+       ) names ON m.contact_wa_id = names.contact_wa_id
        LEFT JOIN conversation_states cs 
          ON cs.tenant_id = m.tenant_id AND cs.contact_wa_id = m.contact_wa_id
        ORDER BY m.id DESC;`
