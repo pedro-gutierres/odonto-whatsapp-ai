@@ -513,14 +513,14 @@ const INBOX_HTML = `<!DOCTYPE html>
     let conversations = [];
     let activePhone = null;
     let activeAiPaused = false;
-    let currentRequestId = 0;
     let isPollingBusy = false;
+    const messageCache = {};
 
     // Inicialização
     async function init() {
       await loadConversations(false);
 
-      // Polling inteligente e seguro a cada 2.5s (sem engolir cliques ou re-renderizar fora de hora)
+      // Polling a cada 2.5s para sincronizar novas mensagens
       setInterval(async () => {
         if (isPollingBusy) return;
         isPollingBusy = true;
@@ -610,7 +610,6 @@ const INBOX_HTML = `<!DOCTYPE html>
     async function selectChat(phone) {
       if (!phone) return;
       activePhone = String(phone);
-      const reqId = ++currentRequestId;
 
       renderConversationList();
 
@@ -629,26 +628,33 @@ const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('sidePhone').innerText = phone;
       document.getElementById('sideAvatar').innerText = name.charAt(0).toUpperCase();
 
-      // Feedback visual imediato na área central ao alternar
-      const container = document.getElementById('messagesArea');
-      container.innerHTML = \`
-        <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-          <i class="fa-solid fa-circle-notch fa-spin text-2xl text-[#008069] mb-2"></i>
-          <p class="font-medium text-slate-500">Carregando conversa com \${escapeHtml(name)}...</p>
-        </div>
-      \`;
+      // TRANSIÇÃO INSTANTÂNEA: Se já temos mensagens no cache, desenha NA MESMA HORA (0ms)
+      if (messageCache[activePhone] && messageCache[activePhone].length > 0) {
+        renderMessagesToContainer(messageCache[activePhone]);
+      } else {
+        // Se ainda não estava no cache, limpa e aguarda a busca
+        document.getElementById('messagesArea').innerHTML = \`
+          <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+            <i class="fa-solid fa-circle-notch fa-spin text-xl text-[#008069] mb-2"></i>
+            <p class="font-medium text-slate-500">Abrindo conversa...</p>
+          </div>
+        \`;
+      }
 
-      await loadMessages(phone, false, reqId);
+      await loadMessages(phone, false);
     }
 
-    async function loadMessages(phone, isPolling = false, reqId = null) {
-      const thisReq = reqId !== null ? reqId : ++currentRequestId;
+    async function loadMessages(phone, isPolling = false) {
       try {
         const res = await fetch('/api/messages?phone=' + encodeURIComponent(phone));
         const data = await res.json();
+        const msgs = data.messages || [];
 
-        // GUARDA ANTI-RACE-CONDITION: Se o usuário já alternou para outro contato, descarta este retorno atrasado!
-        if (String(phone) !== String(activePhone) || thisReq !== currentRequestId) {
+        // Atualiza o cache local
+        messageCache[String(phone)] = msgs;
+
+        // Se o usuário já alternou para outro contato enquanto a requisição viajava, não toca na tela
+        if (String(phone) !== String(activePhone)) {
           return;
         }
 
@@ -656,29 +662,32 @@ const INBOX_HTML = `<!DOCTYPE html>
         updateAiButtons(activeAiPaused);
 
         // Preenche procedimento de interesse no Mini-CRM da barra lateral
-        detectInterest(data.messages || []);
+        detectInterest(msgs);
 
-        const container = document.getElementById('messagesArea');
-        const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 80;
-
-        const msgs = data.messages || [];
-        if (msgs.length === 0) {
-          container.innerHTML = \`
-            <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-              <i class="fa-regular fa-comment-dots text-2xl mb-2 text-slate-300"></i>
-              <p class="font-medium text-slate-600">Nenhuma mensagem neste chat ainda</p>
-            </div>
-          \`;
-          return;
-        }
-
-        container.innerHTML = msgs.map(m => renderBubble(m)).join('');
-
-        if (!isPolling || wasAtBottom) {
-          container.scrollTop = container.scrollHeight;
-        }
+        renderMessagesToContainer(msgs, isPolling);
       } catch (err) {
         console.error("Erro ao carregar mensagens:", err);
+      }
+    }
+
+    function renderMessagesToContainer(msgs, isPolling = false) {
+      const container = document.getElementById('messagesArea');
+      const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+
+      if (!msgs || msgs.length === 0) {
+        container.innerHTML = \`
+          <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+            <i class="fa-regular fa-comment-dots text-2xl mb-2 text-slate-300"></i>
+            <p class="font-medium text-slate-600">Nenhuma mensagem neste chat ainda</p>
+          </div>
+        \`;
+        return;
+      }
+
+      container.innerHTML = msgs.map(m => renderBubble(m)).join('');
+
+      if (!isPolling || wasAtBottom) {
+        container.scrollTop = container.scrollHeight;
       }
     }
 
@@ -796,6 +805,16 @@ const INBOX_HTML = `<!DOCTYPE html>
       if (!text || !activePhone) return;
       input.value = '';
 
+      // Atualização otimista imediata na tela
+      messageCache[activePhone] = messageCache[activePhone] || [];
+      messageCache[activePhone].push({
+        direction: 'out',
+        status: 'human',
+        body: text,
+        created_at: new Date().toISOString()
+      });
+      renderMessagesToContainer(messageCache[activePhone]);
+
       try {
         await fetch('/api/send', {
           method: 'POST',
@@ -835,6 +854,7 @@ const INBOX_HTML = `<!DOCTYPE html>
     async function handleClearCurrentChat() {
       if (!activePhone) return;
       if (confirm(\`Deseja apagar o histórico de mensagens de \${activePhone}?\`)) {
+        delete messageCache[activePhone];
         await fetch('/api/clear-chat', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
