@@ -1787,4 +1787,4 @@ export const INBOX_HTML = `<!DOCTYPE html>
   </script>
 </body>
 </html>
-\`;
+`;
