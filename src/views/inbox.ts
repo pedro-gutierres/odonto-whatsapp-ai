@@ -46,45 +46,92 @@ export const INBOX_HTML = `<!DOCTYPE html>
 <body class="bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 h-screen flex flex-col overflow-hidden selection:bg-[#008069] selection:text-white transition-colors duration-200">
 
   <!-- CABEÇALHO SUPERIOR GLOBAL -->
-  <header class="h-16 bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-slate-800/80 px-4 lg:px-6 flex items-center justify-between shrink-0 z-30 transition-colors">
-    <div class="flex items-center gap-6">
-      
-      <!-- LOGO E CLÍNICA -->
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#008069] to-emerald-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/10 font-bold text-base">
-          <i class="fa-solid fa-sparkles"></i>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">Aura<span class="text-emerald-500 dark:text-emerald-400">AI</span></span>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800/60">
-              Clínica Sorriso Teste
-            </span>
-          </div>
-          <span class="text-[10px] block font-medium text-slate-500 dark:text-slate-400">Central de Recepção & Triagem 24h</span>
-        </div>
+  <header class="h-16 bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-slate-800/80 px-4 lg:px-6 flex items-center justify-between shrink-0 z-30 transition-colors relative">
+    
+    <!-- LADO ESQUERDO: LOGO E CLÍNICA -->
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#008069] to-emerald-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/10 font-bold text-base">
+        <i class="fa-solid fa-sparkles"></i>
       </div>
-
-      <!-- TABS DE NAVEGAÇÃO -->
-      <nav class="hidden sm:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold">
-        <button id="tabChatBtn" onclick="switchMainTab('chat')" 
-          class="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm flex items-center gap-2 transition">
-          <i class="fa-solid fa-comments text-emerald-500"></i>
-          <span>Atendimento WhatsApp</span>
-          <span id="tabBadgeChat" class="w-2 h-2 rounded-full bg-emerald-500"></span>
-        </button>
-
-        <button id="tabAgendaBtn" onclick="switchMainTab('agenda')" 
-          class="px-3.5 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 transition">
-          <i class="fa-regular fa-calendar-check text-slate-400"></i>
-          <span>Agenda & Pré-Agendamentos</span>
-          <span id="appointmentsCountBadge" class="px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-800 text-[10px] font-bold">0</span>
-        </button>
-      </nav>
-
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">Aura<span class="text-emerald-500 dark:text-emerald-400">AI</span></span>
+          <span id="topClinicNameBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800/60 max-w-[160px] truncate">
+            Clínica Sorriso & Estética
+          </span>
+        </div>
+        <span class="text-[10px] block font-medium text-slate-500 dark:text-slate-400">Odontologia & Estética Avançada 24h</span>
+      </div>
     </div>
 
-    <!-- AÇÕES DO TOPO: DARK MODE, SIMULADOR, USUÁRIO -->
+    <!-- CENTRO SUPERIOR: SELETOR DE MÓDULOS (MENU VERTICAL) -->
+    <div class="relative flex items-center justify-center" id="verticalMenuContainer">
+      <!-- Botão Seletor Principal -->
+      <button id="verticalMenuTrigger" onclick="toggleVerticalMenu(event)" 
+        class="flex items-center gap-2.5 px-3.5 sm:px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700/60 shadow-sm transition font-semibold text-xs sm:text-sm">
+        <div id="selectedMenuIcon" class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-comments"></i>
+        </div>
+        <span id="selectedMenuLabel" class="tracking-tight">Atendimento WhatsApp</span>
+        <i id="verticalMenuChevron" class="fa-solid fa-chevron-down text-slate-400 text-[10px] ml-1 transition-transform duration-200"></i>
+      </button>
+
+      <!-- Menu Vertical Dropdown Flutuante -->
+      <div id="verticalMenuDropdown" class="hidden absolute top-full mt-2 w-72 bg-white dark:bg-[#151c28] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 transition-all duration-200 backdrop-blur-md">
+        
+        <div class="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
+          Navegação da Plataforma
+        </div>
+
+        <!-- Opção 1: Atendimento WhatsApp -->
+        <button onclick="selectNavigationTab('chat', 'Atendimento WhatsApp', 'fa-solid fa-comments', 'emerald')" 
+          class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm group-hover:scale-105 transition-transform">
+              <i class="fa-solid fa-comments"></i>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-slate-900 dark:text-white block">Atendimento WhatsApp</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400">Multi-chat ao vivo e mensagens</span>
+            </div>
+          </div>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        </button>
+
+        <!-- Opção 2: Agenda & Pré-Agendamentos -->
+        <button onclick="selectNavigationTab('agenda', 'Agenda & Pré-Agendamentos', 'fa-regular fa-calendar-check', 'sky')" 
+          class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-sm group-hover:scale-105 transition-transform">
+              <i class="fa-regular fa-calendar-check"></i>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-slate-900 dark:text-white block">Agenda & Consultas</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400">CRM de pré-agendamentos</span>
+            </div>
+          </div>
+          <span id="menuAppointmentsBadge" class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">0</span>
+        </button>
+
+        <!-- Opção 3: Configurações & Treinamento da IA (Questionário) -->
+        <button onclick="selectNavigationTab('config', 'Treinamento & Regras da IA', 'fa-solid fa-sliders', 'purple')" 
+          class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm group-hover:scale-105 transition-transform">
+              <i class="fa-solid fa-sliders"></i>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-slate-900 dark:text-white block">Treinamento & IA</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400">Questionário Estética & Odonto</span>
+            </div>
+          </div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">IA</span>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- LADO DIREITO: DARK MODE, SIMULADOR, NOVO TESTE, USUÁRIO -->
     <div class="flex items-center gap-2.5">
       
       <!-- BOTÃO TOGGLE DARK/LIGHT MODE -->
@@ -129,244 +176,241 @@ export const INBOX_HTML = `<!DOCTYPE html>
   <!-- VIEW 1: CENTRAL DE ATENDIMENTO MULTI-CHAT WHATSAPP                      -->
   <!-- ======================================================================= -->
   <main id="viewChat" class="flex-1 flex overflow-hidden">
-
+    
     <!-- COLUNA 1: LISTA DE CONVERSAS (ESQUERDA) -->
-    <section class="w-80 lg:w-96 bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 transition-colors">
-      <!-- Busca e Filtros -->
-      <div class="p-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
-          <input type="text" id="searchInput" oninput="filterChats()" placeholder="Pesquisar paciente ou telefone..." 
-            class="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700/80 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#008069] transition">
-        </div>
-        <div class="flex items-center justify-between mt-2 pt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-          <span id="chatCount">0 conversas</span>
-          <span class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-            <i class="fa-solid fa-robot"></i> IA Ativa 24h
-          </span>
-        </div>
-      </div>
-
-      <!-- Lista de Chats -->
-      <div id="chatList" class="flex-1 overflow-y-auto custom-scroll divide-y divide-slate-100 dark:divide-slate-800/60">
-        <div class="p-6 text-center text-slate-400 text-xs">Carregando conversas...</div>
-      </div>
-    </section>
-
-    <!-- COLUNA 2: JANELA DO CHAT ATIVO (CENTRO) -->
-    <section class="flex-1 flex flex-col bg-white dark:bg-[#0b0f17] overflow-hidden transition-colors">
+    <aside class="w-80 md:w-96 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800/80 flex flex-col shrink-0 transition-colors">
       
-      <!-- Cabeçalho do Chat Selecionado -->
-      <div id="chatHeader" class="h-14 border-b border-slate-200 dark:border-slate-800/80 px-5 flex items-center justify-between bg-slate-50 dark:bg-[#111827] shrink-0 hidden transition-colors">
+      <!-- BUSCA E FILTRO -->
+      <div class="p-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+          <input type="text" id="searchInput" oninput="filterChats()" placeholder="Pesquisar conversa ou telefone..." 
+            class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#008069] transition">
+        </div>
+        <div class="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+          <span id="chatCount">Carregando conversas...</span>
+          <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-bolt text-[10px]"></i> IA Ativa 24h</span>
+        </div>
+      </div>
+
+      <!-- LISTA SCROLLÁVEL DE CONVERSAS -->
+      <div id="conversationList" class="flex-1 overflow-y-auto custom-scroll divide-y divide-slate-100 dark:divide-slate-800/40">
+        <div class="p-8 text-center text-slate-400 text-xs">
+          <i class="fa-solid fa-circle-notch fa-spin text-base mb-2 block"></i>
+          Sincronizando pacientes...
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- COLUNA 2: HISTÓRICO DE MENSAGENS E CHAT (CENTRAL) -->
+    <section class="flex-1 flex flex-col relative transition-colors duration-200">
+      
+      <!-- SUB-BARRA DA CONVERSA SELECIONADA -->
+      <div id="chatHeader" class="h-14 bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-slate-800/80 px-4 flex items-center justify-between shrink-0 shadow-sm transition-colors">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-sm" id="activeAvatar">P</div>
+          <div id="activeAvatar" class="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs uppercase">
+            ?
+          </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="text-sm font-semibold text-slate-900 dark:text-white" id="activeName">Paciente</h2>
-              <span id="activeAiBadge" class="text-[10px] px-2 py-0.5 rounded-full font-medium"></span>
+              <h2 id="activeContactName" class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-none">Selecione uma conversa</h2>
+              <span id="activeAiBadge" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded-full border"></span>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400" id="activePhone">552199999999</p>
+            <p id="activeContactPhone" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">Nenhum chat selecionado</p>
           </div>
         </div>
 
-        <!-- Botão de Intervenção Humana (Human Takeover) -->
+        <!-- BOTÃO DE CONTROLE DA IA (HUMAN TAKEOVER) -->
         <div class="flex items-center gap-2">
-          <button id="toggleAiBtn" onclick="toggleActiveAi()" class="text-xs font-medium px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-sm">
-            <!-- Preenchido via JS -->
+          <button id="toggleAiBtn" onclick="handleToggleAi()" class="hidden text-xs font-semibold px-3 py-1.5 rounded-xl transition items-center gap-1.5 shadow-sm">
+            <span id="toggleAiIcon"></span>
+            <span id="toggleAiText">Carregando...</span>
           </button>
         </div>
       </div>
 
-      <!-- Área das Mensagens (Scroll) -->
-      <div id="messagesArea" class="flex-1 overflow-y-auto p-4 space-y-3 wa-bg-light dark:wa-bg-dark custom-scroll transition-colors">
+      <!-- ÁREA DE MENSAGENS COM SCROLL -->
+      <div id="messagesArea" class="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-3 wa-bg-light dark:wa-bg-dark transition-all">
         <div class="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs">
-          <div class="w-14 h-14 rounded-full bg-white/70 dark:bg-slate-800 shadow-sm flex items-center justify-center text-2xl mb-2 text-slate-400">💬</div>
-          <p class="font-medium text-slate-700 dark:text-slate-300 text-sm">Nenhuma conversa selecionada</p>
-          <p class="text-slate-400 dark:text-slate-500 mt-1">Selecione uma conversa à esquerda para visualizar e intervir.</p>
+          <div class="w-16 h-16 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center text-2xl text-slate-300 dark:text-slate-600 mb-3">
+            <i class="fa-brands fa-whatsapp"></i>
+          </div>
+          <p class="font-medium">Selecione um paciente na lista ao lado para ver o histórico.</p>
         </div>
       </div>
 
-      <!-- Barra de Envio da Recepcionista -->
-      <div id="chatFooter" class="p-3 bg-slate-50 dark:bg-[#111827] border-t border-slate-200 dark:border-slate-800/80 shrink-0 hidden transition-colors">
-        <form onsubmit="handleSendHuman(event)" class="flex items-center gap-2">
-          <input type="text" id="humanInput" placeholder="Digite uma resposta manual como recepcionista (Enter para enviar)..." 
-            class="flex-1 px-4 py-2 text-xs bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#008069] transition" autocomplete="off" />
-          <button type="submit" class="bg-[#008069] hover:bg-[#006a57] text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
-            <i class="fa-solid fa-paper-plane"></i>
+      <!-- INPUT DA RECEPCIONISTA (RESPOSTA MANUAL) -->
+      <div id="inputBar" class="bg-white dark:bg-[#111827] border-t border-slate-200 dark:border-slate-800/80 p-3 shrink-0 flex flex-col gap-1 transition-colors">
+        <form onsubmit="handleSendMessage(event)" class="flex items-center gap-2">
+          <input type="text" id="messageInput" disabled placeholder="Selecione um paciente para conversar..." 
+            class="flex-1 px-4 py-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#008069] disabled:opacity-50 transition">
+          <button type="submit" id="sendBtn" disabled 
+            class="px-4 py-2.5 rounded-xl bg-[#008069] hover:bg-[#006a57] disabled:opacity-40 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm">
             <span>Enviar</span>
+            <i class="fa-solid fa-paper-plane text-[10px]"></i>
           </button>
         </form>
-        <div class="mt-1.5 px-1 text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
-          <span>Dica: Ao enviar mensagem manual, o paciente recebe com status de atendente humano.</span>
-          <button onclick="quickScheduleForCurrent()" class="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1">
-            <i class="fa-solid fa-calendar-plus text-xs"></i>
-            <span>Criar Pré-Agendamento</span>
-          </button>
-        </div>
+        <p class="text-[10px] text-slate-400 dark:text-slate-500 px-1">
+          Dica: Ao enviar mensagem manual, a IA pausa neste chat para você assumir o controle total.
+        </p>
       </div>
 
     </section>
 
-    <!-- COLUNA 3: DADOS DO PACIENTE & AÇÕES RÁPIDAS (DIREITA) -->
-    <section id="patientSidebar" class="w-72 lg:w-80 bg-slate-50 dark:bg-[#0f172a] border-l border-slate-200 dark:border-slate-800/80 p-4 flex flex-col shrink-0 hidden transition-colors">
-      <div class="text-center pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div class="w-16 h-16 rounded-full bg-[#008069]/10 text-[#008069] dark:text-emerald-400 font-bold text-xl flex items-center justify-center mx-auto mb-2" id="sideAvatar">P</div>
-        <h3 class="text-sm font-bold text-slate-900 dark:text-white" id="sideName">Nome</h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400" id="sidePhone">Telefone</p>
+    <!-- COLUNA 3: DETALHES DO PACIENTE (DIREITA) -->
+    <aside class="hidden xl:flex w-80 bg-white dark:bg-[#111827] border-l border-slate-200 dark:border-slate-800/80 flex-col p-4 shrink-0 transition-colors">
+      <div class="text-center pb-4 border-b border-slate-100 dark:border-slate-800/80">
+        <div id="sideAvatar" class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xl uppercase mx-auto mb-2 border border-slate-200 dark:border-slate-700">
+          ?
+        </div>
+        <h3 id="sideContactName" class="text-sm font-bold text-slate-900 dark:text-white">Nenhum Paciente</h3>
+        <p id="sideContactPhone" class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">-</p>
       </div>
 
-      <!-- Mini CRM & Status -->
-      <div class="py-4 space-y-3 flex-1 overflow-y-auto custom-scroll text-xs">
-        <div>
-          <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status do Atendimento</label>
-          <div class="mt-1 p-2.5 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span id="sideAiStatusIcon"><i class="fa-solid fa-robot text-emerald-600 dark:text-emerald-400"></i></span>
-              <span class="font-medium text-slate-700 dark:text-slate-300" id="sideAiStatusText">IA Ativa</span>
-            </div>
-            <button onclick="toggleActiveAi()" class="text-[11px] text-[#008069] dark:text-emerald-400 hover:underline font-semibold" id="sideToggleLink">Pausar</button>
+      <div class="py-4 space-y-4 flex-1 overflow-y-auto custom-scroll text-xs">
+        
+        <!-- STATUS DA IA -->
+        <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">Status do Atendimento</span>
+          <div class="flex items-center justify-between">
+            <span id="sideAiStatusText" class="font-bold text-slate-700 dark:text-slate-300">Aguardando seleção</span>
+            <button id="sideToggleAiBtn" onclick="handleToggleAi()" class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline hidden">Alterar</button>
           </div>
         </div>
 
-        <div>
-          <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Procedimento de Interesse</label>
-          <div class="mt-1 p-2.5 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-medium" id="sideInterest">
-            Avaliação Geral
+        <!-- PROCEDIMENTO DE INTERESSE DETECTADO -->
+        <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">Procedimento de Interesse</span>
+          <div id="sideProcedureDetected" class="font-bold text-slate-800 dark:text-slate-200">
+            Nenhum detectado ainda
           </div>
         </div>
 
-        <!-- AÇÃO DE AGENDAMENTO DIRETO -->
-        <div class="pt-2">
-          <button onclick="quickScheduleForCurrent()" 
-            class="w-full py-2.5 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-semibold text-xs transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-calendar-plus"></i>
+        <!-- AÇÃO DIRETA: AGENDAR CONSULTA -->
+        <div class="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 p-3.5 rounded-xl border border-emerald-500/20">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400 block mb-1">Ação Comercial</span>
+          <p class="text-[11px] text-slate-600 dark:text-slate-300 mb-2.5">Transfira este paciente diretamente para a grade de agendamentos.</p>
+          <button onclick="openAppointmentModalForCurrentPatient()" id="btnScheduleThisPatient" disabled
+            class="w-full py-2 px-3 rounded-xl bg-[#008069] hover:bg-[#006a57] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm">
+            <i class="fa-regular fa-calendar-plus"></i>
             <span>Agendar Consulta deste Paciente</span>
           </button>
         </div>
 
-        <!-- SIMULADOR RÁPIDO DO PACIENTE -->
-        <div class="pt-2 border-t border-slate-200 dark:border-slate-800">
-          <label class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1 mb-1">
-            <i class="fa-solid fa-vial"></i> Testar como este paciente
-          </label>
-          <p class="text-[11px] text-slate-400 mb-2">Simule uma nova pergunta deste cliente para ver a IA respondendo:</p>
-          <form onsubmit="handleSimulateForCurrent(event)">
-            <textarea id="simQuestionInput" rows="2" placeholder="Ex: Qual o preço do clareamento?" required
-              class="w-full p-2 text-xs bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#008069] mb-1.5"></textarea>
-            <button type="submit" class="w-full py-1.5 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition">
-              <i class="fa-solid fa-play text-[9px]"></i>
-              <span>Simular Envio do Paciente</span>
-            </button>
-          </form>
+        <!-- TESTAR COMO ESTE PACIENTE (SIMULAÇÃO) -->
+        <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Testar como este paciente</span>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Simule uma nova pergunta vinda deste número para ver a IA respondendo.</p>
+          <textarea id="simulateMsgInput" rows="2" placeholder="Ex: Qual o preço do clareamento?" 
+            class="w-full p-2 text-xs rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:outline-none focus:border-[#008069]"></textarea>
+          <button onclick="handleSimulateForCurrentPatient()" id="btnSimulateCurrent" disabled
+            class="w-full py-1.5 px-3 rounded-lg bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-play text-[10px]"></i>
+            <span>Simular Envio do Paciente</span>
+          </button>
         </div>
+
       </div>
 
-      <!-- Ações do rodapé -->
-      <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <button onclick="handleClearCurrentChat()" class="text-xs text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1">
-          <i class="fa-regular fa-trash-can"></i>
-          <span>Limpar Histórico</span>
+      <div class="pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
+        <button onclick="handleClearCurrentChat()" id="btnClearChat" disabled
+          class="text-xs text-rose-500 hover:text-rose-600 disabled:opacity-30 font-medium transition">
+          <i class="fa-regular fa-trash-can mr-1"></i> Limpar Histórico Deste Chat
         </button>
       </div>
-    </section>
+    </aside>
 
   </main>
 
   <!-- ======================================================================= -->
-  <!-- VIEW 2: PAINEL DA AGENDA & PRÉ-AGENDAMENTOS (CRM DE RESULTADOS)        -->
+  <!-- VIEW 2: AGENDA & PRÉ-AGENDAMENTOS (CRM DE CONSULTAS)                    -->
   <!-- ======================================================================= -->
-  <main id="viewAgenda" class="flex-1 flex flex-col overflow-y-auto p-5 lg:p-8 custom-scroll hidden bg-slate-50 dark:bg-[#0b0f17] transition-colors">
-    <div class="max-w-6xl mx-auto w-full space-y-6">
-
-      <!-- HEADER DA AGENDA -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+  <main id="viewAgenda" class="flex-1 overflow-y-auto custom-scroll p-4 lg:p-8 hidden bg-slate-50 dark:bg-[#0b0f17]">
+    <div class="max-w-7xl mx-auto space-y-6">
+      
+      <!-- TOPO DA AGENDA: RESUMO & NOVO AGENDAMENTO -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
-          <h2 class="text-xl font-bold text-slate-900 dark:text-white">Agenda & Pré-Agendamentos da IA</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Consultas e avaliações captadas automaticamente pelo WhatsApp da clínica.</p>
+          <h2 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">Agenda de Pacientes & Triagem</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gerencie os pedidos de consulta captados automaticamente pela IA e confirmados pela equipe.</p>
         </div>
-        <div class="flex items-center gap-3">
-          <button onclick="loadAppointments()" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-2">
-            <i class="fa-solid fa-arrows-rotate" id="agendaRefreshIcon"></i>
-            <span>Atualizar</span>
+        <div class="flex items-center gap-2">
+          <button onclick="loadAppointments()" class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs transition" title="Atualizar">
+            <i class="fa-solid fa-rotate-right" id="agendaRefreshIcon"></i>
           </button>
-          <button onclick="openNewAppointmentModal()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-2">
-            <i class="fa-solid fa-plus text-xs"></i>
+          <button onclick="openAppointmentModal()" class="px-4 py-2 rounded-xl bg-[#008069] hover:bg-[#006a57] text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-calendar-plus"></i>
             <span>Novo Agendamento</span>
           </button>
         </div>
       </div>
 
-      <!-- CARDS DE METRICAS (PROVA DE VALOR) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="p-4 rounded-2xl bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total de Agendados</span>
-            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs">
-              <i class="fa-solid fa-calendar-check"></i>
-            </div>
+      <!-- CARDS DE MÉTRICAS RÁPIDAS -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Total</span>
+            <i class="fa-solid fa-users text-slate-400 text-sm"></i>
           </div>
-          <div class="text-2xl font-bold text-slate-900 dark:text-white" id="metricTotal">0</div>
-          <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 block">Captados pelo WhatsApp</span>
+          <div class="text-2xl font-black text-slate-900 dark:text-white" id="metricTotal">0</div>
+          <span class="text-[10px] text-slate-400">Pacientes cadastrados</span>
         </div>
 
-        <div class="p-4 rounded-2xl bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Confirmados</span>
-            <div class="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-xs">
-              <i class="fa-solid fa-circle-check"></i>
-            </div>
+        <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between text-amber-500 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Pré-Agendados</span>
+            <i class="fa-solid fa-clock-rotate-left text-sm"></i>
           </div>
-          <div class="text-2xl font-bold text-slate-900 dark:text-white" id="metricConfirmed">0</div>
-          <span class="text-[11px] text-slate-400 mt-1 block">Prontos para atendimento</span>
+          <div class="text-2xl font-black text-amber-600 dark:text-amber-400" id="metricPre">0</div>
+          <span class="text-[10px] text-slate-400">Pela IA (Aguardando)</span>
         </div>
 
-        <div class="p-4 rounded-2xl bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pré-Agendados</span>
-            <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs">
-              <i class="fa-solid fa-clock"></i>
-            </div>
+        <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between text-emerald-500 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Confirmados</span>
+            <i class="fa-solid fa-calendar-check text-sm"></i>
           </div>
-          <div class="text-2xl font-bold text-slate-900 dark:text-white" id="metricPending">0</div>
-          <span class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-1 block">Requer confirmação humana</span>
+          <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400" id="metricConfirmed">0</div>
+          <span class="text-[10px] text-slate-400">Na grade da clínica</span>
         </div>
 
-        <div class="p-4 rounded-2xl bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Valor Estimado</span>
-            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs">
-              <i class="fa-solid fa-sack-dollar"></i>
-            </div>
+        <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between text-teal-500 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Estimado</span>
+            <i class="fa-solid fa-hand-holding-dollar text-sm"></i>
           </div>
-          <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400" id="metricValue">R$ 0</div>
-          <span class="text-[11px] text-slate-400 mt-1 block">Pipeline de procedimentos</span>
+          <div class="text-2xl font-black text-teal-600 dark:text-teal-400" id="metricValue">R$ 0</div>
+          <span class="text-[10px] text-slate-400">Potencial de faturamento</span>
         </div>
       </div>
 
-      <!-- TABELA DE AGENDAMENTOS -->
-      <div class="bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        <div class="p-4 border-b border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <!-- TABELA DE AGENDAMENTOS COM FILTROS -->
+      <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        
+        <!-- FILTROS -->
+        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div class="relative w-full sm:w-72">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-            <input type="text" id="appointmentSearchInput" oninput="filterAppointments()" placeholder="Filtrar paciente ou procedimento..."
-              class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#008069]">
+            <input type="text" id="appointmentSearchInput" oninput="filterAppointments()" placeholder="Filtrar por nome ou procedimento..."
+              class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#008069]">
           </div>
-          <div class="flex items-center gap-2 text-xs w-full sm:w-auto">
-            <span class="text-slate-400 text-[11px]">Filtrar por:</span>
-            <select id="appointmentStatusFilter" onchange="filterAppointments()" 
-              class="px-2.5 py-1.5 bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-300 focus:outline-none">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select id="appointmentStatusFilter" onchange="filterAppointments()"
+              class="px-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white font-medium focus:outline-none">
               <option value="todos">Todos os Status</option>
+              <option value="pre_agendado">Apenas Pré-Agendados</option>
               <option value="confirmado">Confirmados</option>
-              <option value="pre_agendado">Pré-Agendados</option>
               <option value="concluido">Concluídos</option>
               <option value="cancelado">Cancelados</option>
             </select>
           </div>
         </div>
 
+        <!-- TABELA -->
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50 dark:bg-slate-900/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800 text-[10px]">
+            <thead class="bg-slate-50/75 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 uppercase font-bold text-[10px] border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th class="py-3 px-4">Paciente</th>
                 <th class="py-3 px-4">Procedimento</th>
@@ -385,6 +429,303 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
       </div>
 
+    </div>
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- VIEW 3: CONFIGURAÇÕES & TREINAMENTO DA IA (ODONTO & ESTÉTICA)           -->
+  <!-- ======================================================================= -->
+  <main id="viewConfig" class="flex-1 overflow-y-auto custom-scroll p-4 lg:p-8 hidden bg-slate-50 dark:bg-[#0b0f17]">
+    <div class="max-w-5xl mx-auto space-y-6">
+      
+      <!-- TOPO COM AÇÃO DE SALVAR -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm sticky top-0 z-20 backdrop-blur-md">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></span>
+            <h2 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">Treinamento & Regras da Secretária IA</h2>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Personalize o cérebro da sua IA para Odontologia & Estética. Todas as alterações entram em vigor instantaneamente no WhatsApp.
+          </p>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <a href="/simulador" target="_blank" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-mobile-screen text-emerald-500"></i>
+            <span>Simulador</span>
+          </a>
+          <button onclick="saveClinicConfig()" id="btnSaveConfig" class="px-5 py-2 rounded-xl bg-gradient-to-r from-[#008069] to-emerald-600 hover:from-[#006a57] hover:to-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-2 transition">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span id="btnSaveConfigText">Salvar Alterações</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FORMULÁRIO COMPLETO DO QUESTIONÁRIO -->
+      <form id="clinicConfigForm" onsubmit="event.preventDefault(); saveClinicConfig();" class="space-y-6">
+
+        <!-- CARD 1: IDENTIDADE DA CLÍNICA & RESPONSÁVEL TÉCNICO -->
+        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
+              1
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">Identidade da Clínica & Responsável Técnico</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Dados oficiais que geram autoridade e confiança imediata ao paciente.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Nome Oficial da Clínica</label>
+              <input type="text" id="cfgClinicName" placeholder="Ex: Clínica Sorriso & Estética Integrada" required
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Doutor(a) Responsável Técnico</label>
+              <input type="text" id="cfgDoctorName" placeholder="Ex: Dra. Fernanda Alves"
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Registro Profissional (CRO / CRM)</label>
+              <input type="text" id="cfgDoctorCro" placeholder="Ex: CRO-SP 102.450 / Harmonização Orofacial"
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Tom de Voz da Secretária IA</label>
+              <select id="cfgTone" 
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] font-medium">
+                <option value="acolhedor">🌸 Acolhedor & Gentil (Caloroso, empático, ideal para clínica geral)</option>
+                <option value="sofisticado">✨ Sofisticado & Exclusivo (Boutique, foco em estética de alto padrão)</option>
+                <option value="clinico">🩺 Clínico & Técnico (Objetivo, seguro, rigor científico e formal)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 2: CATÁLOGO DE PROCEDIMENTOS (ODONTO + ESTÉTICA + ADICIONAR PERSONALIZADO) -->
+        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
+                2
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white">Catálogo de Procedimentos & Serviços Oferecidos</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Marque o que sua clínica realiza e adicione serviços customizados com duração e regras.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- GRUPO ODONTOLOGIA -->
+          <div>
+            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mb-2.5">
+              <i class="fa-solid fa-tooth"></i> Especialidades Odontológicas
+            </span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs" id="odontoCheckboxes">
+              <!-- Checkboxes Odonto via JS -->
+            </div>
+          </div>
+
+          <!-- GRUPO ESTÉTICA OROFACIAL & CORPORAL -->
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
+            <span class="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5 mb-2.5">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Estética Avançada & Harmonização Orofacial
+            </span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs" id="esteticaCheckboxes">
+              <!-- Checkboxes Estética via JS -->
+            </div>
+          </div>
+
+          <!-- ADICIONAR NOVO PROCEDIMENTO PERSONALIZADO -->
+          <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
+            <span class="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-2">
+              <i class="fa-solid fa-plus-circle text-slate-400 mr-1"></i> Adicionar Outro Procedimento Personalizado
+            </span>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60">
+              <div class="sm:col-span-5">
+                <input type="text" id="customProcName" placeholder="Nome do procedimento (ex: Fios de PDO de Sustentação)"
+                  class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
+              </div>
+              <div class="sm:col-span-3">
+                <input type="text" id="customProcDuration" placeholder="Duração (ex: 45 min)"
+                  class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
+              </div>
+              <div class="sm:col-span-3">
+                <input type="text" id="customProcNote" placeholder="Obs / Regra (ex: avaliação prévia)"
+                  class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
+              </div>
+              <div class="sm:col-span-1 flex items-center">
+                <button type="button" onclick="handleAddCustomProcedure()" 
+                  class="w-full h-full py-1.5 bg-[#008069] hover:bg-[#006a57] text-white rounded-lg font-bold flex items-center justify-center text-xs transition">
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- LISTA DE PROCEDIMENTOS PERSONALIZADOS ADICIONADOS -->
+            <div id="customProceduresList" class="mt-3 space-y-1.5 text-xs">
+              <!-- Itens customizados renderizados dinamicamente -->
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 3: ESTRATÉGIA COMERCIAL DE PREÇOS & AVALIAÇÃO -->
+        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
+              3
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">Conduta sobre Preços & Avaliação</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Como a IA deve responder quando o paciente pergunta: "Quanto custa?"</p>
+            </div>
+          </div>
+
+          <div class="space-y-2.5 text-xs">
+            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
+              <input type="radio" name="priceStrategyRadio" value="avaliacao" checked class="mt-0.5 text-[#008069] focus:ring-0">
+              <div>
+                <span class="font-bold text-slate-900 dark:text-white block">🔒 Apenas Avaliação Presencial (Padrão Ouro Recomendado)</span>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400">A IA nunca dá preços no WhatsApp. Explica com elegância que cada anatomia é única e induz o agendamento da consulta.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
+              <input type="radio" name="priceStrategyRadio" value="a_partir_de" class="mt-0.5 text-[#008069] focus:ring-0">
+              <div>
+                <span class="font-bold text-slate-900 dark:text-white block">📊 Informar Faixa Inicial ("A partir de R$...")</span>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400">A IA passa um valor base de referência mas reforça que a consulta presencial é indispensável para o plano definitivo.</span>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
+              <input type="radio" name="priceStrategyRadio" value="tabela_fixa" class="mt-0.5 text-[#008069] focus:ring-0">
+              <div>
+                <span class="font-bold text-slate-900 dark:text-white block">🏷️ Tabela Fixa Aberta</span>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400">A IA informa diretamente os valores praticados para quem perguntar e já oferece horários para fechar.</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="pt-2">
+            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300 text-xs">Observações Específicas de Preços / Custos da Avaliação</label>
+            <input type="text" id="cfgPricesNote" placeholder="Ex: A avaliação custa R$ 150, mas esse valor é 100% dedutível caso o tratamento seja iniciado."
+              class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-[#008069]">
+          </div>
+        </div>
+
+        <!-- CARD 4: FORMAS DE PAGAMENTO, PARCELAMENTO & CONVÊNIOS -->
+        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
+              4
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">Formas de Pagamento & Convênios</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Condições comerciais e facilidades que aumentam a taxa de fechamento de tratamentos.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Condições de Pagamento & Parcelamento</label>
+              <input type="text" id="cfgPaymentMethods" placeholder="Ex: Pix com 10% de desconto ou em até 12x sem juros no cartão de crédito"
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Política de Convênios & Reembolso</label>
+              <input type="text" id="cfgInsurance" placeholder="Ex: Particular exclusivo. Emitimos nota fiscal detalhada e relatório para reembolso"
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 5: HORÁRIOS, LOCALIZAÇÃO & ESTACIONAMENTO -->
+        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
+              5
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">Horários, Endereço & Estacionamento</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Informações precisas para que o paciente chegue sem dúvidas à clínica.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Horários de Atendimento</label>
+              <input type="text" id="cfgHours" placeholder="Ex: Segunda a Sexta das 08h às 19h | Sábados das 08h às 13h"
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Tolerância para Atrasos</label>
+              <input type="text" id="cfgDelayTolerance" placeholder="Ex: Tolerância de até 15 minutos para pontualidade de todos"
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Endereço Completo (com andar/sala)</label>
+              <input type="text" id="cfgAddress" placeholder="Ex: Av. Paulista, 1800, Conjunto 124 - Bela Vista, São Paulo/SP"
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Estacionamento / Manobrista</label>
+              <input type="text" id="cfgParking" placeholder="Ex: Estacionamento conveniado com manobrista no próprio edifício"
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 6: REGRAS DE OURO CLÍNICAS & SEGURANÇA JURÍDICA -->
+        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
+              6
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">Regras de Ouro Clínicas & Segurança Jurídica</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Proteção contra processos, erros médicos e proibições éticas expressas.</p>
+            </div>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Regras Clínicas Especiais & Contraindicações</label>
+              <textarea id="cfgClinicalRules" rows="2" placeholder="Ex: Gestantes e lactantes não realizam procedimentos injetáveis. Em caso de dor de dente aguda, colocar na fila prioritária de encaixe no mesmo dia."
+                class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">WhatsApp de Transbordo Humano / Urgências</label>
+                <input type="text" id="cfgEmergencyContact" placeholder="Ex: (11) 98888-0000 (Dra. Fernanda)"
+                  class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              </div>
+              <div>
+                <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Diferenciais & Tecnologia da Clínica</label>
+                <input type="text" id="cfgExtra" placeholder="Ex: Scanner 3D intraoral, anestesia sem dor computadorizada, espaço café premium"
+                  class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BARRA FINAL DE SALVAR -->
+        <div class="flex items-center justify-end gap-3 pt-2 pb-8">
+          <button type="button" onclick="selectNavigationTab('chat', 'Atendimento WhatsApp', 'fa-solid fa-comments', 'emerald')" 
+            class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            Voltar ao Atendimento
+          </button>
+          <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#008069] to-emerald-600 hover:from-[#006a57] hover:to-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Salvar & Atualizar IA no WhatsApp</span>
+          </button>
+        </div>
+
+      </form>
     </div>
   </main>
 
@@ -452,29 +793,27 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
         <div>
           <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Procedimento de Interesse</label>
-          <input type="text" id="appProcedure" required placeholder="Ex: Botox / Harmonização Facial"
+          <input type="text" id="appProcedure" required placeholder="Ex: Botox / Toxina Botulínica"
             class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Data / Horário</label>
-            <input type="text" id="appScheduledAt" required placeholder="Ex: Sábado às 10:00"
-              class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
-          </div>
-          <div>
-            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Status</label>
-            <select id="appStatus" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
-              <option value="pre_agendado">Pré-Agendado</option>
-              <option value="confirmado">Confirmado</option>
-              <option value="concluido">Concluído</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
-          </div>
+        <div>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Data & Período Sugerido</label>
+          <input type="text" id="appScheduledAt" required placeholder="Ex: Quinta-feira às 14:00"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
         </div>
         <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Observações / Detalhes</label>
-          <textarea id="appNotes" rows="2" placeholder="Ex: Agendado via Secretária IA Claude"
-            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]"></textarea>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Status</label>
+          <select id="appStatus" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
+            <option value="pre_agendado">Pré-Agendado (Triagem)</option>
+            <option value="confirmado">Confirmado na Grade</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Observações Clínicas / Preferências</label>
+          <input type="text" id="appNotes" placeholder="Ex: Paciente tem preferência de horário matutino"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -485,27 +824,68 @@ export const INBOX_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- SCRIPT PRINCIPAL DO PAINEL -->
+  <!-- TOAST DE NOTIFICAÇÃO FLUTUANTE -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastMsg">Alterações salvas com sucesso!</span>
+  </div>
+
+  <!-- JAVASCRIPT GLOBAL DA PLATAFORMA -->
   <script>
+    // ESTADO GLOBAL
     let conversations = [];
-    let appointments = [];
     let activePhone = null;
     let activeAiPaused = false;
-    let isPollingBusy = false;
+    let appointments = [];
+    let currentConfig = null;
+    let customProceduresList = [];
+
+    // Otimização de polling
     let highestKnownMsgId = 0;
     let highestActiveMsgId = 0;
-    let pollTimer = null;
-    const messageCache = {};
+    let isPollingBusy = false;
+    let pollingInterval = null;
 
-    // 1. TEMA (DARK / LIGHT MODE)
+    // PROCEDIMENTOS PRÉ-CONFIGURADOS (ODONTO & ESTÉTICA)
+    const DEFAULT_ODONTO_SERVICES = [
+      "Limpeza & Profilaxia",
+      "Clareamento Dental a Laser",
+      "Clareamento Caseiro com Moldeira",
+      "Alinhadores Invisíveis / Ortodontia",
+      "Aparelho Fixo Estético / Metálico",
+      "Lentes de Resina / Facetas",
+      "Lentes de Contato de Porcelana",
+      "Implantes Dentários & Próteses",
+      "Tratamento de Canal (Endodontia)",
+      "Extração do Siso",
+      "Restaurações Estéticas",
+      "Tratamento de Gengiva (Periodontia)"
+    ];
+
+    const DEFAULT_ESTETICA_SERVICES = [
+      "Toxina Botulínica (Botox Facial)",
+      "Preenchimento Labial com Ácido Hialurônico",
+      "Preenchimento de Malar / Olheiras",
+      "Bioestimulador de Colágeno (Sculptra / Radiesse)",
+      "Fios de PDO de Sustentação",
+      "Fios de PDO de Estímulo de Colágeno",
+      "Lipoaspiração Enzimática de Papada",
+      "Rinomodelação sem Cirurgia",
+      "Skinbooster / Hidratação Injetável",
+      "Microagulhamento com Drug Delivery",
+      "Peeling Químico Renovador",
+      "Drenagem Linfática Facial Pós-Procedimento"
+    ];
+
+    // 1. TEMA (DARK / LIGHT)
     function initTheme() {
-      const saved = localStorage.getItem('aura_theme') || 'dark';
-      if (saved === 'dark') {
-        document.documentElement.classList.add('dark');
-        document.getElementById('themeIcon').className = 'fa-solid fa-moon';
-      } else {
+      const savedTheme = localStorage.getItem('aura_theme');
+      if (savedTheme === 'light') {
         document.documentElement.classList.remove('dark');
         document.getElementById('themeIcon').className = 'fa-solid fa-sun';
+      } else {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIcon').className = 'fa-solid fa-moon';
       }
     }
 
@@ -515,133 +895,98 @@ export const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('themeIcon').className = isDark ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
     }
 
-    // 2. NAVEGAÇÃO DE TABS (CHAT vs AGENDA)
-    function switchMainTab(tab) {
-      const viewChat = document.getElementById('viewChat');
-      const viewAgenda = document.getElementById('viewAgenda');
-      const btnChat = document.getElementById('tabChatBtn');
-      const btnAgenda = document.getElementById('tabAgendaBtn');
+    // 2. SELETOR DE MÓDULOS (MENU VERTICAL)
+    function toggleVerticalMenu(e) {
+      if (e) e.stopPropagation();
+      const dropdown = document.getElementById('verticalMenuDropdown');
+      const chevron = document.getElementById('verticalMenuChevron');
+      const isClosed = dropdown.classList.contains('hidden');
 
-      if (tab === 'agenda') {
-        viewChat.classList.add('hidden');
-        viewAgenda.classList.remove('hidden');
-        btnAgenda.className = "px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm flex items-center gap-2 transition font-bold";
-        btnChat.className = "px-3.5 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 transition";
-        loadAppointments();
+      if (isClosed) {
+        dropdown.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
       } else {
-        viewAgenda.classList.add('hidden');
-        viewChat.classList.remove('hidden');
-        btnChat.className = "px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm flex items-center gap-2 transition font-bold";
-        btnAgenda.className = "px-3.5 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 transition";
+        dropdown.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
       }
     }
 
-    // 3. INICIALIZAÇÃO
-    async function init() {
-      initTheme();
-      await loadConversations(false);
-      await loadAppointments();
-      startPolling();
+    function closeVerticalMenu() {
+      const dropdown = document.getElementById('verticalMenuDropdown');
+      const chevron = document.getElementById('verticalMenuChevron');
+      if (dropdown) dropdown.classList.add('hidden');
+      if (chevron) chevron.classList.remove('rotate-180');
     }
 
-    // 4. CHECAGEM DE SINCRONIZAÇÃO ULTRA-LEVE (1 row read)
-    async function checkSync() {
-      if (isPollingBusy || document.hidden) return;
-      isPollingBusy = true;
-      try {
-        const p = activePhone || '';
-        const url = \`/api/sync-check?last_id=\${highestKnownMsgId}&active_phone=\${encodeURIComponent(p)}&active_msg_id=\${highestActiveMsgId}\`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        // Status IA
-        if (activePhone && typeof data.active_ai_paused === 'boolean') {
-          if (activeAiPaused !== data.active_ai_paused) {
-            activeAiPaused = data.active_ai_paused;
-            updateAiButtons(activeAiPaused);
-          }
-        }
-
-        // Novas mensagens no chat ativo
-        if (data.has_new_active && activePhone) {
-          await loadMessages(activePhone, true);
-          highestActiveMsgId = Math.max(highestActiveMsgId, data.active_latest_id || 0);
-        }
-
-        // Novas mensagens em outros chats
-        if (data.has_new_global) {
-          await loadConversations(true);
-          highestKnownMsgId = Math.max(highestKnownMsgId, data.latest_id || 0);
-        }
-      } catch (err) {
-        console.error("Erro no sync-check:", err);
-      } finally {
-        isPollingBusy = false;
-      }
-    }
-
-    function startPolling() {
-      if (!pollTimer) {
-        pollTimer = setInterval(checkSync, 4000);
-      }
-    }
-
-    function stopPolling() {
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-    }
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        stopPolling();
-      } else {
-        checkSync();
-        startPolling();
+    document.addEventListener('click', (e) => {
+      const container = document.getElementById('verticalMenuContainer');
+      if (container && !container.contains(e.target)) {
+        closeVerticalMenu();
       }
     });
 
-    async function fetchMessages(phone) {
-      const p = String(phone);
-      try {
-        const res = await fetch('/api/messages?phone=' + encodeURIComponent(p));
-        const data = await res.json();
-        const msgs = data.messages || [];
-        if (data && data.messages) {
-          messageCache[p] = msgs;
-          const maxId = msgs.reduce((max, m) => Math.max(max, m.id || 0), 0);
-          if (p === String(activePhone)) {
-            highestActiveMsgId = Math.max(highestActiveMsgId, maxId);
-          }
-          highestKnownMsgId = Math.max(highestKnownMsgId, maxId);
+    function selectNavigationTab(tabId, labelText, iconClass, colorTheme) {
+      closeVerticalMenu();
+
+      // Atualiza botão seletor superior
+      const label = document.getElementById('selectedMenuLabel');
+      const iconContainer = document.getElementById('selectedMenuIcon');
+      if (label) label.innerText = labelText;
+      if (iconContainer) {
+        iconContainer.innerHTML = \`<i class="\${iconClass}"></i>\`;
+        if (colorTheme === 'sky') {
+          iconContainer.className = "w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-xs";
+        } else if (colorTheme === 'purple') {
+          iconContainer.className = "w-6 h-6 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xs";
+        } else {
+          iconContainer.className = "w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs";
         }
-        return data || { messages: [], ai_paused: false };
-      } catch (err) {
-        console.error("Erro ao buscar mensagens de " + p, err);
-        return { messages: messageCache[p] || [], ai_paused: false };
+      }
+
+      // Alterna Views
+      const viewChat = document.getElementById('viewChat');
+      const viewAgenda = document.getElementById('viewAgenda');
+      const viewConfig = document.getElementById('viewConfig');
+
+      viewChat.classList.add('hidden');
+      viewAgenda.classList.add('hidden');
+      viewConfig.classList.add('hidden');
+
+      if (tabId === 'agenda') {
+        viewAgenda.classList.remove('hidden');
+        loadAppointments();
+      } else if (tabId === 'config') {
+        viewConfig.classList.remove('hidden');
+        loadClinicConfig();
+      } else {
+        viewChat.classList.remove('hidden');
       }
     }
 
-    async function loadConversations(isBackground = false) {
+    // 3. INICIALIZAÇÃO GERAL
+    async function init() {
+      initTheme();
+      renderCheckboxesInitial();
+      await loadConversations(false);
+      await loadAppointments();
+      await loadClinicConfig();
+      startPolling();
+    }
+
+    // 4. ATENDIMENTO WHATSAPP MULTI-CHAT
+    async function loadConversations(isAutoRefresh = false) {
       try {
         const res = await fetch('/api/conversations');
         const data = await res.json();
         conversations = data.conversations || [];
+
+        const countSpan = document.getElementById('chatCount');
+        if (countSpan) countSpan.innerText = \`\${conversations.length} conversas ativas\`;
+
         renderConversationList();
 
-        if (!activePhone && conversations.length > 0 && !isBackground) {
-          await selectChat(conversations[0].contact_wa_id);
-        }
-
-        // Pré-cache em segundo plano
-        if (!isBackground && conversations.length > 0) {
-          for (const c of conversations) {
-            const p = String(c.contact_wa_id);
-            if (!messageCache[p]) {
-              fetchMessages(p).catch(() => {});
-            }
-          }
+        if (!activePhone && conversations.length > 0 && !isAutoRefresh) {
+          selectChat(conversations[0].contact_wa_id);
         }
       } catch (err) {
         console.error("Erro ao carregar conversas:", err);
@@ -649,54 +994,57 @@ export const INBOX_HTML = `<!DOCTYPE html>
     }
 
     function renderConversationList() {
-      const container = document.getElementById('chatList');
-      const countEl = document.getElementById('chatCount');
-      const search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      const container = document.getElementById('conversationList');
+      const search = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
 
       const filtered = conversations.filter(c => 
-        (c.contact_name && c.contact_name.toLowerCase().includes(search)) ||
-        String(c.contact_wa_id).includes(search) ||
-        (c.last_body && c.last_body.toLowerCase().includes(search))
+        (c.contact_name || '').toLowerCase().includes(search) || 
+        (c.contact_wa_id || '').includes(search) ||
+        (c.last_body || '').toLowerCase().includes(search)
       );
 
-      countEl.innerText = \`\${filtered.length} conversa\${filtered.length === 1 ? '' : 's'}\`;
-
       if (filtered.length === 0) {
-        container.innerHTML = \`
-          <div class="p-8 text-center text-slate-400 text-xs">
-            <i class="fa-regular fa-comment-dots text-2xl mb-2 text-slate-400"></i>
-            <p>Nenhuma conversa encontrada</p>
-          </div>
-        \`;
+        container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">Nenhum paciente encontrado.</div>';
         return;
       }
 
       container.innerHTML = filtered.map(c => {
-        const isSelected = String(c.contact_wa_id) === String(activePhone);
-        const name = c.contact_name || c.contact_wa_id;
-        const initial = name.charAt(0).toUpperCase();
-        const time = formatTime(c.last_created_at);
-        const isPaused = c.ai_paused === 1;
+        const isSelected = c.contact_wa_id === activePhone;
+        const initial = (c.contact_name || c.contact_wa_id)[0].toUpperCase();
+        const timeStr = formatTime(c.last_created_at);
+        const isAiOn = c.ai_paused === 0;
 
         return \`
           <div onclick="selectChat('\${c.contact_wa_id}')" 
-            class="p-3.5 flex items-start gap-3 cursor-pointer transition hover:bg-slate-100/60 dark:hover:bg-slate-800/50 \${isSelected ? 'bg-slate-100 dark:bg-slate-800/80 border-l-4 border-[#008069]' : ''}">
-            <div class="w-10 h-10 rounded-full \${isSelected ? 'bg-[#008069] text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'} font-bold flex items-center justify-center shrink-0 text-sm">
-              \${initial}
+            class="p-3.5 flex items-center gap-3 cursor-pointer transition select-none \${
+              isSelected 
+                ? 'bg-slate-100 dark:bg-slate-800/90 border-l-4 border-[#008069]' 
+                : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+            }">
+            <div class="relative">
+              <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-sm uppercase">
+                \${initial}
+              </div>
+              <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-[#111827] \${
+                isAiOn ? 'bg-emerald-500' : 'bg-amber-500'
+              }"></span>
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between mb-0.5">
-                <h4 class="text-xs font-semibold text-slate-900 dark:text-white truncate">\${escapeHtml(name)}</h4>
-                <span class="text-[10px] text-slate-400 shrink-0 ml-1">\${time}</span>
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">\${c.contact_name || c.contact_wa_id}</h4>
+                <span class="text-[10px] text-slate-400 font-medium">\${timeStr}</span>
               </div>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate mb-1">
-                \${c.last_direction === 'out' ? '<span class="text-slate-400 font-medium">Você: </span>' : ''}\${escapeHtml(c.last_body || '')}
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                \${c.last_direction === 'out' ? '<span class="text-slate-400">Você: </span>' : ''}\${c.last_body || 'Sem mensagens'}
               </p>
-              <div class="flex items-center gap-1.5">
-                \${isPaused 
-                  ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1 border border-amber-200 dark:border-amber-900/40"><i class="fa-solid fa-pause text-[8px]"></i> IA Pausada</span>'
-                  : '<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1 border border-emerald-200 dark:border-emerald-900/40"><i class="fa-solid fa-robot text-[8px]"></i> IA Ativa</span>'
-                }
+              <div class="flex items-center gap-1.5 mt-1">
+                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded \${
+                  isAiOn 
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40' 
+                    : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40'
+                }">
+                  \${isAiOn ? 'IA Ativa' : 'IA Pausada'}
+                </span>
               </div>
             </div>
           </div>
@@ -705,292 +1053,267 @@ export const INBOX_HTML = `<!DOCTYPE html>
     }
 
     async function selectChat(phone) {
-      if (!phone) return;
-      const p = String(phone);
-      activePhone = p;
+      if (activePhone === phone && highestActiveMsgId > 0) return;
+      activePhone = phone;
+      highestActiveMsgId = 0;
+
+      const target = conversations.find(c => c.contact_wa_id === phone);
+      const name = target?.contact_name || phone;
+      const initial = name[0].toUpperCase();
+
+      document.getElementById('activeContactName').innerText = name;
+      document.getElementById('activeContactPhone').innerText = phone;
+      document.getElementById('activeAvatar').innerText = initial;
+
+      document.getElementById('sideContactName').innerText = name;
+      document.getElementById('sideContactPhone').innerText = phone;
+      document.getElementById('sideAvatar').innerText = initial;
+
+      // Habilita controles
+      document.getElementById('messageInput').disabled = false;
+      document.getElementById('messageInput').placeholder = \`Digite uma resposta manual para \${name}...\`;
+      document.getElementById('sendBtn').disabled = false;
+      document.getElementById('btnScheduleThisPatient').disabled = false;
+      document.getElementById('btnSimulateCurrent').disabled = false;
+      document.getElementById('btnClearChat').disabled = false;
 
       renderConversationList();
 
-      document.getElementById('chatHeader').classList.remove('hidden');
-      document.getElementById('chatFooter').classList.remove('hidden');
-      document.getElementById('patientSidebar').classList.remove('hidden');
+      document.getElementById('messagesArea').innerHTML = \`
+        <div class="h-full flex items-center justify-center text-slate-400 text-xs">
+          <i class="fa-solid fa-circle-notch fa-spin text-sm mr-2"></i> Abrindo conversa...
+        </div>
+      \`;
 
-      const conv = conversations.find(c => String(c.contact_wa_id) === p);
-      const name = conv ? (conv.contact_name || conv.contact_wa_id) : p;
-
-      document.getElementById('activeName').innerText = name;
-      document.getElementById('activePhone').innerText = p;
-      document.getElementById('activeAvatar').innerText = name.charAt(0).toUpperCase();
-
-      document.getElementById('sideName').innerText = name;
-      document.getElementById('sidePhone').innerText = p;
-      document.getElementById('sideAvatar').innerText = name.charAt(0).toUpperCase();
-
-      // Transição instantânea 0ms do cache
-      if (messageCache[p] && messageCache[p].length > 0) {
-        renderMessagesToContainer(messageCache[p]);
-        detectInterest(messageCache[p]);
-      } else {
-        document.getElementById('messagesArea').innerHTML = \`
-          <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-            <i class="fa-solid fa-circle-notch fa-spin text-xl text-[#008069] mb-2"></i>
-            <p class="font-medium text-slate-500">Carregando conversa...</p>
-          </div>
-        \`;
-      }
-
-      await loadMessages(p, false);
+      await loadActiveMessages();
     }
 
-    async function loadMessages(phone, isPolling = false) {
-      if (!phone) return;
-      const p = String(phone);
-      const data = await fetchMessages(p);
-      const msgs = data.messages || [];
+    async function loadActiveMessages() {
+      if (!activePhone) return;
+      try {
+        const res = await fetch(\`/api/messages?phone=\${encodeURIComponent(activePhone)}\`);
+        const data = await res.json();
+        const msgs = data.messages || [];
 
-      if (activePhone === p) {
         activeAiPaused = !!data.ai_paused;
-        updateAiButtons(activeAiPaused);
-        detectInterest(msgs);
-        renderMessagesToContainer(msgs, isPolling);
+        updateAiStatusUI();
+
+        if (msgs.length > 0) {
+          highestActiveMsgId = Math.max(...msgs.map(m => m.id));
+        }
+
+        renderMessages(msgs);
+        detectProcedureFromChat(msgs);
+      } catch (err) {
+        console.error("Erro ao carregar mensagens:", err);
       }
     }
 
-    function renderMessagesToContainer(msgs, isPolling = false) {
-      const container = document.getElementById('messagesArea');
-      const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
-
-      if (!msgs || msgs.length === 0) {
-        container.innerHTML = \`
-          <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-            <i class="fa-regular fa-comment-dots text-2xl mb-2 text-slate-300 dark:text-slate-600"></i>
-            <p class="font-medium text-slate-600 dark:text-slate-400">Nenhuma mensagem neste chat ainda</p>
-          </div>
-        \`;
+    function renderMessages(msgs) {
+      const area = document.getElementById('messagesArea');
+      if (msgs.length === 0) {
+        area.innerHTML = '<div class="h-full flex items-center justify-center text-slate-400 text-xs">Nenhuma mensagem nesta conversa ainda.</div>';
         return;
       }
 
-      container.innerHTML = msgs.map(m => renderBubble(m)).join('');
+      area.innerHTML = msgs.map(m => {
+        const isPatient = m.direction === 'in';
+        const isHumanAgent = m.status === 'human';
+        const timeStr = formatTime(m.created_at);
 
-      if (!isPolling || wasAtBottom) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }
-
-    function renderBubble(m) {
-      const isPatient = m.direction === 'in';
-      const isHuman = m.direction === 'out' && m.status === 'human';
-      const time = formatTime(m.created_at);
-
-      if (isPatient) {
-        return \`
-          <div class="flex justify-start">
-            <div class="max-w-[78%] bg-white dark:bg-[#1f2c34] rounded-lg rounded-tl-none p-3 shadow-sm border border-slate-100 dark:border-transparent text-xs text-slate-800 dark:text-slate-100">
-              <p class="whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
-              <div class="text-[9px] text-slate-400 dark:text-slate-400 text-right mt-1">\${time}</div>
-            </div>
-          </div>
-        \`;
-      } else if (isHuman) {
-        return \`
-          <div class="flex justify-end">
-            <div class="max-w-[78%] bg-sky-100 dark:bg-sky-950/70 rounded-lg rounded-tr-none p-3 shadow-sm border border-sky-200 dark:border-sky-800/50 text-xs text-slate-800 dark:text-slate-100">
-              <div class="text-[9px] text-sky-700 dark:text-sky-400 font-bold mb-1 flex items-center gap-1">
-                <i class="fa-solid fa-user-tie"></i> Recepcionista (Atendimento Manual)
+        if (isPatient) {
+          return \`
+            <div class="flex flex-col items-start max-w-[85%] md:max-w-[70%]">
+              <div class="bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 p-3 rounded-2xl rounded-tl-sm shadow-sm border border-slate-200/50 dark:border-slate-700/30 text-xs leading-relaxed">
+                \${escapeHtml(m.body)}
+                <div class="text-[9px] text-slate-400 text-right mt-1 font-mono">\${timeStr}</div>
               </div>
-              <p class="whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
-              <div class="text-[9px] text-sky-600/70 dark:text-sky-400/70 text-right mt-1">\${time}</div>
             </div>
-          </div>
-        \`;
-      } else {
-        return \`
-          <div class="flex justify-end">
-            <div class="max-w-[78%] bg-[#d9fdd3] dark:bg-[#005c4b] rounded-lg rounded-tr-none p-3 shadow-sm text-xs border border-emerald-100 dark:border-transparent text-slate-800 dark:text-slate-100">
-              <div class="text-[9px] text-emerald-800 dark:text-emerald-300 font-bold mb-1 flex items-center gap-1">
-                <i class="fa-solid fa-robot"></i> Secretária IA (Claude 24h)
+          \`;
+        } else {
+          return \`
+            <div class="flex flex-col items-end max-w-[85%] md:max-w-[70%] ml-auto">
+              <div class="\${
+                isHumanAgent 
+                  ? 'bg-sky-50 dark:bg-sky-950/70 border-sky-200 dark:border-sky-800/60 text-sky-950 dark:text-sky-100' 
+                  : 'bg-[#d9fdd3] dark:bg-[#005c4b] border-emerald-200 dark:border-emerald-700/40 text-slate-900 dark:text-white'
+              } p-3 rounded-2xl rounded-tr-sm shadow-sm border text-xs leading-relaxed">
+                <div class="text-[9px] font-bold uppercase tracking-wider mb-1 \${
+                  isHumanAgent ? 'text-sky-600 dark:text-sky-300' : 'text-emerald-700 dark:text-emerald-300'
+                }">
+                  \${isHumanAgent ? '👤 Recepcionista (Atendimento Manual)' : '✨ Secretária IA (Claude 24h)'}
+                </div>
+                \${escapeHtml(m.body)}
+                <div class="text-[9px] opacity-70 text-right mt-1 font-mono flex items-center justify-end gap-1">
+                  <span>\${timeStr}</span>
+                  <i class="fa-solid fa-check-double text-[8px] text-[#53bdeb]"></i>
+                </div>
               </div>
-              <p class="whitespace-pre-wrap leading-relaxed">\${escapeHtml(m.body || '')}</p>
-              <div class="text-[9px] text-emerald-700/70 dark:text-emerald-300/70 text-right mt-1">\${time}</div>
             </div>
-          </div>
-        \`;
-      }
+          \`;
+        }
+      }).join('');
+
+      area.scrollTop = area.scrollHeight;
     }
 
-    function detectInterest(messages) {
-      const allText = messages.map(m => (m.body || '').toLowerCase()).join(' ');
-      let interest = 'Avaliação Geral';
-      if (allText.includes('botox') || allText.includes('toxina')) interest = 'Botox / Toxina Botulínica';
-      else if (allText.includes('clareamento')) interest = 'Clareamento Dental';
-      else if (allText.includes('implante')) interest = 'Implantes Dentários';
-      else if (allText.includes('aparelho') || allText.includes('ortodontia')) interest = 'Ortodontia / Aparelho';
-      else if (allText.includes('harmoniz')) interest = 'Harmonização Facial';
-      else if (allText.includes('sangramento') || allText.includes('dor') || allText.includes('urg')) interest = 'Urgência / Emergência';
-
-      const el = document.getElementById('sideInterest');
-      if (el) el.innerText = interest;
-    }
-
-    function updateAiButtons(paused) {
-      const btn = document.getElementById('toggleAiBtn');
+    function updateAiStatusUI() {
       const badge = document.getElementById('activeAiBadge');
-      const sideIcon = document.getElementById('sideAiStatusIcon');
+      const toggleBtn = document.getElementById('toggleAiBtn');
+      const toggleText = document.getElementById('toggleAiText');
+      const toggleIcon = document.getElementById('toggleAiIcon');
       const sideText = document.getElementById('sideAiStatusText');
-      const sideToggle = document.getElementById('sideToggleLink');
+      const sideBtn = document.getElementById('sideToggleAiBtn');
 
-      if (paused) {
-        if (btn) {
-          btn.className = "text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition";
-          btn.innerHTML = '<i class="fa-solid fa-play"></i><span>Reativar IA neste Chat</span>';
-        }
-        if (badge) {
-          badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 font-semibold border border-amber-200 dark:border-amber-900/40";
-          badge.innerText = "⏸️ Atendimento Humano (IA Pausada)";
-        }
-        if (sideIcon) sideIcon.innerHTML = '<i class="fa-solid fa-user-check text-amber-600 dark:text-amber-400"></i>';
-        if (sideText) sideText.innerText = "Atendimento Humano";
-        if (sideToggle) sideToggle.innerText = "Reativar IA";
+      badge.classList.remove('hidden');
+      toggleBtn.classList.remove('hidden');
+      sideBtn.classList.remove('hidden');
+
+      if (activeAiPaused) {
+        badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60";
+        badge.innerText = "Atendimento Humano (IA Pausada)";
+
+        toggleBtn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition shadow-sm";
+        toggleIcon.className = "fa-solid fa-play text-[10px]";
+        toggleText.innerText = "Reativar IA neste Chat";
+
+        sideText.innerText = "IA Pausada (Você no controle)";
+        sideText.className = "font-bold text-amber-600 dark:text-amber-400";
       } else {
-        if (btn) {
-          btn.className = "text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition";
-          btn.innerHTML = '<i class="fa-solid fa-pause"></i><span>Pausar IA (Assumir)</span>';
-        }
-        if (badge) {
-          badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-900/40";
-          badge.innerText = "🤖 IA Respondendo 24h";
-        }
-        if (sideIcon) sideIcon.innerHTML = '<i class="fa-solid fa-robot text-emerald-600 dark:text-emerald-400"></i>';
-        if (sideText) sideText.innerText = "IA Ativa 24h";
-        if (sideToggle) sideToggle.innerText = "Pausar IA";
+        badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60";
+        badge.innerText = "IA Respondendo 24h";
+
+        toggleBtn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition shadow-sm";
+        toggleIcon.className = "fa-solid fa-pause text-[10px]";
+        toggleText.innerText = "Pausar IA (Assumir)";
+
+        sideText.innerText = "IA Ativa e Respondendo";
+        sideText.className = "font-bold text-emerald-600 dark:text-emerald-400";
       }
     }
 
-    async function toggleActiveAi() {
+    async function handleSendMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (!text || !activePhone) return;
+
+      input.value = '';
+
+      try {
+        await fetch('/api/send', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ phone: activePhone, text })
+        });
+
+        activeAiPaused = true;
+        updateAiStatusUI();
+        await loadActiveMessages();
+        await loadConversations(true);
+      } catch (err) {
+        alert("Erro ao enviar mensagem");
+      }
+    }
+
+    async function handleToggleAi() {
       if (!activePhone) return;
       const targetState = !activeAiPaused;
+
       try {
-        const res = await fetch('/api/toggle-ai', {
+        await fetch('/api/toggle-ai', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ phone: activePhone, paused: targetState })
         });
-        if (!res.ok) throw new Error("Erro no servidor: " + res.status);
+
         activeAiPaused = targetState;
-        updateAiButtons(activeAiPaused);
+        updateAiStatusUI();
         await loadConversations(true);
       } catch (err) {
-        console.error("Erro ao alterar status da IA:", err);
+        alert("Erro ao alterar status da IA");
       }
     }
 
-    async function handleSendHuman(e) {
-      e.preventDefault();
-      const input = document.getElementById('humanInput');
+    function detectProcedureFromChat(msgs) {
+      const container = document.getElementById('sideProcedureDetected');
+      const allText = msgs.map(m => m.body).join(' ').toLowerCase();
+
+      const procedures = [
+        "botox", "toxina botulínica", "preenchimento", "harmonização", "clareamento", 
+        "aparelho", "invisalign", "implante", "lentes", "canal", "limpeza", "siso", "papada"
+      ];
+
+      const found = procedures.filter(p => allText.includes(p));
+      if (found.length > 0) {
+        container.innerHTML = found.map(p => 
+          \`<span class="inline-block px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] mr-1 mb-1 capitalize border border-emerald-200 dark:border-emerald-800/40">\${p}</span>\`
+        ).join('');
+      } else {
+        container.innerText = "Em análise pela conversa...";
+      }
+    }
+
+    function openAppointmentModalForCurrentPatient() {
+      if (!activePhone) return;
+      const target = conversations.find(c => c.contact_wa_id === activePhone);
+      const name = target?.contact_name || '';
+
+      document.getElementById('appPatientName').value = name;
+      document.getElementById('appPatientPhone').value = activePhone;
+      document.getElementById('appProcedure').value = "Avaliação / Consulta Inicial";
+      document.getElementById('appScheduledAt').value = "A combinar com o paciente";
+
+      document.getElementById('appointmentModal').classList.remove('hidden');
+    }
+
+    async function handleSimulateForCurrentPatient() {
+      const input = document.getElementById('simulateMsgInput');
       const text = input.value.trim();
       if (!text || !activePhone) return;
-      input.value = '';
 
-      messageCache[activePhone] = messageCache[activePhone] || [];
-      messageCache[activePhone].push({
-        direction: 'out',
-        status: 'human',
-        body: text,
-        created_at: new Date().toISOString()
-      });
-      renderMessagesToContainer(messageCache[activePhone]);
+      input.value = '';
+      const target = conversations.find(c => c.contact_wa_id === activePhone);
+      const name = target?.contact_name || activePhone;
 
       try {
-        const res = await fetch('/api/send', {
+        await fetch('/api/simulate-patient', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ phone: activePhone, text: text })
+          body: JSON.stringify({ phone: activePhone, name, text })
         });
-        if (!res.ok) throw new Error("Erro no servidor: " + res.status);
-        await loadMessages(activePhone, false);
-        await loadConversations(true);
+        showToast("Mensagem simulada enviada!", "emerald");
+        setTimeout(async () => {
+          await loadActiveMessages();
+          await loadConversations(true);
+        }, 1500);
       } catch (err) {
-        console.error("Erro ao enviar mensagem:", err);
+        alert("Erro ao simular mensagem");
       }
-    }
-
-    async function handleSimulateForCurrent(e) {
-      e.preventDefault();
-      const input = document.getElementById('simQuestionInput');
-      const text = input.value.trim();
-      if (!text || !activePhone) return;
-      input.value = '';
-
-      const conv = conversations.find(c => String(c.contact_wa_id) === String(activePhone));
-      const name = conv ? conv.contact_name : "Paciente";
-
-      await fetch('/api/simulate-patient', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ phone: activePhone, name: name, text: text })
-      });
-
-      setTimeout(async () => {
-        await loadMessages(activePhone, false);
-        await loadConversations(true);
-      }, 1800);
     }
 
     async function handleClearCurrentChat() {
       if (!activePhone) return;
-      if (confirm(\`Deseja apagar o histórico de mensagens de \${activePhone}?\`)) {
-        delete messageCache[activePhone];
-        await fetch('/api/clear-chat', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ phone: activePhone })
-        });
-        await loadConversations();
-        if (conversations.length > 0) {
-          selectChat(conversations[0].contact_wa_id);
-        } else {
-          location.reload();
+      if (confirm("Tem certeza que deseja apagar o histórico de mensagens deste paciente?")) {
+        try {
+          await fetch('/api/clear-chat', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ phone: activePhone })
+          });
+          await loadActiveMessages();
+          await loadConversations(true);
+        } catch (err) {
+          alert("Erro ao limpar histórico");
         }
       }
-    }
-
-    function openNewPatientModal() {
-      document.getElementById('newPatientModal').classList.remove('hidden');
-    }
-
-    function closeNewPatientModal() {
-      document.getElementById('newPatientModal').classList.add('hidden');
-    }
-
-    async function handleCreateNewPatient(e) {
-      e.preventDefault();
-      const name = document.getElementById('newPatientName').value.trim();
-      const phone = document.getElementById('newPatientPhone').value.trim().replace(/\\D/g, '');
-      const text = document.getElementById('newPatientText').value.trim();
-
-      if (!name || !phone || !text) return;
-
-      closeNewPatientModal();
-
-      await fetch('/api/simulate-patient', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ phone: phone, name: name, text: text })
-      });
-
-      setTimeout(async () => {
-        await loadConversations();
-        selectChat(phone);
-      }, 2000);
     }
 
     function filterChats() {
       renderConversationList();
     }
 
-    // =========================================================================
     // 5. GESTÃO DA AGENDA DE CONSULTAS & PRÉ-AGENDAMENTOS
-    // =========================================================================
     async function loadAppointments() {
       const icon = document.getElementById('agendaRefreshIcon');
       if (icon) icon.classList.add('fa-spin');
@@ -1000,10 +1323,13 @@ export const INBOX_HTML = `<!DOCTYPE html>
         appointments = data.appointments || [];
         renderAppointmentsTable();
         updateAppointmentMetrics();
+
+        const badge = document.getElementById('menuAppointmentsBadge');
+        if (badge) badge.innerText = appointments.length;
       } catch (err) {
         console.error("Erro ao carregar agenda:", err);
       } finally {
-        if (icon) setTimeout(() => icon.classList.remove('fa-spin'), 500);
+        if (icon) setTimeout(() => icon.classList.remove('fa-spin'), 400);
       }
     }
 
@@ -1021,66 +1347,52 @@ export const INBOX_HTML = `<!DOCTYPE html>
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = \`
-          <tr>
-            <td colspan="6" class="p-8 text-center text-slate-400">
-              <i class="fa-regular fa-calendar-xmark text-2xl mb-2 text-slate-400"></i>
-              <p>Nenhum agendamento encontrado.</p>
-            </td>
-          </tr>
-        \`;
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
         return;
       }
 
       tbody.innerHTML = filtered.map(a => {
-        const statusMap = {
-          confirmado: { bg: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800', label: 'Confirmado' },
-          pre_agendado: { bg: 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 border-amber-300 dark:border-amber-800', label: 'Pré-Agendado' },
-          concluido: { bg: 'bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-400 border-sky-300 dark:border-sky-800', label: 'Concluído' },
-          cancelado: { bg: 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700', label: 'Cancelado' }
-        };
-        const s = statusMap[a.status] || statusMap.pre_agendado;
+        let statusBadge = '';
+        if (a.status === 'pre_agendado') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 font-bold text-[10px] border border-amber-200 dark:border-amber-800/60">Pré-Agendado (IA)</span>';
+        } else if (a.status === 'confirmado') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800/60">Confirmado</span>';
+        } else if (a.status === 'concluido') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-400 font-bold text-[10px] border border-sky-200 dark:border-sky-800/60">Concluído</span>';
+        } else {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-[10px]">Cancelado</span>';
+        }
 
         return \`
-          <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-            <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-[11px] text-slate-700 dark:text-slate-300">
-                  \${(a.patient_name || 'P').charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div>\${escapeHtml(a.patient_name)}</div>
-                  <div class="text-[10px] text-slate-400 font-mono">\${escapeHtml(a.contact_wa_id)}</div>
-                </div>
-              </div>
+          <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+            <td class="py-3 px-4">
+              <div class="font-bold text-slate-900 dark:text-white">\${escapeHtml(a.patient_name)}</div>
+              <div class="text-[10px] text-slate-400 font-mono">\${escapeHtml(a.contact_wa_id)}</div>
             </td>
-            <td class="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px]">
-                \${escapeHtml(a.procedure || 'Avaliação')}
-              </span>
+            <td class="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">
+              \${escapeHtml(a.procedure || 'Avaliação Inicial')}
             </td>
-            <td class="py-3 px-4 font-medium text-slate-600 dark:text-slate-300">
-              <i class="fa-regular fa-clock text-slate-400 mr-1"></i>
-              \${escapeHtml(a.scheduled_at)}
+            <td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
+              <i class="fa-regular fa-clock mr-1 text-slate-400"></i>\${escapeHtml(a.scheduled_at)}
             </td>
             <td class="py-3 px-4">
-              <select onchange="handleUpdateAppointmentStatus(\${a.id}, this.value)" 
-                class="px-2 py-0.5 rounded-full text-[11px] font-bold border cursor-pointer focus:outline-none \${s.bg}">
-                <option value="pre_agendado" \${a.status === 'pre_agendado' ? 'selected' : ''}>⏳ Pré-Agendado</option>
-                <option value="confirmado" \${a.status === 'confirmado' ? 'selected' : ''}>✅ Confirmado</option>
-                <option value="concluido" \${a.status === 'concluido' ? 'selected' : ''}>🎯 Concluído</option>
-                <option value="cancelado" \${a.status === 'cancelado' ? 'selected' : ''}>❌ Cancelado</option>
-              </select>
+              \${statusBadge}
             </td>
-            <td class="py-3 px-4 text-slate-400 max-w-xs truncate text-[11px]">
+            <td class="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-xs truncate">
               \${escapeHtml(a.notes || '-')}
             </td>
-            <td class="py-3 px-4 text-right">
-              <button onclick="goToChatWithPatient('\${a.contact_wa_id}')" 
-                class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] transition inline-flex items-center gap-1">
-                <i class="fa-brands fa-whatsapp"></i>
-                <span>Ver Chat</span>
+            <td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+              <button onclick="goToChatWithPatient('\${a.contact_wa_id}')" title="Abrir conversa no WhatsApp" 
+                class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400">
+                <i class="fa-brands fa-whatsapp text-sm"></i>
               </button>
+              <select onchange="handleUpdateAppointmentStatus(\${a.id}, this.value)" 
+                class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] rounded-lg px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none">
+                <option value="pre_agendado" \${a.status === 'pre_agendado' ? 'selected' : ''}>Pré-Agendado</option>
+                <option value="confirmado" \${a.status === 'confirmado' ? 'selected' : ''}>Confirmar</option>
+                <option value="concluido" \${a.status === 'concluido' ? 'selected' : ''}>Concluir</option>
+                <option value="cancelado" \${a.status === 'cancelado' ? 'selected' : ''}>Cancelar</option>
+              </select>
             </td>
           </tr>
         \`;
@@ -1089,25 +1401,15 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
     function updateAppointmentMetrics() {
       const total = appointments.length;
+      const pre = appointments.filter(a => a.status === 'pre_agendado').length;
       const confirmed = appointments.filter(a => a.status === 'confirmado').length;
-      const pending = appointments.filter(a => a.status === 'pre_agendado').length;
 
       document.getElementById('metricTotal').innerText = total;
+      document.getElementById('metricPre').innerText = pre;
       document.getElementById('metricConfirmed').innerText = confirmed;
-      document.getElementById('metricPending').innerText = pending;
-      document.getElementById('appointmentsCountBadge').innerText = total;
 
-      // Estimativa financeira baseada nos procedimentos
-      let val = 0;
-      appointments.forEach(a => {
-        const p = (a.procedure || '').toLowerCase();
-        if (p.includes('botox') || p.includes('toxina')) val += 1200;
-        else if (p.includes('harmoniz')) val += 2800;
-        else if (p.includes('implante')) val += 3500;
-        else if (p.includes('clareamento')) val += 850;
-        else val += 300;
-      });
-
+      // Estimativa média de R$ 850 por procedimento em Estética/Odonto
+      const val = (pre + confirmed) * 850;
       document.getElementById('metricValue').innerText = 'R$ ' + val.toLocaleString('pt-BR');
     }
 
@@ -1126,38 +1428,18 @@ export const INBOX_HTML = `<!DOCTYPE html>
         if (target) target.status = newStatus;
         updateAppointmentMetrics();
         renderAppointmentsTable();
+        showToast("Status da consulta atualizado!", "emerald");
       } catch (err) {
         alert("Erro ao alterar status");
       }
     }
 
     function goToChatWithPatient(phone) {
-      switchMainTab('chat');
+      selectNavigationTab('chat', 'Atendimento WhatsApp', 'fa-solid fa-comments', 'emerald');
       selectChat(phone);
     }
 
-    function quickScheduleForCurrent() {
-      if (!activePhone) return;
-      const conv = conversations.find(c => String(c.contact_wa_id) === String(activePhone));
-      const name = conv ? conv.contact_name : "Paciente";
-      const interest = document.getElementById('sideInterest')?.innerText || 'Avaliação Geral';
-
-      document.getElementById('appPatientName').value = name;
-      document.getElementById('appPatientPhone').value = activePhone;
-      document.getElementById('appProcedure').value = interest;
-      document.getElementById('appScheduledAt').value = 'Amanhã às 14:00';
-      document.getElementById('appStatus').value = 'pre_agendado';
-      document.getElementById('appNotes').value = 'Captado pelo chat de atendimento da IA';
-
-      document.getElementById('appointmentModal').classList.remove('hidden');
-    }
-
-    function openNewAppointmentModal() {
-      document.getElementById('appPatientName').value = '';
-      document.getElementById('appPatientPhone').value = '';
-      document.getElementById('appProcedure').value = '';
-      document.getElementById('appScheduledAt').value = '';
-      document.getElementById('appNotes').value = '';
+    function openAppointmentModal() {
       document.getElementById('appointmentModal').classList.remove('hidden');
     }
 
@@ -1185,12 +1467,231 @@ export const INBOX_HTML = `<!DOCTYPE html>
           body: JSON.stringify({ patientName, contactWaId, procedure, scheduledAt, status, notes })
         });
         await loadAppointments();
+        showToast("Agendamento salvo com sucesso!", "emerald");
       } catch (err) {
         alert("Erro ao salvar agendamento");
       }
     }
 
-    // 6. LOGOUT
+    // 6. QUESTIONÁRIO DE CONFIGURAÇÃO & TREINAMENTO DA IA (ODONTO & ESTÉTICA)
+    function renderCheckboxesInitial() {
+      const odontoContainer = document.getElementById('odontoCheckboxes');
+      const esteticaContainer = document.getElementById('esteticaCheckboxes');
+
+      if (odontoContainer) {
+        odontoContainer.innerHTML = DEFAULT_ODONTO_SERVICES.map((s, idx) => \`
+          <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer">
+            <input type="checkbox" name="procedureCheckbox" value="\${s}" class="rounded text-[#008069] focus:ring-0">
+            <span class="text-slate-700 dark:text-slate-300">\${s}</span>
+          </label>
+        \`).join('');
+      }
+
+      if (esteticaContainer) {
+        esteticaContainer.innerHTML = DEFAULT_ESTETICA_SERVICES.map((s, idx) => \`
+          <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer">
+            <input type="checkbox" name="procedureCheckbox" value="\${s}" class="rounded text-purple-600 focus:ring-0">
+            <span class="text-slate-700 dark:text-slate-300">\${s}</span>
+          </label>
+        \`).join('');
+      }
+    }
+
+    async function loadClinicConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        currentConfig = data.config || {};
+
+        // Preenche campos
+        if (currentConfig.clinic_name) {
+          document.getElementById('cfgClinicName').value = currentConfig.clinic_name;
+          document.getElementById('topClinicNameBadge').innerText = currentConfig.clinic_name;
+        }
+        if (currentConfig.doctor_name) document.getElementById('cfgDoctorName').value = currentConfig.doctor_name;
+        if (currentConfig.doctor_cro) document.getElementById('cfgDoctorCro').value = currentConfig.doctor_cro;
+        if (currentConfig.tone) document.getElementById('cfgTone').value = currentConfig.tone;
+        if (currentConfig.prices_note) document.getElementById('cfgPricesNote').value = currentConfig.prices_note;
+        if (currentConfig.payment_methods) document.getElementById('cfgPaymentMethods').value = currentConfig.payment_methods;
+        if (currentConfig.insurance) document.getElementById('cfgInsurance').value = currentConfig.insurance;
+        if (currentConfig.hours) document.getElementById('cfgHours').value = currentConfig.hours;
+        if (currentConfig.delay_tolerance) document.getElementById('cfgDelayTolerance').value = currentConfig.delay_tolerance;
+        if (currentConfig.address) document.getElementById('cfgAddress').value = currentConfig.address;
+        if (currentConfig.parking) document.getElementById('cfgParking').value = currentConfig.parking;
+        if (currentConfig.clinical_rules) document.getElementById('cfgClinicalRules').value = currentConfig.clinical_rules;
+        if (currentConfig.emergency_contact) document.getElementById('cfgEmergencyContact').value = currentConfig.emergency_contact;
+        if (currentConfig.extra) document.getElementById('cfgExtra').value = currentConfig.extra;
+
+        // Estratégia de preço (radios)
+        const radios = document.getElementsByName('priceStrategyRadio');
+        for (const r of radios) {
+          if (r.value === (currentConfig.price_strategy || 'avaliacao')) {
+            r.checked = true;
+          }
+        }
+
+        // Checkboxes de procedimentos
+        const activeProcs = currentConfig.procedures || [];
+        const checkboxes = document.getElementsByName('procedureCheckbox');
+        for (const cb of checkboxes) {
+          cb.checked = activeProcs.includes(cb.value);
+        }
+
+        // Procedimentos customizados
+        customProceduresList = currentConfig.custom_procedures || [];
+        renderCustomProceduresList();
+
+      } catch (err) {
+        console.error("Erro ao carregar configurações da clínica:", err);
+      }
+    }
+
+    function renderCustomProceduresList() {
+      const container = document.getElementById('customProceduresList');
+      if (!container) return;
+
+      if (customProceduresList.length === 0) {
+        container.innerHTML = '<span class="text-slate-400 text-[11px] italic">Nenhum procedimento extra adicionado ainda.</span>';
+        return;
+      }
+
+      container.innerHTML = customProceduresList.map((p, idx) => \`
+        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
+          <div>
+            <span class="font-bold text-slate-800 dark:text-slate-200 mr-2">\${escapeHtml(p.name)}</span>
+            \${p.duration ? \`<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 mr-2">\${escapeHtml(p.duration)}</span>\` : ''}
+            \${p.note ? \`<span class="text-[10px] text-slate-400">\${escapeHtml(p.note)}</span>\` : ''}
+          </div>
+          <button type="button" onclick="handleRemoveCustomProcedure(\${idx})" class="text-slate-400 hover:text-rose-500 p-1">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </div>
+      \`).join('');
+    }
+
+    function handleAddCustomProcedure() {
+      const nameInput = document.getElementById('customProcName');
+      const durationInput = document.getElementById('customProcDuration');
+      const noteInput = document.getElementById('customProcNote');
+
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      customProceduresList.push({
+        name,
+        duration: durationInput.value.trim() || undefined,
+        note: noteInput.value.trim() || undefined
+      });
+
+      nameInput.value = '';
+      durationInput.value = '';
+      noteInput.value = '';
+
+      renderCustomProceduresList();
+    }
+
+    function handleRemoveCustomProcedure(idx) {
+      customProceduresList.splice(idx, 1);
+      renderCustomProceduresList();
+    }
+
+    async function saveClinicConfig() {
+      const btn = document.getElementById('btnSaveConfig');
+      const btnText = document.getElementById('btnSaveConfigText');
+
+      if (btnText) btnText.innerText = "Salvando na IA...";
+      if (btn) btn.disabled = true;
+
+      // Colhe procedimentos selecionados
+      const selectedProcedures = [];
+      const checkboxes = document.getElementsByName('procedureCheckbox');
+      for (const cb of checkboxes) {
+        if (cb.checked) selectedProcedures.push(cb.value);
+      }
+
+      // Colhe estratégia de preço
+      let priceStrategy = 'avaliacao';
+      const radios = document.getElementsByName('priceStrategyRadio');
+      for (const r of radios) {
+        if (r.checked) priceStrategy = r.value;
+      }
+
+      const configPayload = {
+        clinic_name: document.getElementById('cfgClinicName').value.trim() || "Clínica Sorriso & Estética",
+        doctor_name: document.getElementById('cfgDoctorName').value.trim() || undefined,
+        doctor_cro: document.getElementById('cfgDoctorCro').value.trim() || undefined,
+        tone: document.getElementById('cfgTone').value,
+        procedures: selectedProcedures,
+        custom_procedures: customProceduresList,
+        price_strategy: priceStrategy,
+        prices_note: document.getElementById('cfgPricesNote').value.trim() || undefined,
+        payment_methods: document.getElementById('cfgPaymentMethods').value.trim() || undefined,
+        insurance: document.getElementById('cfgInsurance').value.trim() || undefined,
+        hours: document.getElementById('cfgHours').value.trim() || undefined,
+        delay_tolerance: document.getElementById('cfgDelayTolerance').value.trim() || undefined,
+        address: document.getElementById('cfgAddress').value.trim() || undefined,
+        parking: document.getElementById('cfgParking').value.trim() || undefined,
+        clinical_rules: document.getElementById('cfgClinicalRules').value.trim() || undefined,
+        emergency_contact: document.getElementById('cfgEmergencyContact').value.trim() || undefined,
+        extra: document.getElementById('cfgExtra').value.trim() || undefined,
+      };
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ config: configPayload })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentConfig = configPayload;
+          document.getElementById('topClinicNameBadge').innerText = configPayload.clinic_name;
+          showToast("Configurações salvas e IA treinada com sucesso!", "purple");
+        } else {
+          alert("Erro ao salvar: " + (data.error || "Tente novamente"));
+        }
+      } catch (err) {
+        alert("Erro na requisição ao salvar dados da clínica");
+      } finally {
+        if (btnText) btnText.innerText = "Salvar Alterações";
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    // 7. MODAIS & SIMULADOR
+    function openNewPatientModal() {
+      document.getElementById('newPatientModal').classList.remove('hidden');
+    }
+
+    function closeNewPatientModal() {
+      document.getElementById('newPatientModal').classList.add('hidden');
+    }
+
+    async function handleCreateNewPatient(e) {
+      e.preventDefault();
+      const name = document.getElementById('newPatientName').value.trim();
+      const phone = document.getElementById('newPatientPhone').value.trim();
+      const text = document.getElementById('newPatientText').value.trim();
+
+      if (!name || !phone || !text) return;
+      closeNewPatientModal();
+
+      await fetch('/api/simulate-patient', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name, phone, text })
+      });
+
+      showToast("Paciente simulado criado!", "emerald");
+
+      setTimeout(async () => {
+        await loadConversations();
+        selectChat(phone);
+      }, 1500);
+    }
+
+    // 8. LOGOUT
     async function handleLogout() {
       if (confirm("Deseja sair do painel da clínica?")) {
         try {
@@ -1201,26 +1702,89 @@ export const INBOX_HTML = `<!DOCTYPE html>
       }
     }
 
-    // UTILITÁRIOS
+    // 9. POLLING DE SINCRONIZAÇÃO EM SEGUNDO PLANO (1 ROW READ)
+    function startPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(checkSync, 3500);
+    }
+
+    async function checkSync() {
+      if (isPollingBusy || document.hidden) return;
+      isPollingBusy = true;
+      try {
+        const p = activePhone || '';
+        const url = \`/api/sync-check?last_id=\${highestKnownMsgId}&active_phone=\${encodeURIComponent(p)}&active_msg_id=\${highestActiveMsgId}\`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (activePhone && typeof data.active_ai_paused === 'boolean') {
+          if (activeAiPaused !== data.active_ai_paused) {
+            activeAiPaused = data.active_ai_paused;
+            updateAiStatusUI();
+          }
+        }
+
+        if (data.has_new_global) {
+          highestKnownMsgId = data.latest_id;
+          await loadConversations(true);
+        }
+
+        if (data.has_new_active && activePhone) {
+          highestActiveMsgId = data.active_latest_id;
+          await loadActiveMessages();
+        }
+      } catch (err) {
+        // Silêncio em polling
+      } finally {
+        isPollingBusy = false;
+      }
+    }
+
+    // 10. UTILITÁRIOS
+    function showToast(msg, color = "emerald") {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      if (!toast || !toastMsg) return;
+
+      toastMsg.innerText = msg;
+      if (color === "purple") {
+        toastIcon.className = "fa-solid fa-wand-magic-sparkles text-purple-400";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
     function formatTime(isoString) {
       if (!isoString) return '';
       try {
-        const normalized = isoString.replace(' ', 'T') + (isoString.endsWith('Z') ? '' : 'Z');
-        const d = new Date(normalized);
-        return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       } catch {
         return '';
       }
     }
 
-    function escapeHtml(text) {
-      if (!text) return '';
-      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-      return String(text).replace(/[&<>"']/g, m => map[m]);
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
 
-    // Inicializa ao carregar a página
+    // Inicializa ao carregar DOM
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
-</html>`;
+</html>
+\`;

@@ -1,6 +1,6 @@
 // Tudo que lê e escreve no banco (D1). Toda consulta passa por tenant_id:
 // é isso que impede a conversa de uma clínica de aparecer em outra.
-import type { InboundJob, Tenant, ConversationSummary, ConversationMessage } from "./types";
+import type { InboundJob, Tenant, ConversationSummary, ConversationMessage, BotConfig } from "./types";
 import type { ChatTurn } from "./claude";
 
 export async function getTenantByPhoneNumberId(db: D1Database, phoneNumberId: string): Promise<Tenant | null> {
@@ -359,5 +359,34 @@ export async function updateAppointmentStatus(
   await db
     .prepare("UPDATE appointments SET status = ?1 WHERE id = ?2 AND tenant_id = ?3")
     .bind(status, id, tenantId)
+    .run();
+}
+
+export async function getTenantConfig(db: D1Database, tenantId: string): Promise<BotConfig | null> {
+  const row = await db
+    .prepare("SELECT bot_config FROM tenants WHERE id = ?1")
+    .bind(tenantId)
+    .first<{ bot_config: string }>();
+  if (!row || !row.bot_config) return null;
+  try {
+    return JSON.parse(row.bot_config) as BotConfig;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateTenantConfig(
+  db: D1Database,
+  tenantId: string,
+  config: BotConfig
+): Promise<void> {
+  const configJson = JSON.stringify(config);
+  await db
+    .prepare(
+      `INSERT INTO tenants (id, name, phone_number_id, bot_config, active)
+       VALUES (?1, ?2, '1459702903890342', ?3, 1)
+       ON CONFLICT(id) DO UPDATE SET bot_config = excluded.bot_config, name = excluded.name`
+    )
+    .bind(tenantId, config.clinic_name || "Clínica Sorriso & Estética", configJson)
     .run();
 }

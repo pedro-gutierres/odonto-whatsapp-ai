@@ -38,15 +38,32 @@ export interface Tenant {
   active: number;
 }
 
+export interface CustomProcedure {
+  name: string;
+  category?: string;
+  duration?: string;
+  note?: string;
+}
+
 // O que cada clínica configura (fica em tenants.bot_config)
 export interface BotConfig {
   clinic_name: string;
-  tone?: string;
-  address?: string;
-  hours?: string;
+  doctor_name?: string;
+  doctor_cro?: string;
+  specialties?: string[];
+  tone?: "acolhedor" | "sofisticado" | "clinico" | string;
   procedures?: string[];
+  custom_procedures?: CustomProcedure[];
+  price_strategy?: "avaliacao" | "a_partir_de" | "tabela_fixa" | string;
   prices_note?: string;
+  payment_methods?: string;
+  insurance?: string;
+  address?: string;
+  parking?: string;
+  hours?: string;
+  delay_tolerance?: string;
   emergency_contact?: string;
+  clinical_rules?: string;
   extra?: string; // qualquer regra específica da clínica
 }
 

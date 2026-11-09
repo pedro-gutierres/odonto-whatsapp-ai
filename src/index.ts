@@ -24,6 +24,8 @@ import {
   listAppointments,
   createAppointment,
   updateAppointmentStatus,
+  getTenantConfig,
+  updateTenantConfig,
 } from "./db";
 import {
   getSessionFromRequest,
@@ -228,6 +230,69 @@ export default {
           }
           await ensureAuthAndAppointments(env.DB);
           await updateAppointmentStatus(env.DB, tenantId, body.id, body.status);
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { "content-type": "application/json; charset=utf-8" },
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // APIS DE CONFIGURAÇÃO & TREINAMENTO DA IA (ODONTO & ESTÉTICA)
+    // -------------------------------------------------------------------------
+    if (url.pathname === "/api/config") {
+      const session = await getSessionFromRequest(request, env.AUTH_SECRET);
+      const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
+
+      if (request.method === "GET") {
+        let config = await getTenantConfig(env.DB, tenantId);
+        if (!config) {
+          // Template padrão rico para Odonto & Estética
+          config = {
+            clinic_name: "Clínica Sorriso & Estética Integrada",
+            doctor_name: "Dra. Fernanda Alves",
+            doctor_cro: "CRO-SP 102.450 / Harmonização Orofacial",
+            specialties: ["Harmonização Orofacial", "Odontologia Estética", "Reabilitação Oral"],
+            tone: "acolhedor",
+            procedures: [
+              "Limpeza & Profilaxia",
+              "Clareamento Dental a Laser",
+              "Alinhadores Invisíveis",
+              "Lentes de Resina e Porcelana",
+              "Toxina Botulínica (Botox)",
+              "Preenchimento Labial & Facial",
+              "Bioestimulador de Colágeno (Sculptra)",
+            ],
+            custom_procedures: [
+              { name: "Lipoaspiração Enzimática de Papada", category: "Estética", duration: "45 min", note: "Requer avaliação anatômica prévia" },
+            ],
+            price_strategy: "avaliacao",
+            prices_note: "Não passamos orçamentos fechados sem avaliação presencial com o especialista.",
+            payment_methods: "À vista no Pix com 10% de desconto ou em até 12x sem juros no cartão.",
+            insurance: "Atendimento particular exclusivo. Fornecemos nota fiscal detalhada e relatório para reembolso.",
+            address: "Av. Paulista, 1800, Conjunto 124 - Bela Vista, São Paulo/SP",
+            parking: "Estacionamento conveniado com manobrista no próprio edifício.",
+            hours: "Segunda a Sexta das 08h às 19h | Sábados das 08h às 13h",
+            delay_tolerance: "Tolerância de até 15 minutos para pontualidade dos atendimentos.",
+            emergency_contact: "Em caso de dor aguda, avise a equipe para encaixe de urgência no mesmo dia.",
+            clinical_rules: "Gestantes e lactantes não realizam procedimentos injetáveis. Proibido fornecer atestados ou receitas pelo WhatsApp.",
+            extra: "Clínica equipada com tecnologia 3D e escaneamento digital intraoral.",
+          };
+        }
+        return new Response(JSON.stringify({ config }), {
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
+      }
+
+      if (request.method === "POST") {
+        try {
+          const body = (await request.json()) as { config: BotConfig };
+          if (!body.config) {
+            return new Response(JSON.stringify({ error: "config é obrigatório" }), { status: 400 });
+          }
+          await updateTenantConfig(env.DB, tenantId, body.config);
           return new Response(JSON.stringify({ success: true }), {
             headers: { "content-type": "application/json; charset=utf-8" },
           });
