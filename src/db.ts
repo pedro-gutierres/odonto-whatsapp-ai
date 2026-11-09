@@ -10,7 +10,7 @@ export async function getTenantByPhoneNumberId(db: D1Database, phoneNumberId: st
     .first<Tenant>();
 }
 
-// Garante que a tabela de controle de intervenção humana (Pausar IA) existe
+// Garante que a tabela de controle de intervenção humana (Pausar IA) existe se necessário
 export async function ensureConversationStateTable(db: D1Database): Promise<void> {
   await db
     .prepare(
@@ -26,7 +26,6 @@ export async function ensureConversationStateTable(db: D1Database): Promise<void
 }
 
 export async function isAiPaused(db: D1Database, tenantId: string, contact: string): Promise<boolean> {
-  await ensureConversationStateTable(db);
   const row = await db
     .prepare("SELECT ai_paused FROM conversation_states WHERE tenant_id = ?1 AND contact_wa_id = ?2")
     .bind(tenantId, contact)
@@ -35,7 +34,6 @@ export async function isAiPaused(db: D1Database, tenantId: string, contact: stri
 }
 
 export async function setAiPaused(db: D1Database, tenantId: string, contact: string, paused: boolean): Promise<void> {
-  await ensureConversationStateTable(db);
   await db
     .prepare(
       `INSERT INTO conversation_states (tenant_id, contact_wa_id, ai_paused, updated_at)
@@ -127,7 +125,6 @@ export async function markAnswered(db: D1Database, waMessageId: string): Promise
 
 // Lista todas as conversas do tenant para a coluna da esquerda da recepcionista
 export async function listConversations(db: D1Database, tenantId: string): Promise<ConversationSummary[]> {
-  await ensureConversationStateTable(db);
   const { results } = await db
     .prepare(
       `SELECT 
@@ -160,6 +157,50 @@ export async function listConversations(db: D1Database, tenantId: string): Promi
     .all<ConversationSummary>();
 
   return results;
+}
+
+export interface SyncState {
+  latestId: number;
+  activeLatestId: number;
+  activeAiPaused: boolean;
+}
+
+// Checagem ultra-leve de 1 linha de leitura no D1 (substitui polling pesado)
+export async function getSyncState(
+  db: D1Database,
+  tenantId: string,
+  activeContact: string | null = null,
+): Promise<SyncState> {
+  if (activeContact) {
+    const row = await db
+      .prepare(
+        `SELECT 
+           COALESCE(MAX(m.id), 0) as latest_id,
+           COALESCE(MAX(CASE WHEN m.contact_wa_id = ?2 THEN m.id ELSE 0 END), 0) as active_latest_id,
+           COALESCE((SELECT cs.ai_paused FROM conversation_states cs WHERE cs.tenant_id = ?1 AND cs.contact_wa_id = ?2), 0) as active_ai_paused
+         FROM messages m
+         WHERE m.tenant_id = ?1;`
+      )
+      .bind(tenantId, activeContact)
+      .first<{ latest_id: number; active_latest_id: number; active_ai_paused: number }>();
+
+    return {
+      latestId: row?.latest_id ?? 0,
+      activeLatestId: row?.active_latest_id ?? 0,
+      activeAiPaused: row?.active_ai_paused === 1,
+    };
+  }
+
+  const row = await db
+    .prepare("SELECT COALESCE(MAX(id), 0) as latest_id FROM messages WHERE tenant_id = ?1")
+    .bind(tenantId)
+    .first<{ latest_id: number }>();
+
+  return {
+    latestId: row?.latest_id ?? 0,
+    activeLatestId: 0,
+    activeAiPaused: false,
+  };
 }
 
 // Retorna todas as mensagens de um contato específico

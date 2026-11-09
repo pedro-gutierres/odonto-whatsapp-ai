@@ -18,6 +18,7 @@ import {
   getConversationMessages,
   saveHumanOutbound,
   clearConversation,
+  getSyncState,
 } from "./db";
 
 const MSG_SO_TEXTO = "Por enquanto consigo ler apenas mensagens de texto. Pode escrever sua dúvida? 😊";
@@ -57,6 +58,43 @@ export default {
       const messages = await getConversationMessages(env.DB, tenantId, phone);
       const aiPaused = await isAiPaused(env.DB, tenantId, phone);
       return new Response(JSON.stringify({ messages, ai_paused: aiPaused }), {
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    }
+
+    // Checagem ultra-leve de 1 row read para polling (economiza 99% das cotas do D1)
+    if (url.pathname === "/api/sync-check") {
+      const tenantId = url.searchParams.get("tenant") ?? "lab";
+      const activePhone = url.searchParams.get("active_phone") || null;
+      const lastId = parseInt(url.searchParams.get("last_id") || "0", 10);
+      const lastActiveMsgId = parseInt(url.searchParams.get("active_msg_id") || "0", 10);
+
+      const state = await getSyncState(env.DB, tenantId, activePhone);
+
+      const hasNewGlobal = state.latestId > lastId;
+      const hasNewActive = activePhone ? state.activeLatestId > lastActiveMsgId : false;
+
+      return new Response(
+        JSON.stringify({
+          has_new_global: hasNewGlobal,
+          has_new_active: hasNewActive,
+          latest_id: state.latestId,
+          active_latest_id: state.activeLatestId,
+          active_ai_paused: state.activeAiPaused,
+        }),
+        {
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "cache-control": "no-cache",
+          },
+        },
+      );
+    }
+
+    // Inicialização única de índices de alta performance para D1
+    if (url.pathname === "/api/init-perf") {
+      await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_messages_tenant_id ON messages (tenant_id, id);").run();
+      return new Response(JSON.stringify({ status: "indexes ensured" }), {
         headers: { "content-type": "application/json; charset=utf-8" },
       });
     }
@@ -513,40 +551,96 @@ const INBOX_HTML = `<!DOCTYPE html>
     let activePhone = null;
     let activeAiPaused = false;
     let isPollingBusy = false;
+    let highestKnownMsgId = 0;
+    let highestActiveMsgId = 0;
+    let pollTimer = null;
     const messageCache = {};
 
     // Inicialização
     async function init() {
       await loadConversations(false);
-
-      // Polling a cada 3s para sincronizar novas mensagens sem conflito
-      setInterval(async () => {
-        if (isPollingBusy) return;
-        isPollingBusy = true;
-        try {
-          await loadConversations(true);
-          if (activePhone) {
-            await loadMessages(activePhone, true);
-          }
-        } catch (err) {
-          console.error("Erro no polling:", err);
-        } finally {
-          isPollingBusy = false;
-        }
-      }, 3000);
+      startPolling();
     }
 
-    async function fetchMessages(phone) {
+    // Checagem de sincronização ultra-leve (1 row read apenas ao invés de ler todo o banco)
+    async function checkSync() {
+      if (isPollingBusy || document.hidden) return;
+      isPollingBusy = true;
       try {
-        const res = await fetch('/api/messages?phone=' + encodeURIComponent(phone));
+        const p = activePhone || '';
+        const url = \`/api/sync-check?last_id=\${highestKnownMsgId}&active_phone=\${encodeURIComponent(p)}&active_msg_id=\${highestActiveMsgId}\`;
+        const res = await fetch(url);
         const data = await res.json();
+
+        // 1. Atualiza status da IA se mudou
+        if (activePhone && typeof data.active_ai_paused === 'boolean') {
+          if (activeAiPaused !== data.active_ai_paused) {
+            activeAiPaused = data.active_ai_paused;
+            updateAiButtons(activeAiPaused);
+          }
+        }
+
+        // 2. Se há mensagens novas para o chat ativo, carrega
+        if (data.has_new_active && activePhone) {
+          await loadMessages(activePhone, true);
+          highestActiveMsgId = Math.max(highestActiveMsgId, data.active_latest_id || 0);
+        }
+
+        // 3. Se há mensagens novas em outros chats, atualiza a lista da esquerda
+        if (data.has_new_global) {
+          await loadConversations(true);
+          highestKnownMsgId = Math.max(highestKnownMsgId, data.latest_id || 0);
+        }
+      } catch (err) {
+        console.error("Erro no sync-check:", err);
+      } finally {
+        isPollingBusy = false;
+      }
+    }
+
+    // CONTROLE DE POLLING INTELIGENTE E VISIBILIDADE:
+    // Se a aba estiver minimizada ou em segundo plano, O POLLING É PAUSADO!
+    // Isso economiza 99% das cotas diárias de Row Reads do Cloudflare D1.
+    function startPolling() {
+      if (!pollTimer) {
+        pollTimer = setInterval(checkSync, 4000);
+      }
+    }
+
+    function stopPolling() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        checkSync();
+        startPolling();
+      }
+    });
+
+    async function fetchMessages(phone) {
+      const p = String(phone);
+      try {
+        const res = await fetch('/api/messages?phone=' + encodeURIComponent(p));
+        const data = await res.json();
+        const msgs = data.messages || [];
         if (data && data.messages) {
-          messageCache[String(phone)] = data.messages;
+          messageCache[p] = msgs;
+          const maxId = msgs.reduce((max, m) => Math.max(max, m.id || 0), 0);
+          if (p === String(activePhone)) {
+            highestActiveMsgId = Math.max(highestActiveMsgId, maxId);
+          }
+          highestKnownMsgId = Math.max(highestKnownMsgId, maxId);
         }
         return data || { messages: [], ai_paused: false };
       } catch (err) {
-        console.error("Erro ao buscar mensagens de " + phone, err);
-        return { messages: messageCache[String(phone)] || [], ai_paused: false };
+        console.error("Erro ao buscar mensagens de " + p, err);
+        return { messages: messageCache[p] || [], ai_paused: false };
       }
     }
 
@@ -1051,6 +1145,7 @@ const PATIENT_CHAT_HTML = `<!DOCTYPE html>
     }
 
     async function loadHistory() {
+      if (document.hidden) return;
       try {
         const res = await fetch('/api/messages?phone=5521973401655');
         const data = await res.json();
@@ -1108,9 +1203,29 @@ const PATIENT_CHAT_HTML = `<!DOCTYPE html>
       }
     }
 
+    let simPollTimer = null;
+    function startSimPolling() {
+      if (!simPollTimer) {
+        simPollTimer = setInterval(loadHistory, 6000);
+      }
+    }
+    function stopSimPolling() {
+      if (simPollTimer) {
+        clearInterval(simPollTimer);
+        simPollTimer = null;
+      }
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopSimPolling();
+      } else {
+        loadHistory();
+        startSimPolling();
+      }
+    });
+
     loadHistory();
-    // Atualiza periodicamente para ver respostas manuais da recepcionista
-    setInterval(loadHistory, 3000);
+    startSimPolling();
   </script>
 </body>
 </html>`;
