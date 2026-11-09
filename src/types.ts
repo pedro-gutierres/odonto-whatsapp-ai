@@ -10,6 +10,7 @@ export interface Env {
   WA_VERIFY_TOKEN: string;  // frase que você inventa; a Meta devolve na verificação do webhook
   ANTHROPIC_API_KEY: string;
   WA_LAB_TOKEN: string;     // token da Meta usado só na fase de laboratório
+  AUTH_SECRET?: string;     // segredo HMAC para sessões (opcional, fallback interno)
 
   // Variáveis comuns (wrangler.jsonc)
   GRAPH_VERSION: string;

@@ -230,3 +230,134 @@ export async function clearConversation(db: D1Database, tenantId: string, contac
     .bind(tenantId, contact)
     .run();
 }
+
+// -----------------------------------------------------------------------------
+// GESTÃO DE USUÁRIOS & AGENDAMENTOS (CRM & AUTH)
+// -----------------------------------------------------------------------------
+export interface UserRecord {
+  id: number;
+  tenant_id: string;
+  email: string;
+  password_hash: string;
+  name: string;
+  role: string;
+  created_at: string;
+}
+
+export interface AppointmentRecord {
+  id: number;
+  tenant_id: string;
+  contact_wa_id: string;
+  patient_name: string;
+  procedure: string | null;
+  scheduled_at: string;
+  status: "pre_agendado" | "confirmado" | "concluido" | "cancelado";
+  notes: string | null;
+  created_at: string;
+}
+
+export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS users (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id     TEXT NOT NULL,
+        email         TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        name          TEXT NOT NULL,
+        role          TEXT NOT NULL DEFAULT 'admin',
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS appointments (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id     TEXT NOT NULL,
+        contact_wa_id TEXT NOT NULL,
+        patient_name  TEXT NOT NULL,
+        procedure     TEXT,
+        scheduled_at  TEXT NOT NULL,
+        status        TEXT NOT NULL DEFAULT 'pre_agendado',
+        notes         TEXT,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );`
+    )
+    .run();
+
+  // Verifica se o usuário padrão de Pedro existe
+  const user = await db.prepare("SELECT id FROM users LIMIT 1").first();
+  if (!user) {
+    // Senha padrão inicial para testes: 'admin123'
+    // Hash SHA-256 de "admin123:odonto_salt_2026"
+    const defaultHash = "219f1b54263a28a320ddb777b89011a54d75d32bc5d0e6b20b9fdbdc02d61876";
+    await db
+      .prepare(
+        `INSERT OR IGNORE INTO users (tenant_id, email, password_hash, name, role)
+         VALUES 
+         ('lab', 'pedrogutierres@protonmail.com', ?1, 'Pedro Gutierres', 'admin'),
+         ('lab', 'admin@clinica.com', ?1, 'Dra. Fernanda (Admin)', 'admin');`
+      )
+      .bind(defaultHash)
+      .run();
+
+    // Cria agendamentos iniciais de exemplo para a clínica
+    await db
+      .prepare(
+        `INSERT OR IGNORE INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
+         VALUES 
+         ('lab', '5511988881234', 'Mariana Silveira', 'Botox / Toxina Botulínica', 'Sábado às 10:00', 'confirmado', 'Agendado automaticamente pela Secretária IA Claude 24h'),
+         ('lab', '5521973401655', 'Pedro (Paciente Teste)', 'Avaliação Geral & Clareamento', 'Quarta-feira às 15:30', 'pre_agendado', 'Paciente aguardando confirmação de encaixe');`
+      )
+      .run();
+  }
+}
+
+export async function getUserByEmail(db: D1Database, email: string): Promise<UserRecord | null> {
+  return db.prepare("SELECT * FROM users WHERE email = ?1").bind(email.toLowerCase().trim()).first<UserRecord>();
+}
+
+export async function listAppointments(db: D1Database, tenantId: string): Promise<AppointmentRecord[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM appointments 
+       WHERE tenant_id = ?1 
+       ORDER BY id DESC LIMIT 100`
+    )
+    .bind(tenantId)
+    .all<AppointmentRecord>();
+  return results;
+}
+
+export async function createAppointment(
+  db: D1Database,
+  tenantId: string,
+  contactWaId: string,
+  patientName: string,
+  procedure: string,
+  scheduledAt: string,
+  status: string = "pre_agendado",
+  notes: string = ""
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+    )
+    .bind(tenantId, contactWaId, patientName, procedure, scheduledAt, status, notes)
+    .run();
+}
+
+export async function updateAppointmentStatus(
+  db: D1Database,
+  tenantId: string,
+  id: number,
+  status: string
+): Promise<void> {
+  await db
+    .prepare("UPDATE appointments SET status = ?1 WHERE id = ?2 AND tenant_id = ?3")
+    .bind(status, id, tenantId)
+    .run();
+}
