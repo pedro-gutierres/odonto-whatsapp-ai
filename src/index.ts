@@ -409,9 +409,8 @@ const INBOX_HTML = `<!DOCTYPE html>
             <span>Enviar</span>
           </button>
         </form>
-        <div class="flex items-center justify-between mt-1.5 px-1 text-[11px] text-slate-400">
+        <div class="mt-1.5 px-1 text-[11px] text-slate-400">
           <span>Dica: Ao enviar mensagem manual, o paciente recebe como atendente humano.</span>
-          <span id="aiStatusNotice" class="font-medium"></span>
         </div>
       </div>
 
@@ -430,8 +429,8 @@ const INBOX_HTML = `<!DOCTYPE html>
         <div>
           <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status do Atendimento</label>
           <div class="mt-1 p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
-            <div class="flex items-center gap-2" id="sideAiStatusIcon">
-              <i class="fa-solid fa-robot text-emerald-600"></i>
+            <div class="flex items-center gap-2">
+              <span id="sideAiStatusIcon"><i class="fa-solid fa-robot text-emerald-600"></i></span>
               <span class="font-medium text-slate-700" id="sideAiStatusText">IA Ativa</span>
             </div>
             <button onclick="toggleActiveAi()" class="text-[11px] text-[#008069] hover:underline font-semibold" id="sideToggleLink">Pausar</button>
@@ -772,32 +771,31 @@ const INBOX_HTML = `<!DOCTYPE html>
       const sideIcon = document.getElementById('sideAiStatusIcon');
       const sideText = document.getElementById('sideAiStatusText');
       const sideToggle = document.getElementById('sideToggleLink');
-      const notice = document.getElementById('aiStatusNotice');
 
       if (paused) {
-        btn.className = "text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition";
-        btn.innerHTML = '<i class="fa-solid fa-play"></i><span>Reativar IA neste Chat</span>';
-
-        badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold";
-        badge.innerText = "⏸️ Atendimento Humano (IA Pausada)";
-
-        sideIcon.innerHTML = '<i class="fa-solid fa-user-check text-amber-600"></i>';
-        sideText.innerText = "Atendimento Humano";
-        sideToggle.innerText = "Reativar IA";
-        notice.innerText = "IA pausada neste chat: você está no controle total.";
-        notice.className = "text-amber-600 font-medium";
+        if (btn) {
+          btn.className = "text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition";
+          btn.innerHTML = '<i class="fa-solid fa-play"></i><span>Reativar IA neste Chat</span>';
+        }
+        if (badge) {
+          badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold";
+          badge.innerText = "⏸️ Atendimento Humano (IA Pausada)";
+        }
+        if (sideIcon) sideIcon.innerHTML = '<i class="fa-solid fa-user-check text-amber-600"></i>';
+        if (sideText) sideText.innerText = "Atendimento Humano";
+        if (sideToggle) sideToggle.innerText = "Reativar IA";
       } else {
-        btn.className = "text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition";
-        btn.innerHTML = '<i class="fa-solid fa-pause"></i><span>Pausar IA (Assumir)</span>';
-
-        badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold";
-        badge.innerText = "🤖 IA Respondendo 24h";
-
-        sideIcon.innerHTML = '<i class="fa-solid fa-robot text-emerald-600"></i>';
-        sideText.innerText = "IA Ativa 24h";
-        sideToggle.innerText = "Pausar IA";
-        notice.innerText = "IA está ativa e respondendo novos pacientes.";
-        notice.className = "text-emerald-700 font-medium";
+        if (btn) {
+          btn.className = "text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition";
+          btn.innerHTML = '<i class="fa-solid fa-pause"></i><span>Pausar IA (Assumir)</span>';
+        }
+        if (badge) {
+          badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold";
+          badge.innerText = "🤖 IA Respondendo 24h";
+        }
+        if (sideIcon) sideIcon.innerHTML = '<i class="fa-solid fa-robot text-emerald-600"></i>';
+        if (sideText) sideText.innerText = "IA Ativa 24h";
+        if (sideToggle) sideToggle.innerText = "Pausar IA";
       }
     }
 
@@ -805,16 +803,17 @@ const INBOX_HTML = `<!DOCTYPE html>
       if (!activePhone) return;
       const targetState = !activeAiPaused;
       try {
-        await fetch('/api/toggle-ai', {
+        const res = await fetch('/api/toggle-ai', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ phone: activePhone, paused: targetState })
         });
+        if (!res.ok) throw new Error("Erro no servidor: " + res.status);
         activeAiPaused = targetState;
         updateAiButtons(activeAiPaused);
         await loadConversations(true);
       } catch (err) {
-        alert("Erro ao alterar status da IA");
+        console.error("Erro ao alterar status da IA:", err);
       }
     }
 
@@ -836,15 +835,16 @@ const INBOX_HTML = `<!DOCTYPE html>
       renderMessagesToContainer(messageCache[activePhone]);
 
       try {
-        await fetch('/api/send', {
+        const res = await fetch('/api/send', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ phone: activePhone, text: text })
         });
+        if (!res.ok) throw new Error("Erro no servidor: " + res.status);
         await loadMessages(activePhone, false);
         await loadConversations(true);
       } catch (err) {
-        alert("Erro ao enviar mensagem");
+        console.error("Erro ao enviar mensagem:", err);
       }
     }
 
