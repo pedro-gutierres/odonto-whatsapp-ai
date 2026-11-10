@@ -205,7 +205,13 @@ export const SIMULATOR_HTML = `<!DOCTYPE html>
 
         const time = document.createElement('div');
         time.className = 'time';
-        time.innerText = new Date((m.created_at || '').endsWith('Z') ? m.created_at : m.created_at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let raw = (m.created_at || '').trim();
+        if (raw && raw.includes(' ') && !raw.includes('T')) raw = raw.replace(' ', 'T');
+        if (raw && !raw.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(raw)) raw += 'Z';
+        const d = raw ? new Date(raw) : null;
+        time.innerText = d && !isNaN(d.getTime()) 
+          ? d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }) 
+          : 'Agora';
         div.appendChild(time);
 
         chat.appendChild(div);

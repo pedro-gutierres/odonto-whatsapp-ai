@@ -189,7 +189,11 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
         <div class="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
           <span id="chatCount">Carregando conversas...</span>
-          <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-bolt text-[10px]"></i> IA Ativa 24h</span>
+          <span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-mono text-[10px]" title="Horário de Brasília em tempo real">
+            <i class="fa-regular fa-clock text-[#008069] dark:text-emerald-400"></i>
+            <span id="sidebarBrasiliaClock">--:--</span>
+            <span class="text-[9px] text-slate-400 font-sans font-semibold">24h</span>
+          </span>
         </div>
       </div>
 
@@ -206,7 +210,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
     <!-- COLUNA 2: HISTÓRICO DE MENSAGENS E CHAT (CENTRAL) -->
     <section class="flex-1 flex flex-col relative transition-colors duration-200">
       
-      <!-- SUB-BARRA DA CONVERSA SELECIONADA -->
+      <!-- SUB-BARRA DA CONVERSA SELECIONADA (ESTILO WHATSAPP) -->
       <div id="chatHeader" class="h-14 bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-slate-800/80 px-4 flex items-center justify-between shrink-0 shadow-sm transition-colors">
         <div class="flex items-center gap-3">
           <div id="activeAvatar" class="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs uppercase">
@@ -217,12 +221,32 @@ export const INBOX_HTML = `<!DOCTYPE html>
               <h2 id="activeContactName" class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-none">Selecione uma conversa</h2>
               <span id="activeAiBadge" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded-full border"></span>
             </div>
-            <p id="activeContactPhone" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">Nenhum chat selecionado</p>
+            <div class="flex items-center gap-1.5 mt-1 leading-none">
+              <p id="activeContactPhone" class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">Nenhum chat selecionado</p>
+              <span id="activeContactStatusDot" class="hidden w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span id="activeContactTimeSync" class="hidden text-[10px] text-[#008069] dark:text-emerald-400 font-medium"></span>
+            </div>
           </div>
         </div>
 
-        <!-- BOTÃO DE CONTROLE DA IA (HUMAN TAKEOVER) -->
-        <div class="flex items-center gap-2">
+        <!-- LADO DIREITO: RELÓGIO BRASÍLIA EM TEMPO REAL + BOTÃO DE IA -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- WIDGET DE DATA E HORA SINCRONIZADA EM TEMPO REAL (BRASÍLIA 24H) -->
+          <div id="brasiliaTimeWidget" title="Horário de Brasília em tempo real (24h) sincronizado com o servidor"
+            class="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-xs select-none">
+            <span class="relative flex h-2 w-2 shrink-0">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <div class="flex items-center gap-1.5 leading-none">
+              <span id="liveBrasiliaDate" class="hidden sm:inline text-[11px] font-medium text-slate-600 dark:text-slate-300">--/--</span>
+              <span class="hidden sm:inline text-slate-300 dark:text-slate-600 font-light">•</span>
+              <span id="liveBrasiliaClock" class="text-xs font-bold font-mono text-[#008069] dark:text-emerald-400 tracking-wider">--:--:--</span>
+              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-[#008069] dark:text-emerald-300 uppercase shrink-0">DF 24h</span>
+            </div>
+          </div>
+
+          <!-- BOTÃO DE CONTROLE DA IA (HUMAN TAKEOVER) -->
           <button id="toggleAiBtn" onclick="handleToggleAi()" class="hidden text-xs font-semibold px-3 py-1.5 rounded-xl transition items-center gap-1.5 shadow-sm">
             <span id="toggleAiIcon"></span>
             <span id="toggleAiText">Carregando...</span>
@@ -1019,6 +1043,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
     // 3. INICIALIZAÇÃO GERAL
     async function init() {
       initTheme();
+      startLiveBrasiliaSync();
       await loadConversations(false);
       await loadAppointments();
       await loadClinicConfig();
@@ -1030,6 +1055,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       try {
         const res = await fetch('/api/conversations');
         const data = await res.json();
+        if (data.server_time) syncServerTime(data.server_time);
         conversations = data.conversations || [];
 
         const countSpan = document.getElementById('chatCount');
@@ -1063,7 +1089,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       container.innerHTML = filtered.map(c => {
         const isSelected = c.contact_wa_id === activePhone;
         const initial = (c.contact_name || c.contact_wa_id)[0].toUpperCase();
-        const timeStr = formatTime(c.last_created_at);
+        const timeStr = formatConversationItemTime(c.last_created_at);
         const isAiOn = c.ai_paused === 0;
 
         return \`
@@ -1117,6 +1143,12 @@ export const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('activeContactPhone').innerText = phone;
       document.getElementById('activeAvatar').innerText = initial;
 
+      const statusDot = document.getElementById('activeContactStatusDot');
+      const timeSync = document.getElementById('activeContactTimeSync');
+      if (statusDot) statusDot.classList.remove('hidden');
+      if (timeSync) timeSync.classList.remove('hidden');
+      updateActiveContactSyncText();
+
       document.getElementById('sideContactName').innerText = name;
       document.getElementById('sideContactPhone').innerText = phone;
       document.getElementById('sideAvatar').innerText = initial;
@@ -1145,6 +1177,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       try {
         const res = await fetch(\`/api/messages?phone=\${encodeURIComponent(activePhone)}\`);
         const data = await res.json();
+        if (data.server_time) syncServerTime(data.server_time);
         const msgs = data.messages || [];
 
         activeAiPaused = !!data.ai_paused;
@@ -1168,22 +1201,40 @@ export const INBOX_HTML = `<!DOCTYPE html>
         return;
       }
 
-      area.innerHTML = msgs.map(m => {
+      let lastDateKey = null;
+      const htmlParts = [];
+
+      msgs.forEach(m => {
+        const d = parseIsoDate(m.created_at);
+        const dateKey = d ? getBrasiliaDateKey(d) : 'sem_data';
+
+        if (d && dateKey !== lastDateKey) {
+          lastDateKey = dateKey;
+          const dividerLabel = getWhatsAppDateDividerLabel(d);
+          htmlParts.push(\`
+            <div class="flex justify-center my-3.5 sticky top-1 z-10 select-none">
+              <span class="px-3.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/95 dark:bg-[#182229]/95 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200/70 dark:border-slate-700/60 backdrop-blur-md">
+                \${escapeHtml(dividerLabel)}
+              </span>
+            </div>
+          \`);
+        }
+
         const isPatient = m.direction === 'in';
         const isHumanAgent = m.status === 'human';
-        const timeStr = formatTime(m.created_at);
+        const timeStr = formatMessageTime(m.created_at);
 
         if (isPatient) {
-          return \`
+          htmlParts.push(\`
             <div class="flex flex-col items-start max-w-[85%] md:max-w-[70%]">
               <div class="bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 p-3 rounded-2xl rounded-tl-sm shadow-sm border border-slate-200/50 dark:border-slate-700/30 text-xs leading-relaxed">
                 \${escapeHtml(m.body)}
-                <div class="text-[9px] text-slate-400 text-right mt-1 font-mono">\${timeStr}</div>
+                <div class="text-[9px] text-slate-400 dark:text-slate-400 text-right mt-1 font-mono">\${timeStr}</div>
               </div>
             </div>
-          \`;
+          \`);
         } else {
-          return \`
+          htmlParts.push(\`
             <div class="flex flex-col items-end max-w-[85%] md:max-w-[70%] ml-auto">
               <div class="\${
                 isHumanAgent 
@@ -1196,16 +1247,17 @@ export const INBOX_HTML = `<!DOCTYPE html>
                   \${isHumanAgent ? '👤 Recepcionista (Atendimento Manual)' : '✨ Secretária IA (Claude 24h)'}
                 </div>
                 \${escapeHtml(m.body)}
-                <div class="text-[9px] opacity-70 text-right mt-1 font-mono flex items-center justify-end gap-1">
+                <div class="text-[9px] opacity-75 text-right mt-1 font-mono flex items-center justify-end gap-1">
                   <span>\${timeStr}</span>
-                  <i class="fa-solid fa-check-double text-[8px] text-[#53bdeb]"></i>
+                  <i class="fa-solid fa-check-double text-[9px] text-[#53bdeb]" title="Entregue e sincronizado"></i>
                 </div>
               </div>
             </div>
-          \`;
+          \`);
         }
-      }).join('');
+      });
 
+      area.innerHTML = htmlParts.join('');
       area.scrollTop = area.scrollHeight;
     }
 
@@ -1801,6 +1853,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const url = \`/api/sync-check?last_id=\${highestKnownMsgId}&active_phone=\${encodeURIComponent(p)}&active_msg_id=\${highestActiveMsgId}\`;
         const res = await fetch(url);
         const data = await res.json();
+        if (data.server_time) syncServerTime(data.server_time);
 
         if (activePhone && typeof data.active_ai_paused === 'boolean') {
           if (activeAiPaused !== data.active_ai_paused) {
@@ -1846,16 +1899,195 @@ export const INBOX_HTML = `<!DOCTYPE html>
       }, 3000);
     }
 
-    function formatTime(isoString) {
-      if (!isoString) return '';
-      try {
-        const d = new Date(isoString);
-        if (isNaN(d.getTime())) return '';
-        return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      } catch {
-        return '';
+    // -------------------------------------------------------------------------
+    // 10. SINCRONIZAÇÃO E FORMATAÇÃO DE DATA E HORA (ESTILO WHATSAPP 24H BRASÍLIA)
+    // -------------------------------------------------------------------------
+    let serverClockDelta = 0;
+    let liveClockInterval = null;
+
+    function syncServerTime(serverIsoString) {
+      if (!serverIsoString) return;
+      const srv = new Date(serverIsoString).getTime();
+      if (!isNaN(srv)) {
+        serverClockDelta = srv - Date.now();
+        updateLiveBrasiliaClock();
       }
     }
+
+    function getNowBrasilia() {
+      return new Date(Date.now() + serverClockDelta);
+    }
+
+    function parseIsoDate(isoString) {
+      if (!isoString) return null;
+      let s = String(isoString).trim();
+      if (!s) return null;
+      if (s.includes(' ') && !s.includes('T')) s = s.replace(' ', 'T');
+      if (!s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function getBrasiliaDateParts(d) {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      const ymd = formatter.format(d);
+      const [year, month, day] = ymd.split('-').map(Number);
+      return { key: ymd, dateObj: new Date(year, month - 1, day) };
+    }
+
+    function getBrasiliaDateKey(d) {
+      return getBrasiliaDateParts(d).key;
+    }
+
+    function capitalizeFirst(str) {
+      if (!str) return '';
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function formatMessageTime(isoString) {
+      const d = parseIsoDate(isoString);
+      if (!d) return '';
+      return d.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+    }
+
+    function formatConversationItemTime(isoString) {
+      const d = parseIsoDate(isoString);
+      if (!d) return '';
+      const now = getNowBrasilia();
+      const bMsgDate = getBrasiliaDateParts(d);
+      const bNowDate = getBrasiliaDateParts(now);
+
+      const diffDays = Math.round((bNowDate.dateObj.getTime() - bMsgDate.dateObj.getTime()) / 86400000);
+
+      if (diffDays === 0) {
+        return d.toLocaleTimeString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+      } else if (diffDays === 1) {
+        return 'Ontem';
+      } else if (diffDays > 1 && diffDays < 7) {
+        const weekday = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short' });
+        return capitalizeFirst(weekday.replace('.', ''));
+      } else {
+        return d.toLocaleDateString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          day: '2-digit',
+          month: '2-digit',
+          year: '2-digit',
+        });
+      }
+    }
+
+    function getWhatsAppDateDividerLabel(d) {
+      if (!d || isNaN(d.getTime())) return '';
+      const now = getNowBrasilia();
+      const bMsgDate = getBrasiliaDateParts(d);
+      const bNowDate = getBrasiliaDateParts(now);
+
+      const diffDays = Math.round((bNowDate.dateObj.getTime() - bMsgDate.dateObj.getTime()) / 86400000);
+
+      if (diffDays === 0) {
+        return 'Hoje';
+      } else if (diffDays === 1) {
+        return 'Ontem';
+      } else if (diffDays > 1 && diffDays < 7) {
+        const weekday = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long' });
+        return capitalizeFirst(weekday);
+      } else {
+        return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: 'numeric', month: 'long', year: 'numeric' });
+      }
+    }
+
+    function updateLiveBrasiliaClock() {
+      const now = getNowBrasilia();
+
+      const timeStr = now.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+
+      const shortTimeStr = now.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      const weekday = now.toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        weekday: 'short',
+      }).replace('.', '');
+      const dayMonth = now.toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: '2-digit',
+      });
+      const fullDateStr = \`\${capitalizeFirst(weekday)}, \${dayMonth}\`;
+
+      const elClock = document.getElementById('liveBrasiliaClock');
+      if (elClock) elClock.innerText = timeStr;
+
+      const elDate = document.getElementById('liveBrasiliaDate');
+      if (elDate) elDate.innerText = fullDateStr;
+
+      const elSidebarClock = document.getElementById('sidebarBrasiliaClock');
+      if (elSidebarClock) elSidebarClock.innerText = shortTimeStr;
+
+      if (activePhone) {
+        updateActiveContactSyncText();
+      }
+    }
+
+    function updateActiveContactSyncText() {
+      const el = document.getElementById('activeContactTimeSync');
+      if (!el || !activePhone) return;
+      const now = getNowBrasilia();
+      const timeStr = now.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+      el.innerText = \`online • \${timeStr} (DF)\`;
+    }
+
+    function startLiveBrasiliaSync() {
+      updateLiveBrasiliaClock();
+      if (!liveClockInterval) {
+        liveClockInterval = setInterval(updateLiveBrasiliaClock, 1000);
+      }
+      fetchServerTime();
+    }
+
+    async function fetchServerTime() {
+      try {
+        const res = await fetch('/api/time');
+        const data = await res.json();
+        if (data.server_time) {
+          syncServerTime(data.server_time);
+        }
+      } catch (e) {
+        // Fallback para relógio local com timezone America/Sao_Paulo
+      }
+    }
+
+    const formatTime = formatMessageTime;
 
     function escapeHtml(str) {
       if (!str) return '';

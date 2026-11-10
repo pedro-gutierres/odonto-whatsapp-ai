@@ -305,11 +305,26 @@ export default {
     // -------------------------------------------------------------------------
     // APIS DO ATENDIMENTO WHATSAPP (MULTI-CHAT)
     // -------------------------------------------------------------------------
+    if (url.pathname === "/api/time") {
+      return new Response(
+        JSON.stringify({
+          server_time: new Date().toISOString(),
+          timezone: "America/Sao_Paulo",
+        }),
+        {
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "cache-control": "no-cache",
+          },
+        },
+      );
+    }
+
     if (url.pathname === "/api/conversations") {
       const session = await getSessionFromRequest(request, env.AUTH_SECRET);
       const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
       const conversations = await listConversations(env.DB, tenantId);
-      return new Response(JSON.stringify({ conversations }), {
+      return new Response(JSON.stringify({ conversations, server_time: new Date().toISOString() }), {
         headers: { "content-type": "application/json; charset=utf-8" },
       });
     }
@@ -323,7 +338,7 @@ export default {
       }
       const messages = await getConversationMessages(env.DB, tenantId, phone);
       const aiPaused = await isAiPaused(env.DB, tenantId, phone);
-      return new Response(JSON.stringify({ messages, ai_paused: aiPaused }), {
+      return new Response(JSON.stringify({ messages, ai_paused: aiPaused, server_time: new Date().toISOString() }), {
         headers: { "content-type": "application/json; charset=utf-8" },
       });
     }
@@ -348,6 +363,7 @@ export default {
           latest_id: state.latestId,
           active_latest_id: state.activeLatestId,
           active_ai_paused: state.activeAiPaused,
+          server_time: new Date().toISOString(),
         }),
         {
           headers: {
