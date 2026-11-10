@@ -30,6 +30,7 @@ import {
   deleteAppointment,
   getTenantConfig,
   updateTenantConfig,
+  isCrucialConfigComplete,
   type AppointmentRecord,
 } from "./db";
 import {
@@ -728,6 +729,19 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
     return;
   }
 
+  let parsedCfg: BotConfig | null = null;
+  try {
+    parsedCfg = JSON.parse(tenant.bot_config) as BotConfig;
+  } catch {
+    parsedCfg = null;
+  }
+
+  if (!isCrucialConfigComplete(parsedCfg)) {
+    console.log(`[TRAINING_INCOMPLETE] Treinamento crucial incompleto para tenant ${tenant.id}. IA desligada até completar os dados.`);
+    await markAnswered(env.DB, job.waMessageId);
+    return;
+  }
+
   const token = env.WA_LAB_TOKEN;
   if (!token) throw new Error("WA_LAB_TOKEN não configurado");
 
@@ -735,7 +749,7 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   if (!job.text) {
     reply = MSG_SO_TEXTO;
   } else {
-    const cfg = JSON.parse(tenant.bot_config) as BotConfig;
+    const cfg = parsedCfg as BotConfig;
     const history = await loadHistory(env.DB, tenant.id, job.from);
 
     // Obtém data/hora atual no fuso oficial de Brasília

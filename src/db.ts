@@ -617,3 +617,17 @@ export async function updateTenantConfig(
     .bind(tenantId, config.clinic_name || "Clínica Sorriso & Estética", configJson)
     .run();
 }
+
+export function isCrucialConfigComplete(cfg: BotConfig | null | undefined): boolean {
+  if (!cfg || !cfg.clinic_name || !cfg.clinic_name.trim()) return false;
+  if (!cfg.hours || !cfg.hours.trim()) return false;
+  if (!cfg.initial_consultation || !cfg.initial_consultation.duration || !cfg.initial_consultation.duration.trim()) {
+    return false;
+  }
+  if (!Array.isArray(cfg.procedure_items)) return false;
+  const activeItems = cfg.procedure_items.filter((p) => p.checked !== false);
+  if (activeItems.length === 0) return false;
+  const hasInvalidActive = activeItems.some((p) => !p.name?.trim() || !p.duration?.trim());
+  if (hasInvalidActive) return false;
+  return true;
+}
