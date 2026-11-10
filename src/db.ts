@@ -355,6 +355,89 @@ export async function listAppointments(db: D1Database, tenantId: string): Promis
   return results || [];
 }
 
+export function parseDurationMinutes(durationStr?: string | null): number {
+  if (!durationStr) return 30;
+  const s = String(durationStr).toLowerCase().trim();
+  const hMatch = s.match(/(\d+)\s*h(?:oras?)?(?:\s*(\d+))?/);
+  if (hMatch) {
+    const hours = parseInt(hMatch[1], 10);
+    const mins = hMatch[2] ? parseInt(hMatch[2], 10) : 0;
+    return hours * 60 + mins;
+  }
+  const mMatch = s.match(/(\d+)\s*m/);
+  if (mMatch) {
+    return parseInt(mMatch[1], 10);
+  }
+  const num = parseInt(s, 10);
+  if (!isNaN(num) && num > 0) return num;
+  return 30;
+}
+
+export function parseAppointmentTimeInterval(
+  scheduledAt: string,
+  durationStr?: string | null
+): { date: string; startMin: number; endMin: number } | null {
+  if (!scheduledAt) return null;
+  const dateMatch = scheduledAt.match(/(\d{4}-\d{2}-\d{2})/);
+  const timeMatch = scheduledAt.match(/(\d{2}):(\d{2})/);
+  if (!dateMatch || !timeMatch) return null;
+
+  const date = dateMatch[1];
+  const startMin = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+  const durMin = parseDurationMinutes(durationStr);
+  const endMin = startMin + durMin;
+
+  return { date, startMin, endMin };
+}
+
+export async function checkAppointmentConflict(
+  db: D1Database,
+  tenantId: string,
+  scheduledAt: string,
+  durationStr?: string | null,
+  excludeId?: number
+): Promise<{ conflict: boolean; conflictWith?: AppointmentRecord }> {
+  await ensureAuthAndAppointments(db);
+  const targetInterval = parseAppointmentTimeInterval(scheduledAt, durationStr);
+  if (!targetInterval) {
+    return { conflict: false };
+  }
+
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM appointments 
+       WHERE tenant_id = ?1 
+         AND status != 'cancelado' 
+         AND scheduled_at LIKE ?2`
+    )
+    .bind(tenantId, `%${targetInterval.date}%`)
+    .all<AppointmentRecord>();
+
+  if (!results || results.length === 0) {
+    return { conflict: false };
+  }
+
+  for (const existing of results) {
+    if (excludeId && existing.id === excludeId) continue;
+    const exInterval = parseAppointmentTimeInterval(existing.scheduled_at, existing.duration);
+    if (!exInterval) continue;
+
+    // Conflito temporal por sobreposição de intervalos: startA < endB && endA > startB
+    if (targetInterval.startMin < exInterval.endMin && targetInterval.endMin > exInterval.startMin) {
+      return { conflict: true, conflictWith: existing };
+    }
+  }
+
+  return { conflict: false };
+}
+
+export interface CreateAppointmentResult {
+  success: boolean;
+  id?: number;
+  conflict?: boolean;
+  message?: string;
+}
+
 export async function createAppointment(
   db: D1Database,
   tenantId: string,
@@ -365,8 +448,20 @@ export async function createAppointment(
   status: string = "agendado",
   notes: string = "",
   duration: string = "30 min"
-): Promise<number> {
+): Promise<CreateAppointmentResult> {
   await ensureAuthAndAppointments(db);
+
+  // Verificação centralizada de conflitos na grade
+  const conflictCheck = await checkAppointmentConflict(db, tenantId, scheduledAt, duration);
+  if (conflictCheck.conflict && conflictCheck.conflictWith) {
+    const c = conflictCheck.conflictWith;
+    return {
+      success: false,
+      conflict: true,
+      message: `Conflito de horário! Já existe consulta agendada para ${c.patient_name} (${c.procedure || "Consulta"}) em ${c.scheduled_at} (${c.duration || "30 min"}).`,
+    };
+  }
+
   const result = await db
     .prepare(
       `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes, duration)
@@ -374,7 +469,51 @@ export async function createAppointment(
     )
     .bind(tenantId, contactWaId, patientName, procedure, scheduledAt, status, notes, duration)
     .run();
-  return result.meta.last_row_id ?? 0;
+  return { success: true, id: result.meta.last_row_id ?? 0 };
+}
+
+export async function updateAppointmentDetails(
+  db: D1Database,
+  tenantId: string,
+  id: number,
+  updates: { status?: string; notes?: string; procedure?: string; scheduledAt?: string; duration?: string }
+): Promise<void> {
+  await ensureAuthAndAppointments(db);
+  const sets: string[] = [];
+  const bindings: (string | number)[] = [];
+  let paramIdx = 1;
+
+  if (typeof updates.status !== "undefined") {
+    sets.push(`status = ?${paramIdx++}`);
+    bindings.push(updates.status);
+    if (updates.status === "confirmado") {
+      sets.push(`confirmed_at = datetime('now')`);
+      sets.push(`confirmed_by = 'human'`);
+    }
+  }
+  if (typeof updates.notes !== "undefined") {
+    sets.push(`notes = ?${paramIdx++}`);
+    bindings.push(updates.notes);
+  }
+  if (typeof updates.procedure !== "undefined") {
+    sets.push(`procedure = ?${paramIdx++}`);
+    bindings.push(updates.procedure);
+  }
+  if (typeof updates.scheduledAt !== "undefined") {
+    sets.push(`scheduled_at = ?${paramIdx++}`);
+    bindings.push(updates.scheduledAt);
+  }
+  if (typeof updates.duration !== "undefined") {
+    sets.push(`duration = ?${paramIdx++}`);
+    bindings.push(updates.duration);
+  }
+
+  if (sets.length === 0) return;
+
+  const sql = `UPDATE appointments SET ${sets.join(", ")} WHERE id = ?${paramIdx++} AND tenant_id = ?${paramIdx++}`;
+  bindings.push(id, tenantId);
+
+  await db.prepare(sql).bind(...bindings).run();
 }
 
 export async function updateAppointmentStatus(

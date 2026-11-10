@@ -24,6 +24,7 @@ import {
   listAppointments,
   createAppointment,
   updateAppointmentStatus,
+  updateAppointmentDetails,
   getUpcomingAppointments,
   confirmUpcomingAppointmentForContact,
   deleteAppointment,
@@ -214,11 +215,19 @@ export default {
           const pSched = body.scheduledAt || body.scheduled_at || "A combinar";
           const pStatus = body.status || "pre_agendado";
           const pNotes = body.notes || "";
+          const pDuration = body.duration || "30 min";
 
           await ensureAuthAndAppointments(env.DB);
-          await createAppointment(env.DB, tenantId, pPhone, pName, pProc, pSched, pStatus, pNotes);
+          const res = await createAppointment(env.DB, tenantId, pPhone, pName, pProc, pSched, pStatus, pNotes, pDuration);
 
-          return new Response(JSON.stringify({ success: true }), {
+          if (!res.success && res.conflict) {
+            return new Response(JSON.stringify({ error: res.message, conflict: true }), {
+              status: 409,
+              headers: { "content-type": "application/json; charset=utf-8" },
+            });
+          }
+
+          return new Response(JSON.stringify({ success: true, id: res.id }), {
             headers: { "content-type": "application/json; charset=utf-8" },
           });
         } catch (err) {
@@ -228,12 +237,19 @@ export default {
 
       if (request.method === "PATCH") {
         try {
-          const body = (await request.json()) as { id: number; status: string };
-          if (!body.id || !body.status) {
-            return new Response(JSON.stringify({ error: "id e status obrigatórios" }), { status: 400 });
+          const body = (await request.json()) as {
+            id: number;
+            status?: string;
+            notes?: string;
+            procedure?: string;
+            scheduledAt?: string;
+            duration?: string;
+          };
+          if (!body.id) {
+            return new Response(JSON.stringify({ error: "id obrigatório" }), { status: 400 });
           }
           await ensureAuthAndAppointments(env.DB);
-          await updateAppointmentStatus(env.DB, tenantId, body.id, body.status, "human");
+          await updateAppointmentDetails(env.DB, tenantId, body.id, body);
           return new Response(JSON.stringify({ success: true }), {
             headers: { "content-type": "application/json; charset=utf-8" },
           });
@@ -756,8 +772,12 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
       const scheduledAt = data.scheduled_at || "A combinar";
       const duration = data.duration || "30 min";
       const notes = data.notes || "Agendado via IA WhatsApp";
-      await createAppointment(env.DB, tenant.id, job.from, patientName, procedure, scheduledAt, "agendado", notes, duration);
-      console.log(`[AGENDAMENTO_IA] Agendamento criado com sucesso para ${patientName} em ${scheduledAt}`);
+      const res = await createAppointment(env.DB, tenant.id, job.from, patientName, procedure, scheduledAt, "agendado", notes, duration);
+      if (res.success) {
+        console.log(`[AGENDAMENTO_IA] Agendamento criado com sucesso para ${patientName} em ${scheduledAt}`);
+      } else {
+        console.warn(`[AGENDAMENTO_IA_CONFLITO] Não foi possível agendar para ${patientName} em ${scheduledAt}: ${res.message}`);
+      }
     } catch (e) {
       console.error("Erro ao processar tag <<<AGENDAR>>>:", e);
     }

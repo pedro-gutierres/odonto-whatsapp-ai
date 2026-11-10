@@ -246,6 +246,23 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- BANNER DE BLOQUEIO POR TREINAMENTO INCOMPLETO -->
+      <div id="chatCrucialLockBanner" class="hidden mx-4 mt-2 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-start gap-2.5">
+          <i class="fa-solid fa-lock text-amber-500 mt-0.5"></i>
+          <div class="text-xs space-y-0.5">
+            <span class="font-bold block">Atendimento e IA Pausados</span>
+            <p class="text-[11px] text-amber-800 dark:text-amber-300">
+              Cadastre os procedimentos oferecidos e suas durações no Treinamento da IA para ativar o atendimento e a inteligência artificial.
+            </p>
+          </div>
+        </div>
+        <button type="button" onclick="selectNavigationTab('config', 'Treinamento da IA', 'fa-solid fa-brain', 'purple')"
+          class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs whitespace-nowrap transition shadow-sm self-start sm:self-center">
+          Ir para Treinamento
+        </button>
+      </div>
+
       <!-- ÁREA DE MENSAGENS COM SCROLL -->
       <div id="messagesArea" class="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-3 wa-bg-light dark:wa-bg-dark transition-all">
         <div class="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs">
@@ -355,11 +372,31 @@ export const INBOX_HTML = `<!DOCTYPE html>
           <button onclick="loadAppointments()" class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs transition" title="Atualizar">
             <i class="fa-solid fa-rotate-right" id="agendaRefreshIcon"></i>
           </button>
-          <button onclick="openAppointmentModal()" class="px-4 py-2 rounded-xl bg-[#008069] hover:bg-[#006a57] text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition">
+          <button id="btnNewAppointmentAgenda" onclick="openAppointmentModal()" class="px-4 py-2 rounded-xl bg-[#008069] hover:bg-[#006a57] text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition">
             <i class="fa-solid fa-calendar-plus"></i>
             <span>Novo Agendamento</span>
           </button>
         </div>
+      </div>
+
+      <!-- BANNER DE BLOQUEIO DA AGENDA POR TREINAMENTO INCOMPLETO -->
+      <div id="agendaCrucialLockBanner" class="hidden p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-lock text-sm"></i>
+          </div>
+          <div class="text-xs space-y-0.5">
+            <span class="font-bold block text-sm">Agendamentos e IA Bloqueados</span>
+            <p class="text-[11px] text-amber-800 dark:text-amber-300">
+              Para liberar a grade de agendamentos e a atuação autônoma da IA, conclua o cadastro dos procedimentos oferecidos e suas durações no Treinamento da IA.
+            </p>
+          </div>
+        </div>
+        <button type="button" onclick="selectNavigationTab('config', 'Treinamento da IA', 'fa-solid fa-brain', 'purple')"
+          class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs whitespace-nowrap transition shadow-sm self-start sm:self-center flex items-center gap-1.5">
+          <i class="fa-solid fa-brain"></i>
+          <span>Completar Treinamento</span>
+        </button>
       </div>
 
       <!-- CARDS DE MÉTRICAS RÁPIDAS -->
@@ -445,14 +482,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
           <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 text-xs">
             <!-- Células geradas via JS -->
           </div>
-
-          <!-- LEGENDA DE STATUS -->
-          <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap gap-2">
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Confirmado</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Agendado</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> Concluído</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 inline-block"></span> Hoje</span>
-          </div>
         </div>
 
         <!-- GRADE DO DIA SELECIONADO (LADO DIREITO / 5 COLUNAS) -->
@@ -504,13 +533,12 @@ export const INBOX_HTML = `<!DOCTYPE html>
                 <th class="py-3 px-4">Procedimento</th>
                 <th class="py-3 px-4">Data / Horário</th>
                 <th class="py-3 px-4">Status</th>
-                <th class="py-3 px-4">Observações</th>
-                <th class="py-3 px-4 text-right">Ações</th>
+                <th class="py-3 px-4 text-center">Informações</th>
               </tr>
             </thead>
             <tbody id="appointmentTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
               <tr>
-                <td colspan="6" class="p-8 text-center text-slate-400">Carregando agendamentos...</td>
+                <td colspan="5" class="p-8 text-center text-slate-400">Carregando agendamentos...</td>
               </tr>
             </tbody>
           </table>
@@ -975,40 +1003,62 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
         <div>
           <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Procedimento / Serviço</label>
-          <select id="appProcedure" required
+          <select id="appProcedure" required onchange="onAppointmentTimeOrProcChange()"
             class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
             <!-- Preenchido dinamicamente com base nos serviços cadastrados -->
           </select>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <!-- CARD DE DATA -->
-          <div onclick="const el = document.getElementById('appDate'); if (el.showPicker) { el.showPicker(); } else { el.focus(); }" 
-            class="group p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#1e293b] hover:border-[#008069] dark:hover:border-[#008069] hover:bg-emerald-50/20 dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-between gap-1 shadow-sm select-none">
-            <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#008069] transition">
-              <span class="flex items-center gap-1.5">
-                <i class="fa-regular fa-calendar-days text-[#008069]"></i>
-                <span>Data</span>
-              </span>
-              <span class="text-[9px] text-slate-400 font-normal group-hover:text-emerald-600 transition">dd/mm/aaaa</span>
+
+        <div>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Data & Horário de Início (Formato 24h)</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <!-- SELETOR DE DATA INTERATIVO -->
+            <div onclick="const el = document.getElementById('appDate'); if (el.showPicker) { el.showPicker(); } else { el.focus(); }" 
+              class="group p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#1e293b] hover:border-[#008069] dark:hover:border-[#008069] transition cursor-pointer flex flex-col justify-between gap-1 shadow-sm select-none">
+              <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#008069] transition">
+                <span class="flex items-center gap-1.5">
+                  <i class="fa-regular fa-calendar-days text-[#008069]"></i>
+                  <span>Data da Consulta</span>
+                </span>
+                <span class="text-[9px] text-slate-400 font-normal">dd/mm/aaaa</span>
+              </div>
+              <input type="date" id="appDate" required onchange="onAppointmentTimeOrProcChange()" onclick="event.stopPropagation(); if (this.showPicker) this.showPicker();"
+                class="w-full bg-transparent text-slate-900 dark:text-white font-bold text-xs focus:outline-none cursor-pointer">
             </div>
-            <input type="date" id="appDate" required onclick="event.stopPropagation(); if (this.showPicker) this.showPicker();"
-              class="w-full bg-transparent text-slate-900 dark:text-white font-bold text-xs focus:outline-none cursor-pointer">
+
+            <!-- SELETOR DE HORA (24H) E MINUTOS (10 EM 10 MINUTOS) -->
+            <div class="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#1e293b] flex flex-col justify-between gap-1 shadow-sm">
+              <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                <span class="flex items-center gap-1.5">
+                  <i class="fa-regular fa-clock text-[#008069]"></i>
+                  <span>Horário Início</span>
+                </span>
+                <span class="text-[9px] text-slate-400 font-normal">Hora : Minutos</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <select id="appHourSelect" onchange="onAppointmentTimeOrProcChange()"
+                  class="w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-bold text-xs focus:outline-none focus:border-[#008069]">
+                  <!-- Preenchido com 00 a 23 via JS -->
+                </select>
+                <select id="appMinuteSelect" onchange="onAppointmentTimeOrProcChange()"
+                  class="w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-bold text-xs focus:outline-none focus:border-[#008069]">
+                  <option value="00">00 min</option>
+                  <option value="10">10 min</option>
+                  <option value="20">20 min</option>
+                  <option value="30">30 min</option>
+                  <option value="40">40 min</option>
+                  <option value="50">50 min</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          <!-- CARD DE HORÁRIO -->
-          <div onclick="const el = document.getElementById('appTime'); if (el.showPicker) { el.showPicker(); } else { el.focus(); }" 
-            class="group p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#1e293b] hover:border-[#008069] dark:hover:border-[#008069] hover:bg-emerald-50/20 dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-between gap-1 shadow-sm select-none">
-            <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#008069] transition">
-              <span class="flex items-center gap-1.5">
-                <i class="fa-regular fa-clock text-[#008069]"></i>
-                <span>Horário</span>
-              </span>
-              <span class="text-[9px] text-slate-400 font-normal group-hover:text-emerald-600 transition">24h</span>
-            </div>
-            <input type="time" id="appTime" required value="09:00" onclick="event.stopPropagation(); if (this.showPicker) this.showPicker();"
-              class="w-full bg-transparent text-slate-900 dark:text-white font-bold text-xs focus:outline-none cursor-pointer">
+          <!-- FEEDBACK DE CONSUMO DE TEMPO & VERIFICAÇÃO DE CONFLITO EM TEMPO REAL -->
+          <div id="appTimeSlotFeedback" class="mt-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/40 text-[11px] transition-all">
+            <!-- Preenchido dinamicamente por onAppointmentTimeOrProcChange() -->
           </div>
         </div>
+
         <div>
           <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Status</label>
           <select id="appStatus" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
@@ -1026,9 +1076,99 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
           <button type="button" onclick="closeAppointmentModal()" class="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium">Cancelar</button>
-          <button type="submit" class="px-4 py-1.5 rounded-lg bg-[#008069] hover:bg-[#006a57] text-white font-semibold">Salvar Agendamento</button>
+          <button type="submit" id="btnSaveAppointmentModal" class="px-4 py-1.5 rounded-lg bg-[#008069] hover:bg-[#006a57] text-white font-semibold shadow-sm transition">Salvar Agendamento</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL 3: DETALHES COMPLETOS & EDIÇÃO DO AGENDAMENTO (VER MAIS / EDITAR) -->
+  <!-- ======================================================================= -->
+  <div id="appointmentDetailsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl text-slate-900 dark:text-white space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="text-sm font-bold flex items-center gap-2">
+          <i class="fa-solid fa-notes-medical text-emerald-500"></i>
+          <span>Informações do Atendimento</span>
+        </h3>
+        <button onclick="closeAppointmentDetailsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="detAppId">
+
+      <!-- CARDS DE INFORMAÇÕES RESUMIDAS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-1">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Paciente</span>
+          <div class="font-bold text-sm text-slate-900 dark:text-white truncate" id="detPatientName">-</div>
+          <div class="flex items-center justify-between pt-1">
+            <span class="text-[11px] font-mono text-slate-500 dark:text-slate-400" id="detPatientPhone">-</span>
+            <button id="detBtnOpenChat" type="button" onclick="handleDetailOpenChat()" class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+              <i class="fa-brands fa-whatsapp"></i> Conversar
+            </button>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-1">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Procedimento & Duração</span>
+          <div class="font-bold text-sm text-slate-900 dark:text-white truncate" id="detProcedure">-</div>
+          <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-1">
+            <i class="fa-regular fa-clock text-emerald-500"></i>
+            <span id="detDuration">-</span>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-1 sm:col-span-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Data & Horário Agendado</span>
+            <span id="detConfirmationBadge" class="text-[10px] font-bold"></span>
+          </div>
+          <div class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-regular fa-calendar-check text-[#008069]"></i>
+            <span id="detScheduledAt">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAMPOS EDITÁVEIS: STATUS & OBSERVAÇÕES AMPLAS (6 LINHAS) -->
+      <div class="space-y-3 pt-1 text-xs">
+        <div>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Alterar Status da Consulta</label>
+          <select id="detStatus" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            <option value="agendado">Agendado</option>
+            <option value="confirmado">Confirmado</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+            Observações Clínicas, Histórico & Anotações
+            <span class="text-[10px] text-slate-400 font-normal ml-1">(Espaço amplo para anotações detalhadas)</span>
+          </label>
+          <textarea id="detNotes" rows="6" placeholder="Registre aqui todas as observações do atendimento, sintomas relatados, preferências de horário, materiais necessários..."
+            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-[#008069]"></textarea>
+        </div>
+      </div>
+
+      <!-- RODAPÉ DE AÇÕES -->
+      <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+        <button type="button" onclick="handleDeleteDetailAppointment()" class="px-3 py-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="fa-regular fa-trash-can"></i>
+          <span>Excluir</span>
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeAppointmentDetailsModal()" class="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition">Fechar</button>
+          <button type="button" onclick="handleSaveAppointmentDetails()" id="btnSaveAppointmentDetails" class="px-4 py-2 rounded-xl bg-[#008069] hover:bg-[#006a57] text-white font-semibold text-xs transition shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Salvar Alterações</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1177,6 +1317,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       await loadConversations(false);
       await loadAppointments();
       await loadClinicConfig();
+      updateCrucialTrainingLockUI();
       startPolling();
     }
 
@@ -1869,6 +2010,10 @@ export const INBOX_HTML = `<!DOCTYPE html>
             '</div>',
             noteHtml,
             '<div class="flex items-center justify-end gap-1.5 pt-1">',
+              '<button type="button" onclick="openAppointmentDetailsModal(' + a.id + ')" class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold transition flex items-center gap-1" title="Ver mais informações e editar">',
+                '<i class="fa-solid fa-file-lines text-[#008069] dark:text-emerald-400"></i>',
+                '<span>Ver mais</span>',
+              '</button>',
               '<button onclick="goToChatWithPatient(&quot;' + escapeHtml(a.contact_wa_id) + '&quot;)" class="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[10px] font-bold transition flex items-center gap-1" title="Abrir conversa no WhatsApp">',
                 '<i class="fa-brands fa-whatsapp"></i>',
                 '<span>WhatsApp</span>',
@@ -1898,7 +2043,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
         return;
       }
 
@@ -1915,10 +2060,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
         }
 
         const formattedDate = formatScheduleDateTime(a.scheduled_at);
-        const isAgendadoSelected = (a.status === 'agendado' || a.status === 'pre_agendado') ? 'selected' : '';
-        const isConfirmadoOption = a.status === 'confirmado' ? '<option value="confirmado" selected>Confirmado</option>' : '';
-        const isConcluidoSelected = a.status === 'concluido' ? 'selected' : '';
-        const isCanceladoSelected = a.status === 'cancelado' ? 'selected' : '';
 
         return [
           '<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">',
@@ -1935,21 +2076,10 @@ export const INBOX_HTML = `<!DOCTYPE html>
             '<td class="py-3 px-4">',
               statusBadge,
             '</td>',
-            '<td class="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-xs truncate">',
-              escapeHtml(a.notes || '-'),
-            '</td>',
-            '<td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">',
-              '<button onclick="goToChatWithPatient(&quot;' + escapeHtml(a.contact_wa_id) + '&quot;)" title="Abrir conversa no WhatsApp" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400">',
-                '<i class="fa-brands fa-whatsapp text-sm"></i>',
-              '</button>',
-              '<select onchange="handleUpdateAppointmentStatus(' + a.id + ', this.value)" class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] rounded-lg px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none">',
-                '<option value="agendado" ' + isAgendadoSelected + '>Agendado</option>',
-                isConfirmadoOption,
-                '<option value="concluido" ' + isConcluidoSelected + '>Concluir</option>',
-                '<option value="cancelado" ' + isCanceladoSelected + '>Cancelar</option>',
-              '</select>',
-              '<button onclick="handleDeleteAppointment(' + a.id + ')" class="p-1 text-slate-400 hover:text-rose-500 rounded-lg transition" title="Excluir">',
-                '<i class="fa-regular fa-trash-can text-xs"></i>',
+            '<td class="py-3 px-4 text-center whitespace-nowrap">',
+              '<button type="button" onclick="openAppointmentDetailsModal(' + a.id + ')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-slate-800 text-[#008069] dark:text-emerald-400 font-bold text-xs transition shadow-sm">',
+                '<i class="fa-solid fa-file-lines text-xs"></i>',
+                '<span>Ver mais / Editar</span>',
               '</button>',
             '</td>',
           '</tr>'
@@ -2010,16 +2140,188 @@ export const INBOX_HTML = `<!DOCTYPE html>
       selectChat(phone);
     }
 
+    // UTILITÁRIOS DE DURAÇÃO & TEMPO DA GRADE
+    function parseDurationMinutes(durationStr) {
+      if (!durationStr) return 30;
+      const s = String(durationStr).toLowerCase().trim();
+      let total = 0;
+      const hMatch = s.match(/(\d+)\s*(?:h|hora)/);
+      if (hMatch) total += parseInt(hMatch[1], 10) * 60;
+      const mMatch = s.match(/(\d+)\s*(?:m|min)/);
+      if (mMatch) total += parseInt(mMatch[1], 10);
+      if (total === 0) {
+        const num = parseInt(s, 10);
+        if (!isNaN(num) && num > 0) return num;
+      }
+      return total > 0 ? total : 30;
+    }
+
+    function getProcedureDuration(procName) {
+      if (!procName) return '30 min';
+      const nameNorm = procName.toLowerCase().trim();
+      if (nameNorm.includes('avaliação') || nameNorm.includes('avaliacao') || nameNorm.includes('consulta')) {
+        if (currentConfig && currentConfig.initial_consultation && currentConfig.initial_consultation.duration) {
+          return currentConfig.initial_consultation.duration;
+        }
+        return '30 min';
+      }
+      if (currentConfig && Array.isArray(currentConfig.procedure_items)) {
+        const item = currentConfig.procedure_items.find(p => (p.name || '').toLowerCase().trim() === nameNorm);
+        if (item && item.duration) return item.duration;
+      }
+      return '30 min';
+    }
+
+    function populateHourSelect(selectedHour = '09') {
+      const select = document.getElementById('appHourSelect');
+      if (!select) return;
+      let html = '';
+      for (let h = 0; h < 24; h++) {
+        const hh = String(h).padStart(2, '0');
+        const isSel = hh === selectedHour ? 'selected' : '';
+        html += '<option value="' + hh + '" ' + isSel + '>' + hh + ':00h</option>';
+      }
+      select.innerHTML = html;
+    }
+
+    function checkLocalConflict(dateStr, startMinutes, endMinutes, excludeId = null) {
+      for (const a of appointments) {
+        if (excludeId && a.id === excludeId) continue;
+        if (a.status === 'cancelado') continue;
+        if (!a.scheduled_at) continue;
+
+        let aDate = '';
+        let aTime = '09:00';
+        if (a.scheduled_at.includes('T')) {
+          const parts = a.scheduled_at.split('T');
+          aDate = parts[0];
+          aTime = (parts[1] || '09:00').slice(0, 5);
+        } else if (a.scheduled_at.includes(' ')) {
+          const parts = a.scheduled_at.split(' ');
+          aDate = parts[0];
+          aTime = (parts[1] || '09:00').slice(0, 5);
+        } else {
+          aDate = a.scheduled_at.slice(0, 10);
+        }
+
+        if (aDate !== dateStr) continue;
+
+        const [ah, am] = aTime.split(':').map(Number);
+        const aStart = (ah || 0) * 60 + (am || 0);
+        const aDur = parseDurationMinutes(a.duration || getProcedureDuration(a.procedure));
+        const aEnd = aStart + aDur;
+
+        // Sobreposição: startMinutes < aEnd && endMinutes > aStart
+        if (startMinutes < aEnd && endMinutes > aStart) {
+          const aEndH = String(Math.floor(aEnd / 60) % 24).padStart(2, '0');
+          const aEndM = String(aEnd % 60).padStart(2, '0');
+          return {
+            conflict: true,
+            patientName: a.patient_name || 'Paciente',
+            procedure: a.procedure || 'Consulta',
+            startStr: aTime,
+            endStr: aEndH + ':' + aEndM
+          };
+        }
+      }
+      return { conflict: false };
+    }
+
+    function onAppointmentTimeOrProcChange() {
+      const dateInput = document.getElementById('appDate');
+      const hourSelect = document.getElementById('appHourSelect');
+      const minSelect = document.getElementById('appMinuteSelect');
+      const procSelect = document.getElementById('appProcedure');
+      const feedbackEl = document.getElementById('appTimeSlotFeedback');
+      const submitBtn = document.getElementById('btnSaveAppointmentModal');
+
+      if (!feedbackEl) return;
+
+      const dateVal = dateInput ? dateInput.value : '';
+      const hourVal = hourSelect ? hourSelect.value : '09';
+      const minVal = minSelect ? minSelect.value : '00';
+      const procVal = procSelect ? procSelect.value : '';
+
+      const durStr = getProcedureDuration(procVal);
+      const durMin = parseDurationMinutes(durStr);
+
+      const startTotalMin = parseInt(hourVal, 10) * 60 + parseInt(minVal, 10);
+      const endTotalMin = startTotalMin + durMin;
+
+      const startHStr = String(Math.floor(startTotalMin / 60) % 24).padStart(2, '0');
+      const startMStr = String(startTotalMin % 60).padStart(2, '0');
+      const endHStr = String(Math.floor(endTotalMin / 60) % 24).padStart(2, '0');
+      const endMStr = String(endTotalMin % 60).padStart(2, '0');
+
+      const timeSlotText = startHStr + ':' + startMStr + ' às ' + endHStr + ':' + endMStr + ' (' + durMin + ' min)';
+
+      if (!dateVal) {
+        feedbackEl.innerHTML = '<span class="text-slate-500 dark:text-slate-400">Horário estimado: <strong>' + timeSlotText + '</strong>. Selecione uma data para verificar conflitos.</span>';
+        feedbackEl.className = "mt-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/40 text-[11px] transition-all";
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+
+      const check = checkLocalConflict(dateVal, startTotalMin, endTotalMin);
+      if (check.conflict) {
+        feedbackEl.innerHTML = [
+          '<div class="flex items-start gap-2 text-rose-600 dark:text-rose-400 font-medium">',
+            '<i class="fa-solid fa-triangle-exclamation text-rose-500 mt-0.5"></i>',
+            '<div>',
+              '<span class="font-bold block">Horário Indisponível (Conflito de Agenda)!</span>',
+              '<span>Já existe consulta para <strong>' + escapeHtml(check.patientName) + '</strong> agendada das <strong>' + check.startStr + ' às ' + check.endStr + '</strong>. Escolha outro horário ou data.</span>',
+            '</div>',
+          '</div>'
+        ].join('');
+        feedbackEl.className = "mt-2 p-2.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/30 text-[11px] transition-all";
+        if (submitBtn) submitBtn.disabled = true;
+      } else {
+        feedbackEl.innerHTML = [
+          '<div class="flex items-center justify-between text-emerald-700 dark:text-emerald-300">',
+            '<div class="flex items-center gap-2">',
+              '<i class="fa-solid fa-circle-check text-emerald-500"></i>',
+              '<span>Grade Consumida: <strong>' + timeSlotText + '</strong></span>',
+            '</div>',
+            '<span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">Disponível</span>',
+          '</div>'
+        ].join('');
+        feedbackEl.className = "mt-2 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 text-[11px] transition-all";
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    }
+
     function openAppointmentModal(defaultProc = '', defaultDate = '', defaultTime = '09:00') {
+      if (!isCrucialTrainingComplete()) {
+        alert("Atenção: Cadastre os procedimentos e durações no Treinamento da IA para liberar a grade de agendamentos.");
+        selectNavigationTab('config', 'Treinamento da IA', 'fa-solid fa-brain', 'purple');
+        return;
+      }
+
       populateProcedureSelect(defaultProc);
+
       const dateInput = document.getElementById('appDate');
       if (dateInput) {
         dateInput.value = defaultDate || calSelectedDate || new Date().toISOString().slice(0, 10);
       }
-      const timeInput = document.getElementById('appTime');
-      if (timeInput) {
-        timeInput.value = defaultTime || '09:00';
+
+      let defaultHour = '09';
+      let defaultMinute = '00';
+      if (defaultTime && defaultTime.includes(':')) {
+        const parts = defaultTime.split(':');
+        defaultHour = (parts[0] || '09').padStart(2, '0');
+        const m = parseInt(parts[1] || '0', 10);
+        const snappedM = Math.min(50, Math.floor(m / 10) * 10);
+        defaultMinute = String(snappedM).padStart(2, '0');
       }
+
+      populateHourSelect(defaultHour);
+
+      const minSelect = document.getElementById('appMinuteSelect');
+      if (minSelect) {
+        minSelect.value = defaultMinute;
+      }
+
+      onAppointmentTimeOrProcChange();
       document.getElementById('appointmentModal').classList.remove('hidden');
     }
 
@@ -2033,25 +2335,198 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const contactWaId = document.getElementById('appPatientPhone').value.trim();
       const procedure = document.getElementById('appProcedure').value.trim();
       const dateVal = document.getElementById('appDate').value;
-      const timeVal = document.getElementById('appTime').value || '09:00';
+      const hourVal = document.getElementById('appHourSelect')?.value || '09';
+      const minVal = document.getElementById('appMinuteSelect')?.value || '00';
       const status = document.getElementById('appStatus').value;
       const notes = document.getElementById('appNotes').value.trim();
 
       if (!patientName || !contactWaId || !dateVal) return;
 
-      const scheduledAt = dateVal + ' ' + timeVal;
-      closeAppointmentModal();
+      const duration = getProcedureDuration(procedure);
+      const scheduledAt = dateVal + ' ' + hourVal + ':' + minVal;
+
+      const saveBtn = document.getElementById('btnSaveAppointmentModal');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Salvando...';
+      }
 
       try {
-        await fetch('/api/appointments', {
+        const res = await fetch('/api/appointments', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ patientName, contactWaId, procedure, scheduledAt, status, notes })
+          body: JSON.stringify({ patientName, contactWaId, procedure, scheduledAt, status, notes, duration })
         });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || "Erro ao salvar agendamento na grade");
+          return;
+        }
+        closeAppointmentModal();
         await loadAppointments();
         showToast("Agendamento salvo com sucesso!", "emerald");
       } catch (err) {
-        alert("Erro ao salvar agendamento");
+        alert("Erro de comunicação ao salvar agendamento.");
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = 'Salvar Agendamento';
+        }
+      }
+    }
+
+    // CONTROLE DO MODAL DE DETALHES (VER MAIS / EDITAR)
+    let activeDetailAppointmentId = null;
+
+    function openAppointmentDetailsModal(id) {
+      const app = appointments.find(a => a.id === id);
+      if (!app) return;
+
+      activeDetailAppointmentId = id;
+      document.getElementById('detAppId').value = id;
+      document.getElementById('detPatientName').innerText = app.patient_name || '-';
+      document.getElementById('detPatientPhone').innerText = app.contact_wa_id || '-';
+      document.getElementById('detProcedure').innerText = app.procedure || 'Avaliação Inicial';
+
+      const dur = app.duration || getProcedureDuration(app.procedure);
+      document.getElementById('detDuration').innerText = dur ? dur + ' estimada' : 'Tempo padrão';
+
+      document.getElementById('detScheduledAt').innerText = formatScheduleDateTime(app.scheduled_at);
+
+      const confirmBadge = document.getElementById('detConfirmationBadge');
+      if (confirmBadge) {
+        if (app.status === 'confirmado') {
+          confirmBadge.innerHTML = '<span class="text-emerald-600 dark:text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Confirmado ' + (app.confirmed_by === 'ai' ? 'pela IA' : '') + '</span>';
+        } else {
+          confirmBadge.innerHTML = '';
+        }
+      }
+
+      const detStatus = document.getElementById('detStatus');
+      if (detStatus) {
+        detStatus.value = (app.status === 'pre_agendado') ? 'agendado' : (app.status || 'agendado');
+      }
+
+      const detNotes = document.getElementById('detNotes');
+      if (detNotes) {
+        detNotes.value = app.notes || '';
+      }
+
+      document.getElementById('appointmentDetailsModal').classList.remove('hidden');
+    }
+
+    function closeAppointmentDetailsModal() {
+      document.getElementById('appointmentDetailsModal').classList.add('hidden');
+      activeDetailAppointmentId = null;
+    }
+
+    function handleDetailOpenChat() {
+      const app = appointments.find(a => a.id === activeDetailAppointmentId);
+      if (!app || !app.contact_wa_id) return;
+      closeAppointmentDetailsModal();
+      goToChatWithPatient(app.contact_wa_id);
+    }
+
+    async function handleSaveAppointmentDetails() {
+      if (!activeDetailAppointmentId) return;
+      const newStatus = document.getElementById('detStatus').value;
+      const newNotes = document.getElementById('detNotes').value.trim();
+
+      const saveBtn = document.getElementById('btnSaveAppointmentDetails');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Salvando...';
+      }
+
+      try {
+        const res = await fetch('/api/appointments', {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: activeDetailAppointmentId, status: newStatus, notes: newNotes })
+        });
+        if (!res.ok) throw new Error("Falha ao salvar");
+
+        const target = appointments.find(a => a.id === activeDetailAppointmentId);
+        if (target) {
+          target.status = newStatus;
+          target.notes = newNotes;
+          if (newStatus === 'confirmado' && !target.confirmed_at) {
+            target.confirmed_by = 'manual';
+            target.confirmed_at = new Date().toISOString();
+          }
+        }
+
+        updateAppointmentMetrics();
+        renderAppointmentsTable();
+        renderCalendar();
+        renderDailySchedule();
+        closeAppointmentDetailsModal();
+        showToast("Alterações salvas com sucesso!", "emerald");
+      } catch (err) {
+        alert("Erro ao salvar alterações da consulta.");
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = 'Salvar Alterações';
+        }
+      }
+    }
+
+    async function handleDeleteDetailAppointment() {
+      if (!activeDetailAppointmentId) return;
+      if (!confirm("Tem certeza que deseja excluir esta consulta da agenda?")) return;
+      try {
+        await fetch('/api/appointments?id=' + activeDetailAppointmentId, { method: 'DELETE' });
+        appointments = appointments.filter(a => a.id !== activeDetailAppointmentId);
+        updateAppointmentMetrics();
+        renderAppointmentsTable();
+        renderCalendar();
+        renderDailySchedule();
+        closeAppointmentDetailsModal();
+        showToast("Consulta excluída com sucesso!", "amber");
+      } catch (err) {
+        alert("Erro ao excluir consulta.");
+      }
+    }
+
+    // VERIFICAÇÃO DE TREINAMENTO CRUCIAL & BLOQUEIO
+    function isCrucialTrainingComplete() {
+      if (!currentConfig || !currentConfig.clinic_name || !currentConfig.clinic_name.trim()) {
+        return false;
+      }
+      const hasInitConsult = !!(currentConfig.initial_consultation && currentConfig.initial_consultation.duration && currentConfig.initial_consultation.duration.trim());
+      const hasActiveProc = Array.isArray(currentConfig.procedure_items) && currentConfig.procedure_items.some(p => p.checked !== false && p.name && p.name.trim() && p.duration && p.duration.trim());
+      return hasInitConsult || hasActiveProc;
+    }
+
+    function updateCrucialTrainingLockUI() {
+      const complete = isCrucialTrainingComplete();
+
+      // Banner do Chat
+      const chatBanner = document.getElementById('chatCrucialLockBanner');
+      if (chatBanner) {
+        if (complete) chatBanner.classList.add('hidden');
+        else chatBanner.classList.remove('hidden');
+      }
+
+      // Banner da Agenda
+      const agendaBanner = document.getElementById('agendaCrucialLockBanner');
+      if (agendaBanner) {
+        if (complete) agendaBanner.classList.add('hidden');
+        else agendaBanner.classList.remove('hidden');
+      }
+
+      // Botão da Agenda
+      const newAppBtn = document.getElementById('btnNewAppointmentAgenda');
+      if (newAppBtn) {
+        newAppBtn.title = complete ? 'Criar agendamento' : 'Complete o treinamento para agendar';
+      }
+
+      // Botão no card do paciente ativo
+      const schedPatientBtn = document.getElementById('btnScheduleThisPatient');
+      if (schedPatientBtn && activePhone) {
+        schedPatientBtn.disabled = !complete;
+        schedPatientBtn.title = complete ? 'Agendar consulta deste paciente' : 'Complete o treinamento para agendar';
       }
     }
 
@@ -2194,6 +2669,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
         // Renderiza listas verticais detalhadas de procedimentos
         renderProceduresLists(currentConfig.procedure_items);
+        updateCrucialTrainingLockUI();
 
       } catch (err) {
         console.error("Erro ao carregar configurações da clínica:", err);
@@ -2287,6 +2763,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         if (data.success) {
           currentConfig = configPayload;
           document.getElementById('topClinicNameBadge').innerText = configPayload.clinic_name;
+          updateCrucialTrainingLockUI();
           showToast("Configurações salvas e IA treinada com sucesso!", "purple");
         } else {
           alert("Erro ao salvar: " + (data.error || "Tente novamente"));
