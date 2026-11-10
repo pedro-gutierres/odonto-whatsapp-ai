@@ -450,7 +450,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
             <div class="flex-1 space-y-1">
               <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 Como a IA utiliza estas informações
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">Preenchimento Opcional</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">Preenchimento Obrigatório</span>
               </h3>
               <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 A Secretária IA utiliza <strong>todas as informações salvas nesta página</strong> para conduzir o atendimento no WhatsApp com precisão. <strong>Não é obrigatório preencher todos os campos</strong> para ela funcionar.
