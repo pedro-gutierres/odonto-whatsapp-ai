@@ -11,7 +11,7 @@ export async function getTenantByPhoneNumberId(db: D1Database, phoneNumberId: st
 }
 
 // Garante que a tabela de controle de intervenção humana (Pausar IA) existe se necessário
-export async function ensureConversationStateTable(db: D1Database): Promise<void> {
+export async function ensureConversationStatesTable(db: D1Database): Promise<void> {
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS conversation_states (
@@ -20,10 +20,11 @@ export async function ensureConversationStateTable(db: D1Database): Promise<void
         ai_paused INTEGER NOT NULL DEFAULT 0,
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
         PRIMARY KEY (tenant_id, contact_wa_id)
-      );`
+      );`,
     )
     .run();
 }
+export const ensureConversationStateTable = ensureConversationStatesTable;
 
 export async function isAiPaused(db: D1Database, tenantId: string, contact: string): Promise<boolean> {
   await ensureConversationStatesTable(db);
