@@ -1060,6 +1060,10 @@ export const INBOX_HTML = `<!DOCTYPE html>
         }
       } catch (err) {
         console.error("Erro ao carregar conversas:", err);
+        const container = document.getElementById('conversationList');
+        if (container && conversations.length === 0) {
+          container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">Erro ao sincronizar pacientes. Tentando reconectar...</div>';
+        }
       }
     }
 
@@ -1146,6 +1150,10 @@ export const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('btnScheduleThisPatient').disabled = false;
       document.getElementById('btnSimulateCurrent').disabled = false;
       document.getElementById('btnClearChat').disabled = false;
+
+      // Atualiza imediatamente o status da IA para o contato selecionado
+      activeAiPaused = target ? target.ai_paused === 1 : false;
+      updateAiStatusUI();
 
       renderConversationList();
 
@@ -1955,7 +1963,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
       const diffDays = Math.round((bNowDate.dateObj.getTime() - bMsgDate.dateObj.getTime()) / 86400000);
 
-      if (diffDays === 0) {
+      if (diffDays <= 0) {
         return d.toLocaleTimeString('pt-BR', {
           timeZone: 'America/Sao_Paulo',
           hour: '2-digit',
@@ -1985,7 +1993,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
       const diffDays = Math.round((bNowDate.dateObj.getTime() - bMsgDate.dateObj.getTime()) / 86400000);
 
-      if (diffDays === 0) {
+      if (diffDays <= 0) {
         return 'Hoje';
       } else if (diffDays === 1) {
         return 'Ontem';

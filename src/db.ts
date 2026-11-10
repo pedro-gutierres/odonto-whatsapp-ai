@@ -127,6 +127,7 @@ export async function markAnswered(db: D1Database, waMessageId: string): Promise
 
 // Lista todas as conversas do tenant para a coluna da esquerda da recepcionista
 export async function listConversations(db: D1Database, tenantId: string): Promise<ConversationSummary[]> {
+  await ensureConversationStatesTable(db);
   const { results } = await db
     .prepare(
       `SELECT 
@@ -173,6 +174,7 @@ export async function getSyncState(
   tenantId: string,
   activeContact: string | null = null,
 ): Promise<SyncState> {
+  await ensureConversationStatesTable(db);
   if (activeContact) {
     const row = await db
       .prepare(
@@ -259,6 +261,7 @@ export interface AppointmentRecord {
 }
 
 export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
+  await ensureConversationStatesTable(db);
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS users (

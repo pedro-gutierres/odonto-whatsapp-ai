@@ -321,57 +321,93 @@ export default {
     }
 
     if (url.pathname === "/api/conversations") {
-      const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-      const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
-      const conversations = await listConversations(env.DB, tenantId);
-      return new Response(JSON.stringify({ conversations, server_time: new Date().toISOString() }), {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
+      try {
+        const session = await getSessionFromRequest(request, env.AUTH_SECRET);
+        const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
+        const conversations = await listConversations(env.DB, tenantId);
+        return new Response(JSON.stringify({ conversations, server_time: new Date().toISOString() }), {
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
+      } catch (err) {
+        console.error("Erro em /api/conversations:", String(err));
+        return new Response(JSON.stringify({ error: String(err), conversations: [], server_time: new Date().toISOString() }), {
+          status: 500,
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
+      }
     }
 
     if (url.pathname === "/api/messages") {
-      const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-      const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
-      const phone = url.searchParams.get("phone");
-      if (!phone) {
-        return new Response(JSON.stringify({ error: "phone obrigatório" }), { status: 400 });
+      try {
+        const session = await getSessionFromRequest(request, env.AUTH_SECRET);
+        const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
+        const phone = url.searchParams.get("phone");
+        if (!phone) {
+          return new Response(JSON.stringify({ error: "phone obrigatório" }), { status: 400 });
+        }
+        const messages = await getConversationMessages(env.DB, tenantId, phone);
+        const aiPaused = await isAiPaused(env.DB, tenantId, phone);
+        return new Response(JSON.stringify({ messages, ai_paused: aiPaused, server_time: new Date().toISOString() }), {
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
+      } catch (err) {
+        console.error("Erro em /api/messages:", String(err));
+        return new Response(JSON.stringify({ error: String(err), messages: [], ai_paused: false, server_time: new Date().toISOString() }), {
+          status: 500,
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
       }
-      const messages = await getConversationMessages(env.DB, tenantId, phone);
-      const aiPaused = await isAiPaused(env.DB, tenantId, phone);
-      return new Response(JSON.stringify({ messages, ai_paused: aiPaused, server_time: new Date().toISOString() }), {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
     }
 
     // Checagem ultra-leve de 1 row read para polling (economiza 99% das cotas do D1)
     if (url.pathname === "/api/sync-check") {
-      const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-      const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
-      const activePhone = url.searchParams.get("active_phone") || null;
-      const lastId = parseInt(url.searchParams.get("last_id") || "0", 10);
-      const lastActiveMsgId = parseInt(url.searchParams.get("active_msg_id") || "0", 10);
+      try {
+        const session = await getSessionFromRequest(request, env.AUTH_SECRET);
+        const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
+        const activePhone = url.searchParams.get("active_phone") || null;
+        const lastId = parseInt(url.searchParams.get("last_id") || "0", 10);
+        const lastActiveMsgId = parseInt(url.searchParams.get("active_msg_id") || "0", 10);
 
-      const state = await getSyncState(env.DB, tenantId, activePhone);
+        const state = await getSyncState(env.DB, tenantId, activePhone);
 
-      const hasNewGlobal = state.latestId > lastId;
-      const hasNewActive = activePhone ? state.activeLatestId > lastActiveMsgId : false;
+        const hasNewGlobal = state.latestId > lastId;
+        const hasNewActive = activePhone ? state.activeLatestId > lastActiveMsgId : false;
 
-      return new Response(
-        JSON.stringify({
-          has_new_global: hasNewGlobal,
-          has_new_active: hasNewActive,
-          latest_id: state.latestId,
-          active_latest_id: state.activeLatestId,
-          active_ai_paused: state.activeAiPaused,
-          server_time: new Date().toISOString(),
-        }),
-        {
-          headers: {
-            "content-type": "application/json; charset=utf-8",
-            "cache-control": "no-cache",
+        return new Response(
+          JSON.stringify({
+            has_new_global: hasNewGlobal,
+            has_new_active: hasNewActive,
+            latest_id: state.latestId,
+            active_latest_id: state.activeLatestId,
+            active_ai_paused: state.activeAiPaused,
+            server_time: new Date().toISOString(),
+          }),
+          {
+            headers: {
+              "content-type": "application/json; charset=utf-8",
+              "cache-control": "no-cache",
+            },
           },
-        },
-      );
+        );
+      } catch (err) {
+        console.error("Erro em /api/sync-check:", String(err));
+        return new Response(
+          JSON.stringify({
+            has_new_global: false,
+            has_new_active: false,
+            latest_id: 0,
+            active_latest_id: 0,
+            active_ai_paused: false,
+            server_time: new Date().toISOString(),
+          }),
+          {
+            headers: {
+              "content-type": "application/json; charset=utf-8",
+              "cache-control": "no-cache",
+            },
+          },
+        );
+      }
     }
 
     // Inicialização única de tabelas e índices
