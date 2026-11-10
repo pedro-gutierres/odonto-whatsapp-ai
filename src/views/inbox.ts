@@ -981,15 +981,32 @@ export const INBOX_HTML = `<!DOCTYPE html>
           </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Data (Dia)</label>
-            <input type="date" id="appDate" required
-              class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069] cursor-pointer">
+          <!-- CARD DE DATA -->
+          <div onclick="const el = document.getElementById('appDate'); if (el.showPicker) { el.showPicker(); } else { el.focus(); }" 
+            class="group p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#1e293b] hover:border-[#008069] dark:hover:border-[#008069] hover:bg-emerald-50/20 dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-between gap-1 shadow-sm select-none">
+            <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#008069] transition">
+              <span class="flex items-center gap-1.5">
+                <i class="fa-regular fa-calendar-days text-[#008069]"></i>
+                <span>Data</span>
+              </span>
+              <span class="text-[9px] text-slate-400 font-normal group-hover:text-emerald-600 transition">dd/mm/aaaa</span>
+            </div>
+            <input type="date" id="appDate" required onclick="event.stopPropagation(); if (this.showPicker) this.showPicker();"
+              class="w-full bg-transparent text-slate-900 dark:text-white font-bold text-xs focus:outline-none cursor-pointer">
           </div>
-          <div>
-            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Horário</label>
-            <input type="time" id="appTime" required value="09:00"
-              class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
+
+          <!-- CARD DE HORÁRIO -->
+          <div onclick="const el = document.getElementById('appTime'); if (el.showPicker) { el.showPicker(); } else { el.focus(); }" 
+            class="group p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#1e293b] hover:border-[#008069] dark:hover:border-[#008069] hover:bg-emerald-50/20 dark:hover:bg-slate-800 transition cursor-pointer flex flex-col justify-between gap-1 shadow-sm select-none">
+            <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#008069] transition">
+              <span class="flex items-center gap-1.5">
+                <i class="fa-regular fa-clock text-[#008069]"></i>
+                <span>Horário</span>
+              </span>
+              <span class="text-[9px] text-slate-400 font-normal group-hover:text-emerald-600 transition">24h</span>
+            </div>
+            <input type="time" id="appTime" required value="09:00" onclick="event.stopPropagation(); if (this.showPicker) this.showPicker();"
+              class="w-full bg-transparent text-slate-900 dark:text-white font-bold text-xs focus:outline-none cursor-pointer">
           </div>
         </div>
         <div>
@@ -1003,8 +1020,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
         <div>
           <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Observações Clínicas / Preferências</label>
-          <input type="text" id="appNotes" placeholder="Ex: Paciente tem preferência de horário matutino"
-            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
+          <textarea id="appNotes" rows="4" placeholder="Ex: Paciente tem preferência por horário matutino, histórico de sensibilidade, regras específicas..."
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069] leading-relaxed resize-none"></textarea>
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -1640,10 +1657,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
         });
         optionsHtml += '</optgroup>';
       }
-
-      optionsHtml += '<optgroup label="Outro">';
-      optionsHtml += '<option value="Outro Procedimento">Outro Procedimento</option>';
-      optionsHtml += '</optgroup>';
 
       select.innerHTML = optionsHtml;
 
