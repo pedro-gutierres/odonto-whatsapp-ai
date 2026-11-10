@@ -2,7 +2,12 @@
 // Especializado em Odontologia & Estética Avançada no Brasil.
 import type { BotConfig } from "./types";
 
-export function buildSystemPrompt(cfg: BotConfig): string {
+export interface PromptContext {
+  nowBrasiliaStr?: string;
+  existingAppointments?: { scheduled_at: string; procedure: string; duration?: string }[];
+}
+
+export function buildSystemPrompt(cfg: BotConfig, context?: PromptContext): string {
   const clinicName = cfg.clinic_name || "nossa clínica";
   const doctorInfo = cfg.doctor_name
     ? ` sob responsabilidade de ${cfg.doctor_name}${cfg.doctor_cro ? ` (${cfg.doctor_cro})` : ""}`
@@ -161,6 +166,7 @@ export function buildSystemPrompt(cfg: BotConfig): string {
       for (const p of ativos) {
         let det = `- ${p.name}`;
         if (p.duration) det += ` (Duração aproximada: ${p.duration})`;
+        if (p.price) det += ` [Preço: ${p.price}]`;
         if (p.note) det += ` [Observações: ${p.note}]`;
         linhas.push(det);
       }
@@ -169,12 +175,52 @@ export function buildSystemPrompt(cfg: BotConfig): string {
     linhas.push(`- Procedimentos oferecidos: ${cfg.procedures.join(", ")}`);
   }
 
+  // Avaliação Inicial / Consulta focada
+  if (cfg.initial_consultation) {
+    const ic = cfg.initial_consultation;
+    linhas.push("", "AVALIAÇÃO INICIAL / CONSULTA:");
+    if (ic.duration) linhas.push(`- Tempo de Duração: ${ic.duration}`);
+    if (ic.price && ic.price.trim()) {
+      linhas.push(`- Valor: ${ic.price.trim()}`);
+    } else {
+      linhas.push("- Valor: Gratuita / Sem custo (Cortesia da clínica)");
+    }
+    if (ic.details && ic.details.trim()) {
+      linhas.push(`- Como funciona a Avaliação Inicial: ${ic.details.trim()}`);
+    }
+  }
+
   if (cfg.custom_procedures && cfg.custom_procedures.length > 0 && (!cfg.procedure_items || cfg.procedure_items.length === 0)) {
     linhas.push("- Procedimentos adicionais personalizados:");
     for (const p of cfg.custom_procedures) {
-      linhas.push(`  * ${p.name} ${p.duration ? `(Duração: ${p.duration})` : ""} ${p.note ? `- Obs: ${p.note}` : ""}`);
+      linhas.push(`  * ${p.name} ${p.duration ? `(Duração: ${p.duration})` : ""} ${p.price ? `[Preço: ${p.price}]` : ""} ${p.note ? `- Obs: ${p.note}` : ""}`);
     }
   }
+
+  // Sincronização de Grade e Agendamento Automático pela IA
+  linhas.push(
+    "",
+    "SISTEMA DE AGENDAMENTO AUTOMÁTICO & CONTROLE DE HORÁRIOS"
+  );
+  if (context?.nowBrasiliaStr) {
+    linhas.push(`- Data e Hora Atual de Brasília: ${context.nowBrasiliaStr}`);
+  }
+  if (context?.existingAppointments && context.existingAppointments.length > 0) {
+    linhas.push("- HORÁRIOS JÁ OCUPADOS NA GRADE (NÃO AGENDE NESTES HORÁRIOS PARA EVITAR CONFLITOS):");
+    for (const a of context.existingAppointments) {
+      linhas.push(`  * ${a.scheduled_at} (${a.procedure || "Consulta"} - Duração: ${a.duration || "30 min"})`);
+    }
+  } else {
+    linhas.push("- Grade atual livre para novos agendamentos nos próximos dias.");
+  }
+  linhas.push(
+    "- REGRA DE CONFLITO: Sempre consulte os horários ocupados acima antes de sugerir ou aceitar um horário. Cada procedimento ocupa o horário de início mais sua duração.",
+    "- Se o horário solicitado pelo paciente já estiver ocupado ou fora do expediente, avise com gentileza que aquele horário está preenchido e ofereça as alternativas livres mais próximas.",
+    "- Quando você e o paciente alinharem e confirmarem dia, horário e procedimento, confirme amigavelmente no texto e inclua OBRIGATORIAMENTE no final da mensagem a tag oculta de agendamento:",
+    '  <<<AGENDAR: {"patient_name": "Nome", "procedure": "Procedimento", "scheduled_at": "YYYY-MM-DD HH:MM", "duration": "30 min", "notes": "Detalhes"}>>>',
+    "- Se o paciente estiver confirmando uma consulta previamente agendada para amanhã, confirme e inclua no final:",
+    '  <<<CONFIRMAR: {"patient_name": "Nome"}>>>'
+  );
 
   if (cfg.extra) {
     linhas.push("", "INFORMAÇÕES E REGRAS EXTRAS:", cfg.extra);

@@ -256,8 +256,11 @@ export interface AppointmentRecord {
   patient_name: string;
   procedure: string | null;
   scheduled_at: string;
-  status: "pre_agendado" | "confirmado" | "concluido" | "cancelado";
+  status: "agendado" | "pre_agendado" | "confirmado" | "concluido" | "cancelado";
+  duration?: string;
   notes: string | null;
+  confirmed_at?: string;
+  confirmed_by?: "human" | "ai" | string;
   created_at: string;
 }
 
@@ -286,12 +289,26 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
         patient_name  TEXT NOT NULL,
         procedure     TEXT,
         scheduled_at  TEXT NOT NULL,
-        status        TEXT NOT NULL DEFAULT 'pre_agendado',
+        status        TEXT NOT NULL DEFAULT 'agendado',
         notes         TEXT,
+        duration      TEXT DEFAULT '30 min',
+        confirmed_at  TEXT,
+        confirmed_by  TEXT,
         created_at    TEXT NOT NULL DEFAULT (datetime('now'))
       );`
     )
     .run();
+
+  // Adiciona colunas se a tabela foi criada antes sem elas
+  try {
+    await db.prepare("ALTER TABLE appointments ADD COLUMN duration TEXT DEFAULT '30 min';").run();
+  } catch {}
+  try {
+    await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_at TEXT;").run();
+  } catch {}
+  try {
+    await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_by TEXT;").run();
+  } catch {}
 
   // Verifica se o usuário padrão de Pedro existe
   const user = await db.prepare("SELECT id FROM users LIMIT 1").first();
@@ -314,8 +331,8 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
       .prepare(
         `INSERT OR IGNORE INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
          VALUES 
-         ('lab', '5511988881234', 'Mariana Silveira', 'Botox / Toxina Botulínica', 'Sábado às 10:00', 'confirmado', 'Agendado automaticamente pela Secretária IA Claude 24h'),
-         ('lab', '5521973401655', 'Pedro (Paciente Teste)', 'Avaliação Geral & Clareamento', 'Quarta-feira às 15:30', 'pre_agendado', 'Paciente aguardando confirmação de encaixe');`
+         ('lab', '5511988881234', 'Mariana Silveira', 'Botox / Toxina Botulínica', '2026-11-14 10:00', 'confirmado', 'Agendado automaticamente pela Secretária IA Claude 24h'),
+         ('lab', '5521973401655', 'Pedro (Paciente Teste)', 'Avaliação Geral & Clareamento', '2026-11-11 15:30', 'agendado', 'Paciente aguardando confirmação de véspera');`
       )
       .run();
   }
@@ -326,15 +343,16 @@ export async function getUserByEmail(db: D1Database, email: string): Promise<Use
 }
 
 export async function listAppointments(db: D1Database, tenantId: string): Promise<AppointmentRecord[]> {
+  await ensureAuthAndAppointments(db);
   const { results } = await db
     .prepare(
       `SELECT * FROM appointments 
        WHERE tenant_id = ?1 
-       ORDER BY id DESC LIMIT 100`
+       ORDER BY scheduled_at ASC, id DESC LIMIT 200`
     )
     .bind(tenantId)
     .all<AppointmentRecord>();
-  return results;
+  return results || [];
 }
 
 export async function createAppointment(
@@ -344,27 +362,91 @@ export async function createAppointment(
   patientName: string,
   procedure: string,
   scheduledAt: string,
-  status: string = "pre_agendado",
-  notes: string = ""
-): Promise<void> {
-  await db
+  status: string = "agendado",
+  notes: string = "",
+  duration: string = "30 min"
+): Promise<number> {
+  await ensureAuthAndAppointments(db);
+  const result = await db
     .prepare(
-      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes, duration)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`
     )
-    .bind(tenantId, contactWaId, patientName, procedure, scheduledAt, status, notes)
+    .bind(tenantId, contactWaId, patientName, procedure, scheduledAt, status, notes, duration)
     .run();
+  return result.meta.last_row_id ?? 0;
 }
 
 export async function updateAppointmentStatus(
   db: D1Database,
   tenantId: string,
   id: number,
-  status: string
+  status: string,
+  confirmedBy?: "human" | "ai"
 ): Promise<void> {
+  await ensureAuthAndAppointments(db);
+  if (status === "confirmado") {
+    await db
+      .prepare(
+        "UPDATE appointments SET status = ?1, confirmed_at = datetime('now'), confirmed_by = ?2 WHERE id = ?3 AND tenant_id = ?4"
+      )
+      .bind(status, confirmedBy || "human", id, tenantId)
+      .run();
+  } else {
+    await db
+      .prepare("UPDATE appointments SET status = ?1 WHERE id = ?2 AND tenant_id = ?3")
+      .bind(status, id, tenantId)
+      .run();
+  }
+}
+
+export async function confirmUpcomingAppointmentForContact(
+  db: D1Database,
+  tenantId: string,
+  contactWaId: string
+): Promise<boolean> {
+  await ensureAuthAndAppointments(db);
+  const row = await db
+    .prepare(
+      `SELECT id FROM appointments 
+       WHERE tenant_id = ?1 AND contact_wa_id = ?2 AND status IN ('agendado', 'pre_agendado')
+       ORDER BY scheduled_at ASC LIMIT 1`
+    )
+    .bind(tenantId, contactWaId)
+    .first<{ id: number }>();
+  if (row) {
+    await updateAppointmentStatus(db, tenantId, row.id, "confirmado", "ai");
+    return true;
+  }
+  return false;
+}
+
+export async function getUpcomingAppointments(
+  db: D1Database,
+  tenantId: string,
+  days: number = 14
+): Promise<AppointmentRecord[]> {
+  await ensureAuthAndAppointments(db);
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM appointments 
+       WHERE tenant_id = ?1 AND status NOT IN ('cancelado')
+       ORDER BY scheduled_at ASC LIMIT 100`
+    )
+    .bind(tenantId)
+    .all<AppointmentRecord>();
+  return results || [];
+}
+
+export async function deleteAppointment(
+  db: D1Database,
+  tenantId: string,
+  id: number
+): Promise<void> {
+  await ensureAuthAndAppointments(db);
   await db
-    .prepare("UPDATE appointments SET status = ?1 WHERE id = ?2 AND tenant_id = ?3")
-    .bind(status, id, tenantId)
+    .prepare("DELETE FROM appointments WHERE id = ?1 AND tenant_id = ?2")
+    .bind(id, tenantId)
     .run();
 }
 

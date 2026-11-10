@@ -24,8 +24,12 @@ import {
   listAppointments,
   createAppointment,
   updateAppointmentStatus,
+  getUpcomingAppointments,
+  confirmUpcomingAppointmentForContact,
+  deleteAppointment,
   getTenantConfig,
   updateTenantConfig,
+  type AppointmentRecord,
 } from "./db";
 import {
   getSessionFromRequest,
@@ -229,13 +233,42 @@ export default {
             return new Response(JSON.stringify({ error: "id e status obrigatórios" }), { status: 400 });
           }
           await ensureAuthAndAppointments(env.DB);
-          await updateAppointmentStatus(env.DB, tenantId, body.id, body.status);
+          await updateAppointmentStatus(env.DB, tenantId, body.id, body.status, "human");
           return new Response(JSON.stringify({ success: true }), {
             headers: { "content-type": "application/json; charset=utf-8" },
           });
         } catch (err) {
           return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
         }
+      }
+
+      if (request.method === "DELETE") {
+        try {
+          const body = (await request.json().catch(() => ({}))) as { id?: number };
+          const id = body.id || parseInt(url.searchParams.get("id") || "0", 10);
+          if (!id) {
+            return new Response(JSON.stringify({ error: "id obrigatório" }), { status: 400 });
+          }
+          await ensureAuthAndAppointments(env.DB);
+          await deleteAppointment(env.DB, tenantId, id);
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { "content-type": "application/json; charset=utf-8" },
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+        }
+      }
+    }
+
+    // DISPARO MANUAL OU TESTE DAS CONFIRMAÇÕES DE VÉSPERA (20H)
+    if (url.pathname === "/api/appointments/run-confirmations" && request.method === "POST") {
+      try {
+        const result = await runDayBeforeConfirmations(env);
+        return new Response(JSON.stringify({ success: true, ...result }), {
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
       }
     }
 
@@ -600,7 +633,64 @@ export default {
       }
     }
   },
+
+  async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
+    console.log("[CRON] Executando rotina de confirmações automáticas de véspera às 20h...");
+    await runDayBeforeConfirmations(env);
+  },
 } satisfies ExportedHandler<Env, InboundJob>;
+
+export async function runDayBeforeConfirmations(env: Env): Promise<{ total: number; sent: number }> {
+  await ensureAuthAndAppointments(env.DB);
+  const tenantId = "lab";
+  // Data de amanhã no fuso de Brasília (YYYY-MM-DD)
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tomorrowDateStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(tomorrow);
+
+  // Busca agendamentos de amanhã que ainda NÃO foram confirmados
+  // Se o atendente já confirmou manualmente antes das 20h, o status já é 'confirmado' e NÃO reenviamos!
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM appointments 
+     WHERE tenant_id = ?1 
+       AND scheduled_at LIKE ?2 
+       AND status IN ('agendado', 'pre_agendado')`
+  )
+    .bind(tenantId, `${tomorrowDateStr}%`)
+    .all<AppointmentRecord>();
+
+  let sent = 0;
+  const list = results || [];
+  const token = env.WA_LAB_TOKEN;
+
+  for (const app of list) {
+    const contactPhone = app.contact_wa_id;
+    const patientName = app.patient_name || "Paciente";
+    const proc = app.procedure || "sua consulta";
+    const timePart = app.scheduled_at.includes(" ") ? app.scheduled_at.split(" ")[1] : app.scheduled_at;
+
+    const msgText = `Olá, ${patientName}! 😊\nPassando para confirmar seu horário de *${proc}* amanhã (${tomorrowDateStr}) às *${timePart}*.\n\nVocê confirma sua presença? Por favor, responda com *SIM* para confirmar.`;
+
+    if (token && contactPhone) {
+      try {
+        const sentId = await sendText(env, "1459702903890342", token, contactPhone, msgText);
+        await saveOutbound(env.DB, tenantId, contactPhone, msgText, sentId);
+        sent++;
+      } catch (e) {
+        console.warn("Aviso ao enviar confirmação de véspera no WhatsApp:", e);
+        await saveOutbound(env.DB, tenantId, contactPhone, msgText, null);
+        sent++;
+      }
+    }
+  }
+
+  return { total: list.length, sent };
+}
 
 async function processJob(job: InboundJob, env: Env): Promise<void> {
   const tenant = await getTenantByPhoneNumberId(env.DB, job.phoneNumberId);
@@ -631,7 +721,60 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   } else {
     const cfg = JSON.parse(tenant.bot_config) as BotConfig;
     const history = await loadHistory(env.DB, tenant.id, job.from);
-    reply = (await askClaude(env, buildSystemPrompt(cfg), history)) ?? MSG_FALHA_IA;
+
+    // Obtém data/hora atual no fuso oficial de Brasília
+    const nowBrasiliaStr = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      dateStyle: "full",
+      timeStyle: "short",
+    }).format(new Date());
+
+    // Obtém agendamentos futuros para a IA respeitar a grade e evitar qualquer conflito
+    const upcoming = await getUpcomingAppointments(env.DB, tenant.id);
+    const existingAppointments = upcoming.map((a) => ({
+      scheduled_at: a.scheduled_at,
+      procedure: a.procedure || "Consulta",
+      duration: a.duration || "30 min",
+    }));
+
+    const systemPrompt = buildSystemPrompt(cfg, {
+      nowBrasiliaStr,
+      existingAppointments,
+    });
+
+    reply = (await askClaude(env, systemPrompt, history)) ?? MSG_FALHA_IA;
+  }
+
+  // 1. Processa comando de agendamento automático feito pela IA durante a conversa
+  const agendarRegex = /<<<AGENDAR:\s*({[\s\S]*?})\s*>>>/i;
+  const matchAgendar = reply.match(agendarRegex);
+  if (matchAgendar) {
+    try {
+      const data = JSON.parse(matchAgendar[1]);
+      const patientName = data.patient_name || job.contactName || "Paciente";
+      const procedure = data.procedure || "Consulta / Avaliação";
+      const scheduledAt = data.scheduled_at || "A combinar";
+      const duration = data.duration || "30 min";
+      const notes = data.notes || "Agendado via IA WhatsApp";
+      await createAppointment(env.DB, tenant.id, job.from, patientName, procedure, scheduledAt, "agendado", notes, duration);
+      console.log(`[AGENDAMENTO_IA] Agendamento criado com sucesso para ${patientName} em ${scheduledAt}`);
+    } catch (e) {
+      console.error("Erro ao processar tag <<<AGENDAR>>>:", e);
+    }
+    reply = reply.replace(agendarRegex, "").trim();
+  }
+
+  // 2. Processa confirmação de consulta pelo paciente via IA
+  const confirmarRegex = /<<<CONFIRMAR:\s*({[\s\S]*?})\s*>>>/i;
+  const matchConfirmar = reply.match(confirmarRegex);
+  if (matchConfirmar) {
+    try {
+      await confirmUpcomingAppointmentForContact(env.DB, tenant.id, job.from);
+      console.log(`[CONFIRMACAO_IA] Consulta confirmada com sucesso para contato ${job.from}`);
+    } catch (e) {
+      console.error("Erro ao processar tag <<<CONFIRMAR>>>:", e);
+    }
+    reply = reply.replace(confirmarRegex, "").trim();
   }
 
   reply = reply.slice(0, 4000);

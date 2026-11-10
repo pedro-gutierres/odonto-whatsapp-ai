@@ -42,6 +42,7 @@ export interface ProcedureItem {
   name: string;
   checked: boolean;
   duration?: string;
+  price?: string;
   note?: string;
   category?: string;
 }
@@ -50,7 +51,14 @@ export interface CustomProcedure {
   name: string;
   category?: string;
   duration?: string;
+  price?: string;
   note?: string;
+}
+
+export interface InitialConsultationConfig {
+  duration?: string;
+  price?: string;
+  details?: string;
 }
 
 // O que cada clínica configura (fica em tenants.bot_config)
@@ -63,6 +71,7 @@ export interface BotConfig {
   procedures?: string[];
   procedure_items?: ProcedureItem[];
   custom_procedures?: CustomProcedure[];
+  initial_consultation?: InitialConsultationConfig;
   price_strategy?: "avaliacao" | "a_partir_de" | "tabela_fixa" | string;
   prices_note?: string;
   payment_methods?: string;

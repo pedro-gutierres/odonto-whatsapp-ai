@@ -98,16 +98,16 @@ export const INBOX_HTML = `<!DOCTYPE html>
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
         </button>
 
-        <!-- Opção 2: Agenda & Pré-Agendamentos -->
-        <button onclick="selectNavigationTab('agenda', 'Agenda & Pré-Agendamentos', 'fa-regular fa-calendar-check', 'sky')" 
+        <!-- Opção 2: Agenda -->
+        <button onclick="selectNavigationTab('agenda', 'Agenda', 'fa-regular fa-calendar-check', 'sky')" 
           class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-sm group-hover:scale-105 transition-transform">
               <i class="fa-regular fa-calendar-check"></i>
             </div>
             <div>
-              <span class="text-xs font-bold text-slate-900 dark:text-white block">Agenda & Consultas</span>
-              <span class="text-[10px] text-slate-500 dark:text-slate-400">CRM de pré-agendamentos</span>
+              <span class="text-xs font-bold text-slate-900 dark:text-white block">Agenda</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400">Grade de consultas e confirmações</span>
             </div>
           </div>
           <span id="menuAppointmentsBadge" class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">0</span>
@@ -259,7 +259,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       <!-- INPUT DA RECEPCIONISTA (RESPOSTA MANUAL) -->
       <div id="inputBar" class="bg-white dark:bg-[#111827] border-t border-slate-200 dark:border-slate-800/80 p-3 shrink-0 flex flex-col gap-1 transition-colors">
         <form onsubmit="handleSendMessage(event)" class="flex items-center gap-2">
-          <input type="text" id="messageInput" disabled placeholder="Escreva sua mensagem..." 
+          <input type="text" id="messageInput" disabled placeholder="Escreva sua mensagem" 
             class="flex-1 px-4 py-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#008069] disabled:opacity-50 transition">
           <button type="submit" id="sendBtn" disabled 
             class="px-4 py-2.5 rounded-xl bg-[#008069] hover:bg-[#006a57] disabled:opacity-40 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm">
@@ -268,7 +268,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
           </button>
         </form>
         <p class="text-[10px] text-slate-400 dark:text-slate-500 px-1">
-          💡 Ao enviar uma mensagem manual, a IA é pausada para você assumir o controle e só voltará a responder se for reativada.
+          💡 Sempre que você enviar uma mensagem manual, a IA será pausada para que você assuma o controle e só responderá novamente caso você a reative.
         </p>
       </div>
 
@@ -340,18 +340,31 @@ export const INBOX_HTML = `<!DOCTYPE html>
   </main>
 
   <!-- ======================================================================= -->
-  <!-- VIEW 2: AGENDA & PRÉ-AGENDAMENTOS (CRM DE CONSULTAS)                    -->
+  <!-- VIEW 2: AGENDA (CALENDÁRIO INTERATIVO & GRADE DE CONSULTAS)             -->
   <!-- ======================================================================= -->
   <main id="viewAgenda" class="flex-1 overflow-y-auto custom-scroll p-4 lg:p-8 hidden bg-slate-50 dark:bg-[#0b0f17]">
     <div class="max-w-7xl mx-auto space-y-6">
       
-      <!-- TOPO DA AGENDA: RESUMO & NOVO AGENDAMENTO -->
+      <!-- TOPO DA AGENDA: TÍTULO, SUBTÍTULO & AÇÕES -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
-          <h2 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">Agenda de Pacientes & Triagem</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gerencie os pedidos de consulta captados automaticamente pela IA e confirmados pela equipe.</p>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse"></span>
+            <h2 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">Agenda</h2>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/60">
+              Grade & Horários
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Controle de consultas agendadas, disponibilidade por tempo de procedimento e confirmações automáticas às 20h.
+          </p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <button onclick="handleTriggerConfirmationsManually()" id="btnTriggerConfirmations" 
+            class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition" title="Disparar confirmações para as consultas de amanhã">
+            <i class="fa-solid fa-bell"></i>
+            <span>Disparar Confirmações (20h)</span>
+          </button>
           <button onclick="loadAppointments()" class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs transition" title="Atualizar">
             <i class="fa-solid fa-rotate-right" id="agendaRefreshIcon"></i>
           </button>
@@ -366,20 +379,20 @@ export const INBOX_HTML = `<!DOCTYPE html>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span class="text-xs font-bold uppercase tracking-wider">Total</span>
-            <i class="fa-solid fa-users text-slate-400 text-sm"></i>
+            <span class="text-xs font-bold uppercase tracking-wider">Total Cadastrados</span>
+            <i class="fa-solid fa-comments text-slate-400 text-sm"></i>
           </div>
           <div class="text-2xl font-black text-slate-900 dark:text-white" id="metricTotal">0</div>
-          <span class="text-[10px] text-slate-400">Pacientes cadastrados</span>
+          <span class="text-[10px] text-slate-400">Conversas no chat</span>
         </div>
 
         <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div class="flex items-center justify-between text-amber-500 mb-2">
-            <span class="text-xs font-bold uppercase tracking-wider">Pré-Agendados</span>
-            <i class="fa-solid fa-clock-rotate-left text-sm"></i>
+            <span class="text-xs font-bold uppercase tracking-wider">Agendados</span>
+            <i class="fa-solid fa-clock text-sm"></i>
           </div>
-          <div class="text-2xl font-black text-amber-600 dark:text-amber-400" id="metricPre">0</div>
-          <span class="text-[10px] text-slate-400">Pela IA (Aguardando)</span>
+          <div class="text-2xl font-black text-amber-600 dark:text-amber-400" id="metricAgendados">0</div>
+          <span class="text-[10px] text-slate-400">Consultas marcadas</span>
         </div>
 
         <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -388,34 +401,117 @@ export const INBOX_HTML = `<!DOCTYPE html>
             <i class="fa-solid fa-calendar-check text-sm"></i>
           </div>
           <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400" id="metricConfirmed">0</div>
-          <span class="text-[10px] text-slate-400">Na grade da clínica</span>
+          <span class="text-[10px] text-slate-400">Confirmados de véspera</span>
         </div>
 
         <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div class="flex items-center justify-between text-teal-500 mb-2">
-            <span class="text-xs font-bold uppercase tracking-wider">Estimado</span>
-            <i class="fa-solid fa-hand-holding-dollar text-sm"></i>
+          <div class="flex items-center justify-between text-purple-500 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Confirmação 20h</span>
+            <i class="fa-solid fa-robot text-sm"></i>
           </div>
-          <div class="text-2xl font-black text-teal-600 dark:text-teal-400" id="metricValue">R$ 0</div>
-          <span class="text-[10px] text-slate-400">Potencial de faturamento</span>
+          <div class="text-lg font-black text-purple-600 dark:text-purple-400 flex items-center gap-1.5" id="metric20hStatus">
+            <span class="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+            <span>Ativo 20:00</span>
+          </div>
+          <span class="text-[10px] text-slate-400">IA de véspera (Brasília)</span>
         </div>
       </div>
 
-      <!-- TABELA DE AGENDAMENTOS COM FILTROS -->
-      <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <!-- SEÇÃO CALENDÁRIO INTERATIVO & GRADE DIÁRIA (ORGANIZADO POR DIA, MÊS E ANO) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <!-- FILTROS -->
-        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div class="relative w-full sm:w-72">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-            <input type="text" id="appointmentSearchInput" oninput="filterAppointments()" placeholder="Filtrar por nome ou procedimento..."
-              class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#008069]">
+        <!-- CALENDÁRIO VISUAL MENSAL (LADO ESQUERDO / 7 COLUNAS) -->
+        <div class="lg:col-span-7 bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+          <!-- CABEÇALHO DO MÊS / ANO & NAVEGAÇÃO -->
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-sm font-bold">
+                <i class="fa-regular fa-calendar-days"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white" id="calendarMonthTitle">Carregando mês...</h3>
+                <p class="text-[10px] text-slate-400">Clique em qualquer data para abrir a grade horária</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button onclick="calNavigateMonth(-1)" class="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs transition" title="Mês anterior">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <button onclick="calGoToToday()" class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition">
+                Hoje
+              </button>
+              <button onclick="calNavigateMonth(1)" class="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs transition" title="Próximo mês">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- DIAS DA SEMANA -->
+          <div class="grid grid-cols-7 gap-1 text-center font-bold text-[11px] text-slate-400 dark:text-slate-500 py-1 uppercase tracking-wider">
+            <div>Dom</div>
+            <div>Seg</div>
+            <div>Ter</div>
+            <div>Qua</div>
+            <div>Qui</div>
+            <div>Sex</div>
+            <div>Sáb</div>
+          </div>
+
+          <!-- GRADE DE DIAS DO MÊS -->
+          <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 text-xs">
+            <!-- Células geradas via JS -->
+          </div>
+
+          <!-- LEGENDA DE STATUS -->
+          <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap gap-2">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Confirmado</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Agendado</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> Concluído</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 inline-block"></span> Hoje</span>
+          </div>
+        </div>
+
+        <!-- GRADE DO DIA SELECIONADO (LADO DIREITO / 5 COLUNAS) -->
+        <div class="lg:col-span-5 bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4 flex flex-col">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block" id="dailyScheduleSubtitle">Grade Horária do Dia</span>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white" id="dailyScheduleTitle">Selecione uma data</h3>
+            </div>
+            <button onclick="openAppointmentModalForSelectedDay()" 
+              class="px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 transition flex items-center gap-1">
+              <i class="fa-solid fa-plus text-[10px]"></i>
+              <span>Agendar</span>
+            </button>
+          </div>
+
+          <!-- LISTA DE HORÁRIOS & ATENDIMENTOS DO DIA -->
+          <div id="dailyScheduleList" class="flex-1 overflow-y-auto custom-scroll space-y-2.5 max-h-[460px] pr-1">
+            <div class="p-8 text-center text-slate-400 text-xs">Carregando horários...</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TABELA DETALHADA DE AGENDAMENTOS COM FILTROS -->
+      <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-0">
+        
+        <!-- CABEÇALHO DA TABELA & FILTROS -->
+        <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/20">
+          <div>
+            <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Histórico Geral de Consultas</h3>
+            <p class="text-[10px] text-slate-400">Consulte, filtre ou altere o status de qualquer paciente agendado</p>
           </div>
           <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div class="relative w-full sm:w-64">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+              <input type="text" id="appointmentSearchInput" oninput="filterAppointments()" placeholder="Buscar por paciente ou procedimento..."
+                class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#008069]">
+            </div>
             <select id="appointmentStatusFilter" onchange="filterAppointments()"
-              class="px-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-white font-medium focus:outline-none">
+              class="px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-medium focus:outline-none">
               <option value="todos">Todos os Status</option>
-              <option value="pre_agendado">Apenas Pré-Agendados</option>
+              <option value="agendado">Apenas Agendados</option>
               <option value="confirmado">Confirmados</option>
               <option value="concluido">Concluídos</option>
               <option value="cancelado">Cancelados</option>
@@ -429,9 +525,9 @@ export const INBOX_HTML = `<!DOCTYPE html>
             <thead class="bg-slate-50/75 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 uppercase font-bold text-[10px] border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th class="py-3 px-4">Paciente</th>
-                <th class="py-3 px-4">Procedimento</th>
+                <th class="py-3 px-4">Procedimento / Duração</th>
                 <th class="py-3 px-4">Data / Horário</th>
-                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4">Status & Confirmação</th>
                 <th class="py-3 px-4">Observações</th>
                 <th class="py-3 px-4 text-right">Ações</th>
               </tr>
@@ -557,6 +653,46 @@ export const INBOX_HTML = `<!DOCTYPE html>
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">Procedimentos, Duração & Observações</h3>
                 <p class="text-[11px] text-slate-500 dark:text-slate-400">Ative os procedimentos oferecidos, defina o tempo médio e regras clínicas para a IA informar aos pacientes com precisão.</p>
               </div>
+            </div>
+          </div>
+
+          <!-- CARD EXCLUSIVO: AVALIAÇÃO INICIAL / CONSULTA -->
+          <div class="p-5 rounded-2xl border-2 border-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/20 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-sm font-bold shadow-sm shadow-emerald-500/20">
+                  <i class="fa-solid fa-stethoscope"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Avaliação Inicial / Consulta Médica</h4>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Card exclusivo para triagem e conversão de novos pacientes em Odontologia ou Estética.</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
+                ⭐ Principal Porta de Entrada
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              <div>
+                <label class="block font-semibold text-[11px] mb-1 text-slate-700 dark:text-slate-300">Tempo de Duração da Avaliação Inicial</label>
+                <input type="text" id="cfgInitEvalDuration" placeholder="Ex: 30 a 45 min"
+                  class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
+              </div>
+              <div>
+                <label class="block font-semibold text-[11px] mb-1 text-slate-700 dark:text-slate-300">
+                  Preço da Consulta (se for paga)
+                  <span class="text-[10px] text-amber-600 dark:text-amber-400 font-normal ml-1">*(Deixe vazio se for gratuita)*</span>
+                </label>
+                <input type="text" id="cfgInitEvalPrice" placeholder="Ex: R$ 150,00 ou Deixe vazio se gratuita"
+                  class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-semibold text-[11px] mb-1 text-slate-700 dark:text-slate-300">Como funciona essa Avaliação Inicial / Consulta?</label>
+              <textarea id="cfgInitEvalDetails" rows="3" placeholder="Ex: Realizamos exame clínico completo, fotografias digitais intraorais em alta resolução, avaliação do histórico de saúde bucal e apresentação de plano de tratamento personalizado sem compromisso."
+                class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#008069] leading-relaxed resize-none"></textarea>
             </div>
           </div>
 
@@ -838,7 +974,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
   </div>
 
   <!-- ======================================================================= -->
-  <!-- MODAL 2: NOVO AGENDAMENTO / PRÉ-AGENDAMENTO                             -->
+  <!-- MODAL 2: NOVO AGENDAMENTO DE CONSULTA                                -->
   <!-- ======================================================================= -->
   <div id="appointmentModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-900 dark:text-white">
@@ -862,20 +998,27 @@ export const INBOX_HTML = `<!DOCTYPE html>
             class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
         </div>
         <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Procedimento de Interesse</label>
-          <input type="text" id="appProcedure" required placeholder="Ex: Botox / Toxina Botulínica"
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Procedimento</label>
+          <input type="text" id="appProcedure" required placeholder="Ex: Botox / Harmonização / Avaliação"
             class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
         </div>
-        <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Data & Período Sugerido</label>
-          <input type="text" id="appScheduledAt" required placeholder="Ex: Quinta-feira às 14:00"
-            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Data & Horário</label>
+            <input type="text" id="appScheduledAt" required placeholder="Ex: 2026-11-14 14:00"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Duração Estimada</label>
+            <input type="text" id="appDuration" placeholder="Ex: 30 min, 45 min, 1h" value="30 min"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
+          </div>
         </div>
         <div>
           <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Status</label>
           <select id="appStatus" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none">
-            <option value="pre_agendado">Pré-Agendado (Triagem)</option>
-            <option value="confirmado">Confirmado na Grade</option>
+            <option value="agendado">Agendado com antecedência</option>
+            <option value="confirmado">Confirmado de véspera (IA / Atendente)</option>
             <option value="concluido">Concluído</option>
             <option value="cancelado">Cancelado</option>
           </select>
@@ -1055,6 +1198,14 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
         renderConversationList();
 
+        if (activePhone) {
+          const current = conversations.find(c => c.contact_wa_id === activePhone);
+          if (current && typeof current.ai_paused !== 'undefined') {
+            activeAiPaused = current.ai_paused === 1;
+            updateAiStatusUI();
+          }
+        }
+
         if (!activePhone && conversations.length > 0 && !isAutoRefresh) {
           selectChat(conversations[0].contact_wa_id);
         }
@@ -1145,7 +1296,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
       // Habilita controles
       document.getElementById('messageInput').disabled = false;
-      document.getElementById('messageInput').placeholder = "Escreva sua mensagem...";
+      document.getElementById('messageInput').placeholder = "Escreva sua mensagem";
       document.getElementById('sendBtn').disabled = false;
       document.getElementById('btnScheduleThisPatient').disabled = false;
       document.getElementById('btnSimulateCurrent').disabled = false;
@@ -1238,7 +1389,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
                 <div class="text-[9px] font-bold uppercase tracking-wider mb-1 \${
                   isHumanAgent ? 'text-sky-600 dark:text-sky-300' : 'text-emerald-700 dark:text-emerald-300'
                 }">
-                  \${isHumanAgent ? '👤 Recepcionista (Atendimento Manual)' : '✨ Secretária IA (Claude 24h)'}
+                  \${isHumanAgent ? 'Você' : 'Atendente IA'}
                 </div>
                 \${escapeHtml(m.body)}
                 <div class="text-[9px] opacity-75 text-right mt-1 font-mono flex items-center justify-end gap-1">
@@ -1299,14 +1450,19 @@ export const INBOX_HTML = `<!DOCTYPE html>
       input.value = '';
 
       try {
-        await fetch('/api/send', {
+        const res = await fetch('/api/send', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ phone: activePhone, text })
         });
+        const data = await res.json();
 
         activeAiPaused = true;
+        const target = conversations.find(c => c.contact_wa_id === activePhone);
+        if (target) target.ai_paused = 1;
         updateAiStatusUI();
+        renderConversationList();
+
         await loadActiveMessages();
         await loadConversations(true);
       } catch (err) {
@@ -1319,14 +1475,19 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const targetState = !activeAiPaused;
 
       try {
-        await fetch('/api/toggle-ai', {
+        const res = await fetch('/api/toggle-ai', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ phone: activePhone, paused: targetState })
         });
+        const data = await res.json();
 
         activeAiPaused = targetState;
+        const target = conversations.find(c => c.contact_wa_id === activePhone);
+        if (target) target.ai_paused = targetState ? 1 : 0;
         updateAiStatusUI();
+        renderConversationList();
+
         await loadConversations(true);
       } catch (err) {
         alert("Erro ao alterar status da IA");
@@ -1411,7 +1572,21 @@ export const INBOX_HTML = `<!DOCTYPE html>
       renderConversationList();
     }
 
-    // 5. GESTÃO DA AGENDA DE CONSULTAS & PRÉ-AGENDAMENTOS
+    // 5. GESTÃO DA AGENDA DE CONSULTAS & CALENDÁRIO INTERATIVO
+    let calCurrentYear = new Date().getFullYear();
+    let calCurrentMonth = new Date().getMonth();
+    let calSelectedDate = new Date().toISOString().slice(0, 10);
+
+    const MONTH_NAMES = [
+      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+
+    const WEEKDAY_NAMES = [
+      "Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira",
+      "Quinta-feira", "Sexta-feira", "Sábado"
+    ];
+
     async function loadAppointments() {
       const icon = document.getElementById('agendaRefreshIcon');
       if (icon) icon.classList.add('fa-spin');
@@ -1419,8 +1594,9 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const res = await fetch('/api/appointments');
         const data = await res.json();
         appointments = data.appointments || [];
-        renderAppointmentsTable();
         updateAppointmentMetrics();
+        renderAppointmentsTable();
+        renderCalendar();
 
         const badge = document.getElementById('menuAppointmentsBadge');
         if (badge) badge.innerText = appointments.length;
@@ -1429,6 +1605,253 @@ export const INBOX_HTML = `<!DOCTYPE html>
       } finally {
         if (icon) setTimeout(() => icon.classList.remove('fa-spin'), 400);
       }
+    }
+
+    function updateAppointmentMetrics() {
+      // 1. Total cadastrados: número de conversas no chat (com fallback para total de agendamentos)
+      const totalCadastrados = conversations.length > 0 ? conversations.length : appointments.length;
+      const metricTotalEl = document.getElementById('metricTotal');
+      if (metricTotalEl) metricTotalEl.innerText = totalCadastrados;
+
+      // 2. Agendados: pessoas com procedimentos, consultas ou avaliações agendados com antecedência
+      const agendados = appointments.filter(a => a.status === 'agendado' || a.status === 'pre_agendado').length;
+      const metricAgendadosEl = document.getElementById('metricAgendados');
+      if (metricAgendadosEl) metricAgendadosEl.innerText = agendados;
+
+      // 3. Confirmados: somente quando houver confirmação (pela IA às 20h ou pelo atendente)
+      const confirmed = appointments.filter(a => a.status === 'confirmado').length;
+      const metricConfirmedEl = document.getElementById('metricConfirmed');
+      if (metricConfirmedEl) metricConfirmedEl.innerText = confirmed;
+    }
+
+    function calNavigateMonth(offset) {
+      calCurrentMonth += offset;
+      if (calCurrentMonth < 0) {
+        calCurrentMonth = 11;
+        calCurrentYear--;
+      } else if (calCurrentMonth > 11) {
+        calCurrentMonth = 0;
+        calCurrentYear++;
+      }
+      renderCalendar();
+    }
+
+    function calGoToToday() {
+      const today = new Date();
+      calCurrentYear = today.getFullYear();
+      calCurrentMonth = today.getMonth();
+      calSelectedDate = today.toISOString().slice(0, 10);
+      renderCalendar();
+    }
+
+    function calSelectDay(dateStr) {
+      calSelectedDate = dateStr;
+      renderCalendar();
+      renderDailySchedule();
+    }
+
+    function openAppointmentModalForSelectedDay() {
+      const dtInput = document.getElementById('appScheduledAt');
+      if (dtInput) dtInput.value = \`\${calSelectedDate} 09:00\`;
+      document.getElementById('appointmentModal').classList.remove('hidden');
+    }
+
+    async function handleTriggerConfirmationsManually() {
+      const btn = document.getElementById('btnTriggerConfirmations');
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch('/api/appointments/run-confirmations', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showToast(\`Rotina executada: \${data.sent} mensagens de confirmação enviadas para amanhã!\`, "emerald");
+          await loadAppointments();
+        } else {
+          alert("Erro ao disparar confirmações: " + (data.error || "Erro"));
+        }
+      } catch (err) {
+        alert("Erro ao conectar com servidor de confirmações");
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function renderCalendar() {
+      const titleEl = document.getElementById('calendarMonthTitle');
+      if (titleEl) {
+        titleEl.innerText = \`\${MONTH_NAMES[calCurrentMonth]} de \${calCurrentYear}\`;
+      }
+
+      const gridEl = document.getElementById('calendarGrid');
+      if (!gridEl) return;
+
+      const firstDayIndex = new Date(calCurrentYear, calCurrentMonth, 1).getDay();
+      const totalDays = new Date(calCurrentYear, calCurrentMonth + 1, 0).getDate();
+      const todayStr = new Date().toISOString().slice(0, 10);
+
+      const cells = [];
+
+      for (let i = 0; i < firstDayIndex; i++) {
+        cells.push('<div class="p-1 min-h-[64px] rounded-xl bg-slate-50/40 dark:bg-slate-800/20 opacity-30 select-none"></div>');
+      }
+
+      for (let day = 1; day <= totalDays; day++) {
+        const dayPadded = String(day).padStart(2, '0');
+        const monthPadded = String(calCurrentMonth + 1).padStart(2, '0');
+        const dateKey = \`\${calCurrentYear}-\${monthPadded}-\${dayPadded}\`;
+
+        const isToday = dateKey === todayStr;
+        const isSelected = dateKey === calSelectedDate;
+
+        const dayAppointments = appointments.filter(a => {
+          if (!a.scheduled_at) return false;
+          return a.scheduled_at.startsWith(dateKey) || a.scheduled_at.includes(dateKey);
+        });
+
+        const hasConfirmed = dayAppointments.some(a => a.status === 'confirmado');
+        const hasScheduled = dayAppointments.some(a => a.status === 'agendado' || a.status === 'pre_agendado');
+
+        let borderClass = 'border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
+        if (isSelected) {
+          borderClass = 'border-sky-500 dark:border-sky-400 ring-2 ring-sky-500/30 bg-sky-50/50 dark:bg-sky-950/30';
+        } else if (isToday) {
+          borderClass = 'border-emerald-500 dark:border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20';
+        }
+
+        let badgeHtml = '';
+        if (dayAppointments.length > 0) {
+          const count = dayAppointments.length;
+          let color = 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300';
+          if (hasConfirmed && !hasScheduled) {
+            color = 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300';
+          }
+          badgeHtml = \`
+            <div class="mt-1 flex items-center justify-center">
+              <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold \${color} truncate max-w-full">
+                \${count} \${count === 1 ? 'consulta' : 'consultas'}
+              </span>
+            </div>
+          \`;
+        }
+
+        cells.push(\`
+          <div onclick="calSelectDay('\${dateKey}')" 
+            class="p-1.5 sm:p-2 min-h-[64px] rounded-xl border \${borderClass} bg-white dark:bg-[#151d2e] cursor-pointer transition flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold \${isToday ? 'w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]' : isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-slate-700 dark:text-slate-300'}">
+                \${day}
+              </span>
+              \${isToday ? '<span class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 hidden sm:inline">Hoje</span>' : ''}
+            </div>
+            \${badgeHtml}
+          </div>
+        \`);
+      }
+
+      gridEl.innerHTML = cells.join('');
+      renderDailySchedule();
+    }
+
+    function renderDailySchedule() {
+      const container = document.getElementById('dailyScheduleList');
+      const titleEl = document.getElementById('dailyScheduleTitle');
+      const subtitleEl = document.getElementById('dailyScheduleSubtitle');
+      if (!container) return;
+
+      const [y, m, d] = calSelectedDate.split('-').map(Number);
+      const selectedDateObj = new Date(y, (m || 1) - 1, d || 1);
+      const weekday = WEEKDAY_NAMES[selectedDateObj.getDay()] || '';
+      const dateFormatted = \`\${weekday}, \${d} de \${MONTH_NAMES[(m || 1) - 1]} de \${y}\`;
+
+      if (titleEl) titleEl.innerText = dateFormatted;
+      if (subtitleEl) subtitleEl.innerText = \`Grade de Atendimento (\${calSelectedDate})\`;
+
+      const dayAppointments = appointments.filter(a => {
+        if (!a.scheduled_at) return false;
+        return a.scheduled_at.startsWith(calSelectedDate) || a.scheduled_at.includes(calSelectedDate);
+      });
+
+      if (dayAppointments.length === 0) {
+        container.innerHTML = \`
+          <div class="p-8 text-center text-slate-400 space-y-2">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center text-xl mx-auto">
+              <i class="fa-regular fa-calendar-check"></i>
+            </div>
+            <p class="text-xs font-medium">Nenhum agendamento neste dia.</p>
+            <p class="text-[11px] text-slate-400">A grade está livre para novos agendamentos da IA ou agendamento manual.</p>
+            <button onclick="openAppointmentModalForSelectedDay()" class="mt-2 px-3 py-1.5 rounded-xl bg-[#008069] hover:bg-[#006a57] text-white text-xs font-bold transition">
+              + Agendar neste dia
+            </button>
+          </div>
+        \`;
+        return;
+      }
+
+      container.innerHTML = dayAppointments.map(a => {
+        const timePart = a.scheduled_at.includes(' ') ? a.scheduled_at.split(' ')[1] : a.scheduled_at;
+        const durationStr = a.duration || '30 min';
+        const isConfirmed = a.status === 'confirmado';
+        const isDone = a.status === 'concluido';
+
+        let statusBadge = '';
+        if (isConfirmed) {
+          const byStr = a.confirmed_by === 'ai' ? 'via IA (WhatsApp)' : a.confirmed_by === 'human' ? 'via Atendente' : 'Confirmado';
+          statusBadge = \`<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800/60">Confirmado (\${byStr})</span>\`;
+        } else if (isDone) {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-400 font-bold text-[10px] border border-sky-200 dark:border-sky-800/60">Concluído</span>';
+        } else if (a.status === 'cancelado') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-[10px]">Cancelado</span>';
+        } else {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 font-bold text-[10px] border border-amber-200 dark:border-amber-800/60">Agendado (Aguardando Véspera)</span>';
+        }
+
+        return \`
+          <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2 hover:border-slate-300 dark:hover:border-slate-600 transition">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-1 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 font-black text-xs font-mono">
+                  \${escapeHtml(timePart)}
+                </span>
+                <div>
+                  <h4 class="font-bold text-xs text-slate-900 dark:text-white leading-tight">\${escapeHtml(a.patient_name)}</h4>
+                  <span class="text-[10px] text-slate-400 font-mono">\${escapeHtml(a.contact_wa_id)}</span>
+                </div>
+              </div>
+              <div>\${statusBadge}</div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/40 text-slate-600 dark:text-slate-300">
+              <div class="flex items-center gap-1.5 truncate">
+                <i class="fa-solid fa-tooth text-slate-400 text-[10px]"></i>
+                <span class="font-medium">\${escapeHtml(a.procedure || 'Consulta')}</span>
+                <span class="text-[10px] text-slate-400">(\${escapeHtml(durationStr)})</span>
+              </div>
+            </div>
+
+            \${a.notes ? \`<p class="text-[11px] text-slate-500 dark:text-slate-400 italic">“\${escapeHtml(a.notes)}”</p>\` : ''}
+
+            <div class="flex items-center justify-end gap-1.5 pt-1">
+              <button onclick="goToChatWithPatient('\${a.contact_wa_id}')" class="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[10px] font-bold transition flex items-center gap-1" title="Abrir conversa no WhatsApp">
+                <i class="fa-brands fa-whatsapp"></i>
+                <span>WhatsApp</span>
+              </button>
+              \${!isConfirmed && a.status !== 'cancelado' && !isDone ? \`
+                <button onclick="handleUpdateAppointmentStatus(\${a.id}, 'confirmado')" class="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition flex items-center gap-1">
+                  <i class="fa-solid fa-check"></i>
+                  <span>Confirmar</span>
+                </button>
+              \` : ''}
+              \${!isDone && a.status !== 'cancelado' ? \`
+                <button onclick="handleUpdateAppointmentStatus(\${a.id}, 'concluido')" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-[10px] font-bold transition">
+                  Concluir
+                </button>
+              \` : ''}
+              <button onclick="handleDeleteAppointment(\${a.id})" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 transition" title="Excluir agendamento">
+                <i class="fa-regular fa-trash-can text-xs"></i>
+              </button>
+            </div>
+          </div>
+        \`;
+      }).join('');
     }
 
     function renderAppointmentsTable() {
@@ -1440,7 +1863,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const matchSearch = (a.patient_name || '').toLowerCase().includes(search) || 
                             (a.procedure || '').toLowerCase().includes(search) || 
                             (a.contact_wa_id || '').includes(search);
-        const matchStatus = filter === 'todos' || a.status === filter;
+        const matchStatus = filter === 'todos' || 
+                            (filter === 'agendado' ? (a.status === 'agendado' || a.status === 'pre_agendado') : a.status === filter);
         return matchSearch && matchStatus;
       });
 
@@ -1451,14 +1875,15 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
       tbody.innerHTML = filtered.map(a => {
         let statusBadge = '';
-        if (a.status === 'pre_agendado') {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 font-bold text-[10px] border border-amber-200 dark:border-amber-800/60">Pré-Agendado (IA)</span>';
-        } else if (a.status === 'confirmado') {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800/60">Confirmado</span>';
+        if (a.status === 'confirmado') {
+          const byStr = a.confirmed_by === 'ai' ? 'IA às 20h' : a.confirmed_by === 'human' ? 'Atendente' : 'Confirmado';
+          statusBadge = \`<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800/60">Confirmado (\${byStr})</span>\`;
         } else if (a.status === 'concluido') {
           statusBadge = '<span class="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-400 font-bold text-[10px] border border-sky-200 dark:border-sky-800/60">Concluído</span>';
-        } else {
+        } else if (a.status === 'cancelado') {
           statusBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-[10px]">Cancelado</span>';
+        } else {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 font-bold text-[10px] border border-amber-200 dark:border-amber-800/60">Agendado (Aguardando Véspera)</span>';
         }
 
         return \`
@@ -1467,8 +1892,9 @@ export const INBOX_HTML = `<!DOCTYPE html>
               <div class="font-bold text-slate-900 dark:text-white">\${escapeHtml(a.patient_name)}</div>
               <div class="text-[10px] text-slate-400 font-mono">\${escapeHtml(a.contact_wa_id)}</div>
             </td>
-            <td class="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">
-              \${escapeHtml(a.procedure || 'Avaliação Inicial')}
+            <td class="py-3 px-4">
+              <div class="font-semibold text-slate-800 dark:text-slate-200">\${escapeHtml(a.procedure || 'Avaliação Inicial')}</div>
+              <div class="text-[10px] text-slate-400">\${escapeHtml(a.duration || '30 min')}</div>
             </td>
             <td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
               <i class="fa-regular fa-clock mr-1 text-slate-400"></i>\${escapeHtml(a.scheduled_at)}
@@ -1486,29 +1912,18 @@ export const INBOX_HTML = `<!DOCTYPE html>
               </button>
               <select onchange="handleUpdateAppointmentStatus(\${a.id}, this.value)" 
                 class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] rounded-lg px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none">
-                <option value="pre_agendado" \${a.status === 'pre_agendado' ? 'selected' : ''}>Pré-Agendado</option>
+                <option value="agendado" \${a.status === 'agendado' || a.status === 'pre_agendado' ? 'selected' : ''}>Agendado</option>
                 <option value="confirmado" \${a.status === 'confirmado' ? 'selected' : ''}>Confirmar</option>
                 <option value="concluido" \${a.status === 'concluido' ? 'selected' : ''}>Concluir</option>
                 <option value="cancelado" \${a.status === 'cancelado' ? 'selected' : ''}>Cancelar</option>
               </select>
+              <button onclick="handleDeleteAppointment(\${a.id})" class="p-1 text-slate-400 hover:text-rose-500 rounded-lg transition" title="Excluir">
+                <i class="fa-regular fa-trash-can text-xs"></i>
+              </button>
             </td>
           </tr>
         \`;
       }).join('');
-    }
-
-    function updateAppointmentMetrics() {
-      const total = appointments.length;
-      const pre = appointments.filter(a => a.status === 'pre_agendado').length;
-      const confirmed = appointments.filter(a => a.status === 'confirmado').length;
-
-      document.getElementById('metricTotal').innerText = total;
-      document.getElementById('metricPre').innerText = pre;
-      document.getElementById('metricConfirmed').innerText = confirmed;
-
-      // Estimativa média de R$ 850 por procedimento em Estética/Odonto
-      const val = (pre + confirmed) * 850;
-      document.getElementById('metricValue').innerText = 'R$ ' + val.toLocaleString('pt-BR');
     }
 
     function filterAppointments() {
@@ -1523,12 +1938,35 @@ export const INBOX_HTML = `<!DOCTYPE html>
           body: JSON.stringify({ id, status: newStatus })
         });
         const target = appointments.find(a => a.id === id);
-        if (target) target.status = newStatus;
+        if (target) {
+          target.status = newStatus;
+          if (newStatus === 'confirmado') {
+            target.confirmed_by = 'human';
+            target.confirmed_at = new Date().toISOString();
+          }
+        }
         updateAppointmentMetrics();
         renderAppointmentsTable();
+        renderCalendar();
+        renderDailySchedule();
         showToast("Status da consulta atualizado!", "emerald");
       } catch (err) {
         alert("Erro ao alterar status");
+      }
+    }
+
+    async function handleDeleteAppointment(id) {
+      if (!confirm("Tem certeza que deseja excluir esta consulta da agenda?")) return;
+      try {
+        await fetch('/api/appointments?id=' + id, { method: 'DELETE' });
+        appointments = appointments.filter(a => a.id !== id);
+        updateAppointmentMetrics();
+        renderAppointmentsTable();
+        renderCalendar();
+        renderDailySchedule();
+        showToast("Agendamento excluído!", "amber");
+      } catch (err) {
+        alert("Erro ao excluir agendamento");
       }
     }
 
@@ -1551,6 +1989,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const contactWaId = document.getElementById('appPatientPhone').value.trim();
       const procedure = document.getElementById('appProcedure').value.trim();
       const scheduledAt = document.getElementById('appScheduledAt').value.trim();
+      const duration = document.getElementById('appDuration')?.value.trim() || '30 min';
       const status = document.getElementById('appStatus').value;
       const notes = document.getElementById('appNotes').value.trim();
 
@@ -1562,7 +2001,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         await fetch('/api/appointments', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ patientName, contactWaId, procedure, scheduledAt, status, notes })
+          body: JSON.stringify({ patientName, contactWaId, procedure, scheduledAt, status, notes, duration })
         });
         await loadAppointments();
         showToast("Agendamento salvo com sucesso!", "emerald");
@@ -1576,6 +2015,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const isChecked = proc.checked !== false;
       const name = proc.name || '';
       const duration = proc.duration || '';
+      const price = proc.price || '';
       const note = proc.note || '';
 
       return \`
@@ -1586,9 +2026,10 @@ export const INBOX_HTML = `<!DOCTYPE html>
             <input type="text" class="proc-name w-full bg-transparent font-bold text-xs text-slate-800 dark:text-slate-100 border-b border-transparent hover:border-slate-300 focus:border-[#008069] focus:outline-none px-1" value="\${escapeHtml(name)}" placeholder="Nome do procedimento">
           </div>
           
-          <!-- Duração -->
-          <div class="md:w-3/12 md:pt-0.5">
+          <!-- Duração e Preço -->
+          <div class="md:w-3/12 flex flex-col gap-1.5 md:pt-0.5">
             <input type="text" class="proc-duration w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Duração (ex: 45 min)" value="\${escapeHtml(duration)}">
+            <input type="text" class="proc-price w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Preço (ex: R$ 250 ou A partir de...)" value="\${escapeHtml(price)}">
           </div>
 
           <!-- Observações (3 linhas) + Remover -->
@@ -1607,7 +2048,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const container = document.getElementById(containerId);
       if (!container) return;
 
-      const newRowHtml = createProcedureRowHtml({ name: '', checked: true, duration: '', note: '' }, category);
+      const newRowHtml = createProcedureRowHtml({ name: '', checked: true, duration: '', price: '', note: '' }, category);
       container.insertAdjacentHTML('beforeend', newRowHtml);
 
       const rows = container.querySelectorAll('.proc-row');
@@ -1692,6 +2133,20 @@ export const INBOX_HTML = `<!DOCTYPE html>
           }
         }
 
+        // Avaliação Inicial / Consulta
+        if (currentConfig.initial_consultation) {
+          const ic = currentConfig.initial_consultation;
+          if (ic.duration && document.getElementById('cfgInitEvalDuration')) {
+            document.getElementById('cfgInitEvalDuration').value = ic.duration;
+          }
+          if (ic.price && document.getElementById('cfgInitEvalPrice')) {
+            document.getElementById('cfgInitEvalPrice').value = ic.price;
+          }
+          if (ic.details && document.getElementById('cfgInitEvalDetails')) {
+            document.getElementById('cfgInitEvalDetails').value = ic.details;
+          }
+        }
+
         // Renderiza listas verticais detalhadas de procedimentos
         renderProceduresLists(currentConfig.procedure_items);
 
@@ -1713,6 +2168,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const isChecked = row.querySelector('.proc-checkbox').checked;
         const name = row.querySelector('.proc-name').value.trim();
         const duration = row.querySelector('.proc-duration').value.trim();
+        const price = row.querySelector('.proc-price')?.value.trim();
         const note = row.querySelector('.proc-note').value.trim();
         const category = row.dataset.category || 'odonto';
 
@@ -1721,6 +2177,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
             name,
             checked: isChecked,
             duration: duration || undefined,
+            price: price || undefined,
             note: note || undefined,
             category
           });
@@ -1744,6 +2201,12 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const holidayService = document.getElementById('cfgHolidayService')?.checked || false;
       const sendSecondaryContact = document.getElementById('cfgSendSecondaryContact')?.checked || false;
 
+      const initialConsultation = {
+        duration: document.getElementById('cfgInitEvalDuration')?.value.trim() || undefined,
+        price: document.getElementById('cfgInitEvalPrice')?.value.trim() || undefined,
+        details: document.getElementById('cfgInitEvalDetails')?.value.trim() || undefined,
+      };
+
       const configPayload = {
         clinic_name: document.getElementById('cfgClinicName').value.trim() || "Clínica Sorriso & Estética",
         doctor_name: document.getElementById('cfgDoctorName').value.trim() || undefined,
@@ -1751,6 +2214,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         tone: document.getElementById('cfgTone').value,
         unfilled_fallback: unfilledFallback,
         send_secondary_contact_on_finish: sendSecondaryContact,
+        initial_consultation: initialConsultation,
         procedure_items: procedureItems,
         procedures: procedureItems.filter(p => p.checked).map(p => p.name),
         price_strategy: priceStrategy,
@@ -1852,7 +2316,10 @@ export const INBOX_HTML = `<!DOCTYPE html>
         if (activePhone && typeof data.active_ai_paused === 'boolean') {
           if (activeAiPaused !== data.active_ai_paused) {
             activeAiPaused = data.active_ai_paused;
+            const target = conversations.find(c => c.contact_wa_id === activePhone);
+            if (target) target.ai_paused = data.active_ai_paused ? 1 : 0;
             updateAiStatusUI();
+            renderConversationList();
           }
         }
 
