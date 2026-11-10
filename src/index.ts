@@ -394,6 +394,8 @@ export default {
         }
 
         await saveHumanOutbound(env.DB, tenantId, body.phone, body.text);
+        // Sempre que a recepcionista envia mensagem manual, a IA é pausada para este contato
+        await setAiPaused(env.DB, tenantId, body.phone, true);
 
         const token = env.WA_LAB_TOKEN;
         if (token) {
@@ -404,7 +406,7 @@ export default {
           }
         }
 
-        return new Response(JSON.stringify({ success: true }), {
+        return new Response(JSON.stringify({ success: true, ai_paused: true }), {
           headers: { "content-type": "application/json; charset=utf-8" },
         });
       } catch (err) {

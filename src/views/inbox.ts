@@ -189,11 +189,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
         <div class="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
           <span id="chatCount">Carregando conversas...</span>
-          <span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-mono text-[10px]" title="Horário de Brasília em tempo real">
-            <i class="fa-regular fa-clock text-[#008069] dark:text-emerald-400"></i>
-            <span id="sidebarBrasiliaClock">--:--</span>
-            <span class="text-[9px] text-slate-400 font-sans font-semibold">24h</span>
-          </span>
+          <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-bolt text-[10px]"></i> IA Ativa 24h</span>
         </div>
       </div>
 
@@ -221,11 +217,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
               <h2 id="activeContactName" class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-none">Selecione uma conversa</h2>
               <span id="activeAiBadge" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded-full border"></span>
             </div>
-            <div class="flex items-center gap-1.5 mt-1 leading-none">
-              <p id="activeContactPhone" class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">Nenhum chat selecionado</p>
-              <span id="activeContactStatusDot" class="hidden w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span id="activeContactTimeSync" class="hidden text-[10px] text-[#008069] dark:text-emerald-400 font-medium"></span>
-            </div>
+            <p id="activeContactPhone" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">Nenhum chat selecionado</p>
           </div>
         </div>
 
@@ -267,7 +259,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       <!-- INPUT DA RECEPCIONISTA (RESPOSTA MANUAL) -->
       <div id="inputBar" class="bg-white dark:bg-[#111827] border-t border-slate-200 dark:border-slate-800/80 p-3 shrink-0 flex flex-col gap-1 transition-colors">
         <form onsubmit="handleSendMessage(event)" class="flex items-center gap-2">
-          <input type="text" id="messageInput" disabled placeholder="Selecione um paciente para conversar..." 
+          <input type="text" id="messageInput" disabled placeholder="Escreva sua mensagem..." 
             class="flex-1 px-4 py-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#008069] disabled:opacity-50 transition">
           <button type="submit" id="sendBtn" disabled 
             class="px-4 py-2.5 rounded-xl bg-[#008069] hover:bg-[#006a57] disabled:opacity-40 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm">
@@ -276,7 +268,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
           </button>
         </form>
         <p class="text-[10px] text-slate-400 dark:text-slate-500 px-1">
-          Dica: Ao enviar mensagem manual, a IA pausa neste chat para você assumir o controle total.
+          💡 Ao enviar uma mensagem manual, a IA é pausada para você assumir o controle e só voltará a responder se for reativada.
         </p>
       </div>
 
@@ -1143,19 +1135,13 @@ export const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('activeContactPhone').innerText = phone;
       document.getElementById('activeAvatar').innerText = initial;
 
-      const statusDot = document.getElementById('activeContactStatusDot');
-      const timeSync = document.getElementById('activeContactTimeSync');
-      if (statusDot) statusDot.classList.remove('hidden');
-      if (timeSync) timeSync.classList.remove('hidden');
-      updateActiveContactSyncText();
-
       document.getElementById('sideContactName').innerText = name;
       document.getElementById('sideContactPhone').innerText = phone;
       document.getElementById('sideAvatar').innerText = initial;
 
       // Habilita controles
       document.getElementById('messageInput').disabled = false;
-      document.getElementById('messageInput').placeholder = \`Digite uma resposta manual para \${name}...\`;
+      document.getElementById('messageInput').placeholder = "Escreva sua mensagem...";
       document.getElementById('sendBtn').disabled = false;
       document.getElementById('btnScheduleThisPatient').disabled = false;
       document.getElementById('btnSimulateCurrent').disabled = false;
@@ -2045,26 +2031,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
       const elDate = document.getElementById('liveBrasiliaDate');
       if (elDate) elDate.innerText = fullDateStr;
-
-      const elSidebarClock = document.getElementById('sidebarBrasiliaClock');
-      if (elSidebarClock) elSidebarClock.innerText = shortTimeStr;
-
-      if (activePhone) {
-        updateActiveContactSyncText();
-      }
-    }
-
-    function updateActiveContactSyncText() {
-      const el = document.getElementById('activeContactTimeSync');
-      if (!el || !activePhone) return;
-      const now = getNowBrasilia();
-      const timeStr = now.toLocaleTimeString('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
-      el.innerText = \`online • \${timeStr} (DF)\`;
     }
 
     function startLiveBrasiliaSync() {

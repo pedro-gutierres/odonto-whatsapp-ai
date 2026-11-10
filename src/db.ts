@@ -26,6 +26,7 @@ export async function ensureConversationStateTable(db: D1Database): Promise<void
 }
 
 export async function isAiPaused(db: D1Database, tenantId: string, contact: string): Promise<boolean> {
+  await ensureConversationStatesTable(db);
   const row = await db
     .prepare("SELECT ai_paused FROM conversation_states WHERE tenant_id = ?1 AND contact_wa_id = ?2")
     .bind(tenantId, contact)
@@ -34,11 +35,12 @@ export async function isAiPaused(db: D1Database, tenantId: string, contact: stri
 }
 
 export async function setAiPaused(db: D1Database, tenantId: string, contact: string, paused: boolean): Promise<void> {
+  await ensureConversationStatesTable(db);
   await db
     .prepare(
       `INSERT INTO conversation_states (tenant_id, contact_wa_id, ai_paused, updated_at)
        VALUES (?1, ?2, ?3, datetime('now'))
-       ON CONFLICT(tenant_id, contact_wa_id) DO UPDATE SET ai_paused = excluded.ai_paused, updated_at = datetime('now')`
+       ON CONFLICT(tenant_id, contact_wa_id) DO UPDATE SET ai_paused = excluded.ai_paused, updated_at = datetime('now')`,
     )
     .bind(tenantId, contact, paused ? 1 : 0)
     .run();
