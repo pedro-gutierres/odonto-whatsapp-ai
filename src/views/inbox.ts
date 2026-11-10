@@ -131,7 +131,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- LADO DIREITO: DARK MODE, SIMULADOR, NOVO TESTE, USUÁRIO -->
+    <!-- LADO DIREITO: DARK MODE E USUÁRIO LOGADO -->
     <div class="flex items-center gap-2.5">
       
       <!-- BOTÃO TOGGLE DARK/LIGHT MODE -->
@@ -140,28 +140,14 @@ export const INBOX_HTML = `<!DOCTYPE html>
         <i id="themeIcon" class="fa-solid fa-moon"></i>
       </button>
 
-      <!-- LINK DO SIMULADOR -->
-      <a href="/simulador" target="_blank" title="Abrir Simulador de Paciente"
-        class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 text-xs font-medium border border-slate-200 dark:border-slate-700/60 transition">
-        <i class="fa-solid fa-mobile-screen-button text-emerald-500"></i>
-        <span>Simulador</span>
-      </a>
-
-      <!-- BOTÃO NOVO PACIENTE -->
-      <button onclick="openNewPatientModal()" 
-        class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-[#008069] hover:bg-[#006a57] text-white flex items-center gap-1.5 transition shadow-sm">
-        <i class="fa-solid fa-user-plus text-xs"></i>
-        <span class="hidden sm:inline">Novo Teste</span>
-      </button>
-
       <!-- USUÁRIO LOGADO & LOGOUT -->
       <div class="pl-2 border-l border-slate-200 dark:border-slate-800 flex items-center gap-2">
         <div class="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold flex items-center justify-center text-xs">
           <i class="fa-solid fa-user-doctor"></i>
         </div>
         <div class="hidden xl:block text-left">
-          <span class="text-xs font-bold text-slate-900 dark:text-white block leading-none">Recepção</span>
-          <span class="text-[10px] text-slate-400 font-medium">admin@clinica.com</span>
+          <span id="topUserName" class="text-xs font-bold text-slate-900 dark:text-white block leading-none">Recepção</span>
+          <span id="topUserEmail" class="text-[10px] text-slate-400 font-medium">Carregando...</span>
         </div>
         <button onclick="handleLogout()" title="Sair da Plataforma"
           class="w-8 h-8 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center justify-center text-xs transition ml-1">
@@ -329,19 +315,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
             class="w-full py-2 px-3 rounded-xl bg-[#008069] hover:bg-[#006a57] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm">
             <i class="fa-regular fa-calendar-plus"></i>
             <span>Agendar Consulta deste Paciente</span>
-          </button>
-        </div>
-
-        <!-- TESTAR COMO ESTE PACIENTE (SIMULAÇÃO) -->
-        <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-          <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Testar como este paciente</span>
-          <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Simule uma nova pergunta vinda deste número para ver a IA respondendo.</p>
-          <textarea id="simulateMsgInput" rows="2" placeholder="Ex: Qual o preço do clareamento?" 
-            class="w-full p-2 text-xs rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:outline-none focus:border-[#008069]"></textarea>
-          <button onclick="handleSimulateForCurrentPatient()" id="btnSimulateCurrent" disabled
-            class="w-full py-1.5 px-3 rounded-lg bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-play text-[10px]"></i>
-            <span>Simular Envio do Paciente</span>
           </button>
         </div>
 
@@ -959,45 +932,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
   </main>
 
   <!-- ======================================================================= -->
-  <!-- MODAL 1: NOVO PACIENTE SIMULADO                                         -->
-  <!-- ======================================================================= -->
-  <div id="newPatientModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-900 dark:text-white">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-        <h3 class="text-sm font-bold flex items-center gap-2">
-          <i class="fa-solid fa-user-plus text-emerald-500"></i>
-          <span>Simular Entrada de Novo Paciente</span>
-        </h3>
-        <button onclick="closeNewPatientModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-
-      <form onsubmit="handleCreateNewPatient(event)" class="space-y-3 pt-4 text-xs">
-        <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Nome do Paciente</label>
-          <input type="text" id="newPatientName" placeholder="Ex: Camila Rossi" required
-            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
-        </div>
-        <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">WhatsApp (com DDD)</label>
-          <input type="text" id="newPatientPhone" placeholder="Ex: 5511977778888" required
-            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
-        </div>
-        <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Primeira Mensagem do Paciente</label>
-          <textarea id="newPatientText" rows="2" placeholder="Ex: Olá! Gostaria de saber os horários para botox nesta sexta-feira." required
-            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]"></textarea>
-        </div>
-
-        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <button type="button" onclick="closeNewPatientModal()" class="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium">Cancelar</button>
-          <button type="submit" class="px-4 py-1.5 rounded-lg bg-[#008069] hover:bg-[#006a57] text-white font-semibold">Iniciar Conversa</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ======================================================================= -->
-  <!-- MODAL 2: NOVO AGENDAMENTO DE CONSULTA                                -->
+  <!-- MODAL: NOVO AGENDAMENTO DE CONSULTA                                     -->
   <!-- ======================================================================= -->
   <div id="appointmentModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-900 dark:text-white">
@@ -1330,8 +1265,31 @@ export const INBOX_HTML = `<!DOCTYPE html>
     }
 
     // 3. INICIALIZAÇÃO GERAL
+    async function loadCurrentUser() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.status === 401) {
+          window.location.href = '/login';
+          return false;
+        }
+        const data = await res.json();
+        if (data && data.user) {
+          const nameEl = document.getElementById('topUserName');
+          const emailEl = document.getElementById('topUserEmail');
+          if (nameEl) nameEl.innerText = data.user.name || 'Recepção';
+          if (emailEl) emailEl.innerText = data.user.email || '';
+        }
+        return true;
+      } catch (err) {
+        console.error("Erro ao carregar usuário logado:", err);
+        return true;
+      }
+    }
+
     async function init() {
       initTheme();
+      const ok = await loadCurrentUser();
+      if (!ok) return;
       startLiveBrasiliaSync();
       await loadConversations(false);
       await loadAppointments();
@@ -1457,7 +1415,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('messageInput').placeholder = "Escreva sua mensagem";
       document.getElementById('sendBtn').disabled = false;
       document.getElementById('btnScheduleThisPatient').disabled = !isCrucialTrainingComplete();
-      document.getElementById('btnSimulateCurrent').disabled = false;
       document.getElementById('btnClearChat').disabled = false;
 
       // Atualiza imediatamente o status da IA para o contato selecionado
@@ -1628,7 +1585,17 @@ export const INBOX_HTML = `<!DOCTYPE html>
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ phone: activePhone, text })
         });
+        if (res.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
         const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Erro ao enviar mensagem");
+        }
+        if (data.warning) {
+          showToast(data.warning, "amber");
+        }
 
         activeAiPaused = true;
         const target = conversations.find(c => c.contact_wa_id === activePhone);
@@ -1698,31 +1665,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
       document.getElementById('appPatientName').value = name;
       document.getElementById('appPatientPhone').value = activePhone;
       openAppointmentModal("Avaliação Inicial / Consulta");
-    }
-
-    async function handleSimulateForCurrentPatient() {
-      const input = document.getElementById('simulateMsgInput');
-      const text = input.value.trim();
-      if (!text || !activePhone) return;
-
-      input.value = '';
-      const target = conversations.find(c => c.contact_wa_id === activePhone);
-      const name = target?.contact_name || activePhone;
-
-      try {
-        await fetch('/api/simulate-patient', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ phone: activePhone, name, text })
-        });
-        showToast("Mensagem simulada enviada!", "emerald");
-        setTimeout(async () => {
-          await loadActiveMessages();
-          await loadConversations(true);
-        }, 1500);
-      } catch (err) {
-        alert("Erro ao simular mensagem");
-      }
     }
 
     async function handleClearCurrentChat() {
@@ -3214,39 +3156,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       }
     }
 
-    // 7. MODAIS & SIMULADOR
-    function openNewPatientModal() {
-      document.getElementById('newPatientModal').classList.remove('hidden');
-    }
-
-    function closeNewPatientModal() {
-      document.getElementById('newPatientModal').classList.add('hidden');
-    }
-
-    async function handleCreateNewPatient(e) {
-      e.preventDefault();
-      const name = document.getElementById('newPatientName').value.trim();
-      const phone = document.getElementById('newPatientPhone').value.trim();
-      const text = document.getElementById('newPatientText').value.trim();
-
-      if (!name || !phone || !text) return;
-      closeNewPatientModal();
-
-      await fetch('/api/simulate-patient', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, phone, text })
-      });
-
-      showToast("Paciente simulado criado!", "emerald");
-
-      setTimeout(async () => {
-        await loadConversations();
-        selectChat(phone);
-      }, 1500);
-    }
-
-    // 8. LOGOUT
+    // 7. LOGOUT
     async function handleLogout() {
       if (confirm("Deseja sair do painel da clínica?")) {
         try {

@@ -9,8 +9,9 @@ export interface Env {
   META_APP_SECRETS: string; // um ou mais "app secrets" da Meta, separados por vírgula
   WA_VERIFY_TOKEN: string;  // frase que você inventa; a Meta devolve na verificação do webhook
   ANTHROPIC_API_KEY: string;
-  WA_LAB_TOKEN: string;     // token da Meta usado só na fase de laboratório
-  AUTH_SECRET?: string;     // segredo HMAC para sessões (opcional, fallback interno)
+  WA_LAB_TOKEN?: string;    // token fallback / laboratório da Meta (quando a clínica não tem access_token_enc)
+  AUTH_SECRET?: string;     // segredo HMAC para sessões (configure via wrangler secret put AUTH_SECRET)
+  TOKEN_ENCRYPTION_KEY?: string; // chave opcional para criptografia AES-GCM de tokens por clínica (fallback: AUTH_SECRET)
 
   // Variáveis comuns (wrangler.jsonc)
   GRAPH_VERSION: string;

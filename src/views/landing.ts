@@ -33,11 +33,7 @@ export const LANDING_HTML = `<!DOCTYPE html>
 
       <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
         <a href="#beneficios" class="hover:text-emerald-400 transition">Como Funciona</a>
-        <a href="#roi" class="hover:text-emerald-400 transition">Retorno sobre Investimento</a>
-        <a href="#seguranca" class="hover:text-emerald-400 transition">Meta Oficial & Sigilo</a>
-        <a href="/simulador" class="text-emerald-400 hover:text-emerald-300 transition flex items-center gap-1.5 font-semibold">
-          <i class="fa-solid fa-play text-xs"></i> Testar no Simulador
-        </a>
+        <a href="#metricas" class="hover:text-emerald-400 transition">Retorno sobre Investimento</a>
       </nav>
 
       <div class="flex items-center gap-4">
@@ -57,7 +53,7 @@ export const LANDING_HTML = `<!DOCTYPE html>
       <!-- Pill Badge -->
       <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-8">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>Tecnologia Oficial WhatsApp Cloud API & Claude 3.5</span>
+        <span>Tecnologia Oficial WhatsApp Cloud API & Claude AI</span>
       </div>
 
       <h1 class="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.15] mb-6">
@@ -73,14 +69,10 @@ export const LANDING_HTML = `<!DOCTYPE html>
           <span>Entrar na Central da Clínica</span>
           <i class="fa-solid fa-arrow-right text-xs"></i>
         </a>
-        <a href="/simulador" class="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white font-semibold text-sm transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-mobile-screen-button text-emerald-400"></i>
-          <span>Simulador de Paciente</span>
-        </a>
       </div>
 
       <!-- MÉTRICAS DE IMPACTO -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-12 border-t border-slate-800/80 max-w-4xl mx-auto text-left">
+      <div id="metricas" class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-12 border-t border-slate-800/80 max-w-4xl mx-auto text-left">
         <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800/80">
           <div class="text-3xl font-extrabold text-white mb-1"><span class="text-emerald-400">10</span> seg</div>
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tempo de Primeira Resposta</p>
@@ -146,14 +138,11 @@ export const LANDING_HTML = `<!DOCTYPE html>
       <div class="p-10 rounded-3xl bg-gradient-to-b from-slate-900 to-[#0e1626] border border-slate-800 relative overflow-hidden">
         <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Pronto para nunca mais perder uma paciente?</h3>
         <p class="text-sm text-slate-400 max-w-xl mx-auto mb-8">
-          Acesse a central com as credenciais da sua clínica ou teste a IA agora no simulador de celular.
+          Acesse a central com as credenciais da sua clínica para gerenciar atendimentos, agenda e treinamento da IA.
         </p>
         <div class="flex flex-wrap items-center justify-center gap-4">
           <a href="/login" class="px-7 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20">
             Acessar Minha Clínica
-          </a>
-          <a href="/simulador" class="px-7 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs border border-slate-700 transition">
-            Abrir Simulador
           </a>
         </div>
       </div>
@@ -175,14 +164,19 @@ export const LANDING_HTML = `<!DOCTYPE html>
   </footer>
 
   <script>
-    // Se o usuário já tiver o cookie de sessão, ajusta o botão para levar direto ao painel
-    if (document.cookie.includes('auth_session=')) {
-      const btn = document.getElementById('navLoginBtn');
-      if (btn) {
-        btn.href = '/inbox';
-        btn.innerHTML = '<i class="fa-solid fa-chart-pie text-xs"></i><span>Meu Painel</span>';
-      }
-    }
+    // Se o usuário já tiver sessão autenticada (cookie HttpOnly), ajusta o botão para levar direto ao painel
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.authenticated) {
+          const btn = document.getElementById('navLoginBtn');
+          if (btn) {
+            btn.href = '/inbox';
+            btn.innerHTML = '<i class="fa-solid fa-chart-pie text-xs"></i><span>Meu Painel</span>';
+          }
+        }
+      })
+      .catch(() => {});
   </script>
 </body>
 </html>`;

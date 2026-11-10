@@ -1,14 +1,17 @@
 // Ponto de entrada do Cloudflare Worker.
 // Portas de entrada:
-//   fetch -> Landing Page (/), Login (/login), Simulador (/simulador), Painel (/inbox), Webhooks e APIs REST
-//   queue -> Processa cada mensagem (busca clínica, checa se IA está pausada, chama Claude, responde no WhatsApp)
+//   fetch     -> Landing Page (/), Login (/login), Painel (/inbox), Webhooks da Meta e APIs REST autenticadas
+//   queue     -> Processa cada mensagem recebida (busca clínica, checa pausa da IA, chama Claude, responde no WhatsApp)
+//   scheduled -> Cron diário (23:00 UTC / 20h Brasília) para confirmações de véspera multi-tenant
 import type { BotConfig, Env, InboundJob } from "./types";
 import { extractJobs, sendText, verifySignature } from "./whatsapp";
 import { askClaude } from "./claude";
 import { buildSystemPrompt } from "./prompt";
 import {
   claimInbound,
+  getTenantById,
   getTenantByPhoneNumberId,
+  isConfiguredPhoneNumberId,
   loadHistory,
   markAnswered,
   saveOutbound,
@@ -23,7 +26,6 @@ import {
   getUserByEmail,
   listAppointments,
   createAppointment,
-  updateAppointmentStatus,
   updateAppointmentDetails,
   getUpcomingAppointments,
   confirmUpcomingAppointmentForContact,
@@ -39,26 +41,94 @@ import {
   verifyPassword,
   makeSessionCookie,
   makeLogoutCookie,
+  resolveTenantAccessToken,
+  type SessionUser,
 } from "./auth";
 import { LANDING_HTML } from "./views/landing";
 import { LOGIN_HTML } from "./views/login";
 import { INBOX_HTML } from "./views/inbox";
-import { SIMULATOR_HTML } from "./views/simulator";
 
 const MSG_SO_TEXTO = "Por enquanto consigo ler apenas mensagens de texto. Pode escrever sua dúvida? 😊";
 const MSG_FALHA_IA = "Vou encaminhar sua mensagem para a nossa equipe, que responde assim que possível. Obrigada pela paciência!";
 
+const DEFAULT_CONFIG_TEMPLATE: BotConfig = {
+  clinic_name: "Clínica Sorriso & Estética Integrada",
+  doctor_name: "Dra. Fernanda Alves",
+  doctor_cro: "CRO-SP 102.450 / Harmonização Orofacial",
+  specialties: ["Harmonização Orofacial", "Odontologia Estética", "Reabilitação Oral"],
+  tone: "acolhedor",
+  procedures: [
+    "Limpeza & Profilaxia",
+    "Clareamento Dental a Laser",
+    "Alinhadores Invisíveis",
+    "Lentes de Resina e Porcelana",
+    "Toxina Botulínica (Botox)",
+    "Preenchimento Labial & Facial",
+    "Bioestimulador de Colágeno (Sculptra)",
+  ],
+  custom_procedures: [
+    { name: "Lipoaspiração Enzimática de Papada", category: "Estética", duration: "45 min", note: "Requer avaliação anatômica prévia" },
+  ],
+  price_strategy: "avaliacao",
+  prices_note: "Não passamos orçamentos fechados sem avaliação presencial com o especialista.",
+  payment_methods: "À vista no Pix com 10% de desconto ou em até 12x sem juros no cartão.",
+  insurance: "Atendimento particular exclusivo. Fornecemos nota fiscal detalhada e relatório para reembolso.",
+  address: "Av. Paulista, 1800, Conjunto 124 - Bela Vista, São Paulo/SP",
+  parking: "Estacionamento conveniado com manobrista no próprio edifício.",
+  hours: "Segunda a Sexta das 08h às 19h | Sábados das 08h às 13h",
+  delay_tolerance: "Tolerância de até 15 minutos para pontualidade dos atendimentos.",
+  emergency_contact: "Em caso de dor aguda, avise a equipe para encaixe de urgência no mesmo dia.",
+  clinical_rules: "Gestantes e lactantes não realizam procedimentos injetáveis. Proibido fornecer atestados ou receitas pelo WhatsApp.",
+  extra: "Clínica equipada com tecnologia 3D e escaneamento digital intraoral.",
+};
+
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+};
+
+function htmlResponse(html: string, status = 200): Response {
+  return new Response(html, {
+    status,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      ...SECURITY_HEADERS,
+    },
+  });
+}
+
+function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      ...SECURITY_HEADERS,
+      ...extraHeaders,
+    },
+  });
+}
+
+async function requireSession(request: Request, env: Env): Promise<{ session: SessionUser } | { response: Response }> {
+  const session = await getSessionFromRequest(request, env.AUTH_SECRET);
+  if (!session) {
+    return { response: jsonResponse({ error: "Não autenticado" }, 401) };
+  }
+  return { session };
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const isSecure = url.protocol === "https:";
 
-    if (url.pathname === "/health") return new Response("ok");
+    if (url.pathname === "/health") {
+      return new Response("ok", { headers: SECURITY_HEADERS });
+    }
 
     // 1) PÁGINA INICIAL / LANDING INSTITUCIONAL
     if (url.pathname === "/") {
-      return new Response(LANDING_HTML, {
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return htmlResponse(LANDING_HTML);
     }
 
     // 2) TELA DE LOGIN
@@ -67,9 +137,7 @@ export default {
       if (session) {
         return Response.redirect(`${url.origin}/inbox`, 302);
       }
-      return new Response(LOGIN_HTML, {
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return htmlResponse(LOGIN_HTML);
     }
 
     // 3) PAINEL DA CLÍNICA (WhatsApp Inbox + CRM de Agendamentos) - PROTEGIDO POR SESSÃO
@@ -78,16 +146,7 @@ export default {
       if (!session) {
         return Response.redirect(`${url.origin}/login`, 302);
       }
-      return new Response(INBOX_HTML, {
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
-    }
-
-    // 4) SIMULADOR DO PACIENTE NO CELULAR
-    if (url.pathname === "/simulador" || url.pathname === "/chat") {
-      return new Response(SIMULATOR_HTML, {
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return htmlResponse(INBOX_HTML);
     }
 
     // -------------------------------------------------------------------------
@@ -100,29 +159,19 @@ export default {
         const password = body.password ?? "";
 
         if (!email || !password) {
-          return new Response(JSON.stringify({ error: "E-mail e senha são obrigatórios." }), {
-            status: 400,
-            headers: { "content-type": "application/json; charset=utf-8" },
-          });
+          return jsonResponse({ error: "E-mail e senha são obrigatórios." }, 400);
         }
 
-        // Garante que as tabelas de auth e usuário inicial existam
         await ensureAuthAndAppointments(env.DB);
 
         const user = await getUserByEmail(env.DB, email);
         if (!user) {
-          return new Response(JSON.stringify({ error: "Credenciais inválidas. Verifique seu e-mail e senha." }), {
-            status: 401,
-            headers: { "content-type": "application/json; charset=utf-8" },
-          });
+          return jsonResponse({ error: "Credenciais inválidas. Verifique seu e-mail e senha." }, 401);
         }
 
         const valid = await verifyPassword(password, user.password_hash);
         if (!valid) {
-          return new Response(JSON.stringify({ error: "Credenciais inválidas. Verifique seu e-mail e senha." }), {
-            status: 401,
-            headers: { "content-type": "application/json; charset=utf-8" },
-          });
+          return jsonResponse({ error: "Credenciais inválidas. Verifique seu e-mail e senha." }, 401);
         }
 
         const token = await createSessionToken(
@@ -131,67 +180,49 @@ export default {
             tenantId: user.tenant_id,
             email: user.email,
             name: user.name,
+            role: user.role,
           },
           env.AUTH_SECRET
         );
 
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             success: true,
             user: { name: user.name, email: user.email, role: user.role, tenantId: user.tenant_id },
-          }),
-          {
-            status: 200,
-            headers: {
-              "content-type": "application/json; charset=utf-8",
-              "Set-Cookie": makeSessionCookie(token),
-            },
-          }
+          },
+          200,
+          { "Set-Cookie": makeSessionCookie(token, isSecure) }
         );
       } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), {
-          status: 500,
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        console.error("Erro em /api/auth/login:", String(err));
+        return jsonResponse({ error: "Erro interno ao autenticar." }, 500);
       }
     }
 
     if (url.pathname === "/api/auth/logout" && request.method === "POST") {
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: {
-          "content-type": "application/json; charset=utf-8",
-          "Set-Cookie": makeLogoutCookie(),
-        },
-      });
+      return jsonResponse({ success: true }, 200, { "Set-Cookie": makeLogoutCookie(isSecure) });
     }
 
     if (url.pathname === "/api/auth/me") {
       const session = await getSessionFromRequest(request, env.AUTH_SECRET);
       if (!session) {
-        return new Response(JSON.stringify({ authenticated: false }), {
-          status: 401,
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        return jsonResponse({ authenticated: false }, 401);
       }
-      return new Response(JSON.stringify({ authenticated: true, user: session }), {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
+      return jsonResponse({ authenticated: true, user: session });
     }
 
     // -------------------------------------------------------------------------
-    // APIS DO CRM DE AGENDAMENTOS E PRÉ-AGENDAMENTOS
+    // APIS DO CRM DE AGENDAMENTOS E PRÉ-AGENDAMENTOS (AUTENTICADAS)
     // -------------------------------------------------------------------------
     if (url.pathname === "/api/appointments") {
-      const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-      const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+      const tenantId = auth.session.tenantId;
 
       if (request.method === "GET") {
         await ensureAuthAndAppointments(env.DB);
         const appointments = await listAppointments(env.DB, tenantId);
-        return new Response(JSON.stringify({ appointments }), {
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        return jsonResponse({ appointments });
       }
 
       if (request.method === "POST") {
@@ -208,6 +239,7 @@ export default {
             scheduled_at?: string;
             status?: string;
             notes?: string;
+            duration?: string;
           };
 
           const pName = body.patientName || body.patient_name || body.name || "Paciente sem nome";
@@ -222,17 +254,13 @@ export default {
           const res = await createAppointment(env.DB, tenantId, pPhone, pName, pProc, pSched, pStatus, pNotes, pDuration);
 
           if (!res.success && res.conflict) {
-            return new Response(JSON.stringify({ error: res.message, conflict: true }), {
-              status: 409,
-              headers: { "content-type": "application/json; charset=utf-8" },
-            });
+            return jsonResponse({ error: res.message, conflict: true }, 409);
           }
 
-          return new Response(JSON.stringify({ success: true, id: res.id }), {
-            headers: { "content-type": "application/json; charset=utf-8" },
-          });
+          return jsonResponse({ success: true, id: res.id });
         } catch (err) {
-          return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+          console.error("Erro em POST /api/appointments:", String(err));
+          return jsonResponse({ error: "Erro ao criar agendamento." }, 500);
         }
       }
 
@@ -247,15 +275,14 @@ export default {
             duration?: string;
           };
           if (!body.id) {
-            return new Response(JSON.stringify({ error: "id obrigatório" }), { status: 400 });
+            return jsonResponse({ error: "id obrigatório" }, 400);
           }
           await ensureAuthAndAppointments(env.DB);
           await updateAppointmentDetails(env.DB, tenantId, body.id, body);
-          return new Response(JSON.stringify({ success: true }), {
-            headers: { "content-type": "application/json; charset=utf-8" },
-          });
+          return jsonResponse({ success: true });
         } catch (err) {
-          return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+          console.error("Erro em PATCH /api/appointments:", String(err));
+          return jsonResponse({ error: "Erro ao atualizar agendamento." }, 500);
         }
       }
 
@@ -264,355 +291,261 @@ export default {
           const body = (await request.json().catch(() => ({}))) as { id?: number };
           const id = body.id || parseInt(url.searchParams.get("id") || "0", 10);
           if (!id) {
-            return new Response(JSON.stringify({ error: "id obrigatório" }), { status: 400 });
+            return jsonResponse({ error: "id obrigatório" }, 400);
           }
           await ensureAuthAndAppointments(env.DB);
           await deleteAppointment(env.DB, tenantId, id);
-          return new Response(JSON.stringify({ success: true }), {
-            headers: { "content-type": "application/json; charset=utf-8" },
-          });
+          return jsonResponse({ success: true });
         } catch (err) {
-          return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+          console.error("Erro em DELETE /api/appointments:", String(err));
+          return jsonResponse({ error: "Erro ao excluir agendamento." }, 500);
         }
       }
+
+      return jsonResponse({ error: "Método não permitido" }, 405);
     }
 
-    // DISPARO MANUAL OU TESTE DAS CONFIRMAÇÕES DE VÉSPERA (20H)
+    // DISPARO MANUAL DAS CONFIRMAÇÕES DE VÉSPERA (RESTRITO À CLÍNICA LOGADA)
     if (url.pathname === "/api/appointments/run-confirmations" && request.method === "POST") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
       try {
-        const result = await runDayBeforeConfirmations(env);
-        return new Response(JSON.stringify({ success: true, ...result }), {
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        const result = await runDayBeforeConfirmations(env, auth.session.tenantId);
+        return jsonResponse({ success: true, ...result });
       } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+        console.error("Erro em /api/appointments/run-confirmations:", String(err));
+        return jsonResponse({ error: "Erro ao disparar confirmações." }, 500);
       }
     }
 
     // -------------------------------------------------------------------------
-    // APIS DE CONFIGURAÇÃO & TREINAMENTO DA IA (ODONTO & ESTÉTICA)
+    // APIS DE CONFIGURAÇÃO & TREINAMENTO DA IA (AUTENTICADAS)
     // -------------------------------------------------------------------------
     if (url.pathname === "/api/config") {
-      const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-      const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+      const tenantId = auth.session.tenantId;
 
       if (request.method === "GET") {
         let config = await getTenantConfig(env.DB, tenantId);
         if (!config) {
-          // Template padrão rico para Odonto & Estética
-          config = {
-            clinic_name: "Clínica Sorriso & Estética Integrada",
-            doctor_name: "Dra. Fernanda Alves",
-            doctor_cro: "CRO-SP 102.450 / Harmonização Orofacial",
-            specialties: ["Harmonização Orofacial", "Odontologia Estética", "Reabilitação Oral"],
-            tone: "acolhedor",
-            procedures: [
-              "Limpeza & Profilaxia",
-              "Clareamento Dental a Laser",
-              "Alinhadores Invisíveis",
-              "Lentes de Resina e Porcelana",
-              "Toxina Botulínica (Botox)",
-              "Preenchimento Labial & Facial",
-              "Bioestimulador de Colágeno (Sculptra)",
-            ],
-            custom_procedures: [
-              { name: "Lipoaspiração Enzimática de Papada", category: "Estética", duration: "45 min", note: "Requer avaliação anatômica prévia" },
-            ],
-            price_strategy: "avaliacao",
-            prices_note: "Não passamos orçamentos fechados sem avaliação presencial com o especialista.",
-            payment_methods: "À vista no Pix com 10% de desconto ou em até 12x sem juros no cartão.",
-            insurance: "Atendimento particular exclusivo. Fornecemos nota fiscal detalhada e relatório para reembolso.",
-            address: "Av. Paulista, 1800, Conjunto 124 - Bela Vista, São Paulo/SP",
-            parking: "Estacionamento conveniado com manobrista no próprio edifício.",
-            hours: "Segunda a Sexta das 08h às 19h | Sábados das 08h às 13h",
-            delay_tolerance: "Tolerância de até 15 minutos para pontualidade dos atendimentos.",
-            emergency_contact: "Em caso de dor aguda, avise a equipe para encaixe de urgência no mesmo dia.",
-            clinical_rules: "Gestantes e lactantes não realizam procedimentos injetáveis. Proibido fornecer atestados ou receitas pelo WhatsApp.",
-            extra: "Clínica equipada com tecnologia 3D e escaneamento digital intraoral.",
-          };
+          config = DEFAULT_CONFIG_TEMPLATE;
         }
-        return new Response(JSON.stringify({ config }), {
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        return jsonResponse({ config });
       }
 
       if (request.method === "POST") {
         try {
-          const body = (await request.json()) as { config: BotConfig };
+          const body = (await request.json()) as { config?: BotConfig };
           if (!body.config) {
-            return new Response(JSON.stringify({ error: "config é obrigatório" }), { status: 400 });
+            return jsonResponse({ error: "config é obrigatório" }, 400);
           }
           await updateTenantConfig(env.DB, tenantId, body.config);
-          return new Response(JSON.stringify({ success: true }), {
-            headers: { "content-type": "application/json; charset=utf-8" },
-          });
+          return jsonResponse({ success: true });
         } catch (err) {
-          return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+          console.error("Erro em POST /api/config:", String(err));
+          return jsonResponse({ error: "Erro ao salvar configuração da clínica." }, 500);
         }
       }
+
+      return jsonResponse({ error: "Método não permitido" }, 405);
     }
 
     // -------------------------------------------------------------------------
-    // APIS DO ATENDIMENTO WHATSAPP (MULTI-CHAT)
+    // APIS DO ATENDIMENTO WHATSAPP MULTI-CHAT (AUTENTICADAS)
     // -------------------------------------------------------------------------
     if (url.pathname === "/api/time") {
-      return new Response(
-        JSON.stringify({
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+      return jsonResponse(
+        {
           server_time: new Date().toISOString(),
           timezone: "America/Sao_Paulo",
-        }),
-        {
-          headers: {
-            "content-type": "application/json; charset=utf-8",
-            "cache-control": "no-cache",
-          },
         },
+        200,
+        { "cache-control": "no-cache" }
       );
     }
 
     if (url.pathname === "/api/conversations") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
       try {
-        const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-        const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
-        const conversations = await listConversations(env.DB, tenantId);
-        return new Response(JSON.stringify({ conversations, server_time: new Date().toISOString() }), {
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        const conversations = await listConversations(env.DB, auth.session.tenantId);
+        return jsonResponse({ conversations, server_time: new Date().toISOString() });
       } catch (err) {
         console.error("Erro em /api/conversations:", String(err));
-        return new Response(JSON.stringify({ error: String(err), conversations: [], server_time: new Date().toISOString() }), {
-          status: 500,
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        return jsonResponse({ error: "Erro ao carregar conversas.", conversations: [], server_time: new Date().toISOString() }, 500);
       }
     }
 
     if (url.pathname === "/api/messages") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
       try {
-        const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-        const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
         const phone = url.searchParams.get("phone");
         if (!phone) {
-          return new Response(JSON.stringify({ error: "phone obrigatório" }), { status: 400 });
+          return jsonResponse({ error: "phone obrigatório" }, 400);
         }
-        const messages = await getConversationMessages(env.DB, tenantId, phone);
-        const aiPaused = await isAiPaused(env.DB, tenantId, phone);
-        return new Response(JSON.stringify({ messages, ai_paused: aiPaused, server_time: new Date().toISOString() }), {
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        const messages = await getConversationMessages(env.DB, auth.session.tenantId, phone);
+        const aiPaused = await isAiPaused(env.DB, auth.session.tenantId, phone);
+        return jsonResponse({ messages, ai_paused: aiPaused, server_time: new Date().toISOString() });
       } catch (err) {
         console.error("Erro em /api/messages:", String(err));
-        return new Response(JSON.stringify({ error: String(err), messages: [], ai_paused: false, server_time: new Date().toISOString() }), {
-          status: 500,
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        return jsonResponse(
+          { error: "Erro ao carregar mensagens.", messages: [], ai_paused: false, server_time: new Date().toISOString() },
+          500
+        );
       }
     }
 
     // Checagem ultra-leve de 1 row read para polling (economiza 99% das cotas do D1)
     if (url.pathname === "/api/sync-check") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
       try {
-        const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-        const tenantId = session?.tenantId ?? url.searchParams.get("tenant") ?? "lab";
         const activePhone = url.searchParams.get("active_phone") || null;
         const lastId = parseInt(url.searchParams.get("last_id") || "0", 10);
         const lastActiveMsgId = parseInt(url.searchParams.get("active_msg_id") || "0", 10);
 
-        const state = await getSyncState(env.DB, tenantId, activePhone);
+        const state = await getSyncState(env.DB, auth.session.tenantId, activePhone);
 
-        const hasNewGlobal = state.latestId > lastId;
-        const hasNewActive = activePhone ? state.activeLatestId > lastActiveMsgId : false;
-
-        return new Response(
-          JSON.stringify({
-            has_new_global: hasNewGlobal,
-            has_new_active: hasNewActive,
+        return jsonResponse(
+          {
+            has_new_global: state.latestId > lastId,
+            has_new_active: activePhone ? state.activeLatestId > lastActiveMsgId : false,
             latest_id: state.latestId,
             active_latest_id: state.activeLatestId,
             active_ai_paused: state.activeAiPaused,
             server_time: new Date().toISOString(),
-          }),
-          {
-            headers: {
-              "content-type": "application/json; charset=utf-8",
-              "cache-control": "no-cache",
-            },
           },
+          200,
+          { "cache-control": "no-cache" }
         );
       } catch (err) {
         console.error("Erro em /api/sync-check:", String(err));
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             has_new_global: false,
             has_new_active: false,
             latest_id: 0,
             active_latest_id: 0,
             active_ai_paused: false,
             server_time: new Date().toISOString(),
-          }),
-          {
-            headers: {
-              "content-type": "application/json; charset=utf-8",
-              "cache-control": "no-cache",
-            },
           },
+          200,
+          { "cache-control": "no-cache" }
         );
       }
     }
 
-    // Inicialização única de tabelas e índices
-    if (url.pathname === "/api/init-perf") {
-      await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_messages_tenant_id ON messages (tenant_id, id);").run();
-      await ensureAuthAndAppointments(env.DB);
-      return new Response(JSON.stringify({ status: "indexes and tables ensured" }), {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
-    }
-
-    // Envio manual de resposta da recepcionista
+    // Envio manual de resposta da recepcionista (usa phone_number_id e token da clínica logada)
     if (url.pathname === "/api/send" && request.method === "POST") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+      const tenantId = auth.session.tenantId;
+
       try {
-        const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-        const body = (await request.json()) as { phone: string; text: string; tenant?: string };
-        const tenantId = session?.tenantId ?? body.tenant ?? "lab";
-        if (!body.phone || !body.text) {
-          return new Response(JSON.stringify({ error: "phone e text são obrigatórios" }), { status: 400 });
+        const body = (await request.json()) as { phone?: string; text?: string };
+        const phone = body.phone?.trim();
+        const text = body.text?.trim();
+        if (!phone || !text) {
+          return jsonResponse({ error: "phone e text são obrigatórios" }, 400);
         }
 
-        await saveHumanOutbound(env.DB, tenantId, body.phone, body.text);
-        // Sempre que a recepcionista envia mensagem manual, a IA é pausada para este contato
-        await setAiPaused(env.DB, tenantId, body.phone, true);
+        const tenant = await getTenantById(env.DB, tenantId);
+        const token = await resolveTenantAccessToken(tenant, env);
+        const hasValidPhoneId = isConfiguredPhoneNumberId(tenant?.phone_number_id);
 
-        const token = env.WA_LAB_TOKEN;
-        if (token) {
+        let sentId: string | null = null;
+        let whatsappSent = false;
+        let warning: string | undefined;
+
+        if (tenant && hasValidPhoneId && token) {
           try {
-            await sendText(env, "1459702903890342", token, body.phone, body.text);
+            sentId = await sendText(env, tenant.phone_number_id, token, phone, text);
+            whatsappSent = true;
           } catch (e) {
-            console.warn("Aviso ao enviar manual no WhatsApp:", String(e));
+            warning = "Mensagem salva no painel, mas o envio pelo WhatsApp falhou.";
+            console.warn(`Aviso ao enviar manual no WhatsApp (tenant=${tenantId}):`, String(e));
           }
+        } else {
+          warning = "Clínica sem phone_number_id ou token WhatsApp configurado; mensagem salva apenas no painel.";
+          console.warn(`[SEND] ${warning} (tenant=${tenantId})`);
         }
 
-        return new Response(JSON.stringify({ success: true, ai_paused: true }), {
-          headers: { "content-type": "application/json; charset=utf-8" },
+        await saveHumanOutbound(env.DB, tenantId, phone, text, sentId);
+        // Sempre que a recepcionista envia mensagem manual, a IA é pausada para este contato
+        await setAiPaused(env.DB, tenantId, phone, true);
+
+        return jsonResponse({
+          success: true,
+          ai_paused: true,
+          whatsapp_sent: whatsappSent,
+          ...(warning ? { warning } : {}),
         });
       } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+        console.error("Erro em /api/send:", String(err));
+        return jsonResponse({ error: "Erro ao enviar mensagem." }, 500);
       }
     }
 
     // Ligar / Desligar IA para um paciente específico (Human Takeover)
     if (url.pathname === "/api/toggle-ai" && request.method === "POST") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
       try {
-        const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-        const body = (await request.json()) as { phone: string; paused: boolean; tenant?: string };
-        const tenantId = session?.tenantId ?? body.tenant ?? "lab";
+        const body = (await request.json()) as { phone?: string; paused?: boolean };
         if (!body.phone) {
-          return new Response(JSON.stringify({ error: "phone obrigatório" }), { status: 400 });
+          return jsonResponse({ error: "phone obrigatório" }, 400);
         }
-        await setAiPaused(env.DB, tenantId, body.phone, !!body.paused);
-        return new Response(JSON.stringify({ success: true, ai_paused: !!body.paused }), {
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
+        await setAiPaused(env.DB, auth.session.tenantId, body.phone, !!body.paused);
+        return jsonResponse({ success: true, ai_paused: !!body.paused });
       } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+        console.error("Erro em /api/toggle-ai:", String(err));
+        return jsonResponse({ error: "Erro ao alterar status da IA." }, 500);
       }
     }
 
-    // Simular mensagem vinda de qualquer paciente
-    if (url.pathname === "/api/simulate-patient" && request.method === "POST") {
-      try {
-        const body = (await request.json()) as { phone?: string; name?: string; text: string };
-        if (!body.text) {
-          return new Response(JSON.stringify({ error: "text obrigatório" }), { status: 400 });
-        }
-        const phone = body.phone || "5521973401655";
-        const name = body.name || "Pedro (Paciente Teste)";
-        const job: InboundJob = {
-          phoneNumberId: "1459702903890342",
-          from: phone,
-          contactName: name,
-          waMessageId: "sim_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-          type: "text",
-          text: body.text,
-        };
-        await env.INBOX.send(job);
-        return new Response(JSON.stringify({ status: "queued", phone, text: body.text }), {
-          headers: { "content-type": "application/json; charset=utf-8" },
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
-      }
-    }
-
-    // Limpar conversa específica
+    // Limpar conversa específica da clínica logada
     if (url.pathname === "/api/clear-chat" && request.method === "POST") {
-      const session = await getSessionFromRequest(request, env.AUTH_SECRET);
-      const body = (await request.json()) as { phone: string; tenant?: string };
-      const tenantId = session?.tenantId ?? body.tenant ?? "lab";
-      if (body.phone) {
-        await clearConversation(env.DB, tenantId, body.phone);
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
+      try {
+        const body = (await request.json()) as { phone?: string };
+        if (!body.phone) {
+          return jsonResponse({ error: "phone obrigatório" }, 400);
+        }
+        await clearConversation(env.DB, auth.session.tenantId, body.phone);
+        return jsonResponse({ status: "cleared" });
+      } catch (err) {
+        console.error("Erro em /api/clear-chat:", String(err));
+        return jsonResponse({ error: "Erro ao limpar conversa." }, 500);
       }
-      return new Response(JSON.stringify({ status: "cleared" }), {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
     }
 
-    // Botão para limpar todo o histórico do laboratório
-    if (url.pathname === "/clear") {
-      await env.DB.prepare("DELETE FROM messages WHERE tenant_id = 'lab'").run();
-      return new Response(JSON.stringify({ status: "Histórico limpo com sucesso!" }), {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
+    // -------------------------------------------------------------------------
+    // WEBHOOK OFICIAL DA META (WHATSAPP CLOUD API)
+    // -------------------------------------------------------------------------
+    if (url.pathname !== "/webhook") {
+      return new Response("not found", { status: 404, headers: SECURITY_HEADERS });
     }
-
-    // Rota legada de simulação rápida por URL
-    if (url.pathname === "/simulate") {
-      const q = url.searchParams.get("q") ?? "Olá! Gostaria de saber os procedimentos que vocês fazem e o horário de atendimento.";
-      const job: InboundJob = {
-        phoneNumberId: "1459702903890342",
-        from: "5521973401655",
-        contactName: "Pedro (Paciente Teste)",
-        waMessageId: "sim_" + Date.now(),
-        type: "text",
-        text: q,
-      };
-      await env.INBOX.send(job);
-      return new Response(
-        JSON.stringify(
-          {
-            status: "Mensagem do paciente recebida e enfileirada!",
-            paciente: "Pedro (Paciente Teste)",
-            pergunta: q,
-            dica: "Acesse /history em 2 segundos para ver a resposta que o Claude gerou e gravou no banco D1.",
-          },
-          null,
-          2,
-        ),
-        { headers: { "content-type": "application/json; charset=utf-8" } },
-      );
-    }
-
-    // Rota para visualizar o histórico raw em JSON
-    if (url.pathname === "/history") {
-      const { results } = await env.DB.prepare(
-        "SELECT id, tenant_id, contact_name, direction, body, status, created_at FROM messages ORDER BY id DESC LIMIT 20",
-      ).all();
-      return new Response(JSON.stringify(results, null, 2), {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
-    }
-
-    if (url.pathname !== "/webhook") return new Response("not found", { status: 404 });
 
     // 1) Verificação inicial da Meta
     if (request.method === "GET") {
       const mode = url.searchParams.get("hub.mode");
       const token = url.searchParams.get("hub.verify_token");
       const challenge = url.searchParams.get("hub.challenge");
-      if (mode === "subscribe" && token && token === env.WA_VERIFY_TOKEN && challenge) {
-        return new Response(challenge, { status: 200, headers: { "content-type": "text/plain" } });
+      if (mode === "subscribe" && token && env.WA_VERIFY_TOKEN && token === env.WA_VERIFY_TOKEN && challenge) {
+        return new Response(challenge, { status: 200, headers: { "content-type": "text/plain", ...SECURITY_HEADERS } });
       }
-      return new Response("forbidden", { status: 403 });
+      return new Response("forbidden", { status: 403, headers: SECURITY_HEADERS });
     }
 
     // 2) Mensagens oficiais recebidas da Meta
@@ -620,23 +553,23 @@ export default {
       const raw = await request.arrayBuffer();
 
       const ok = await verifySignature(raw, request.headers.get("x-hub-signature-256"), env.META_APP_SECRETS);
-      if (!ok) return new Response("invalid signature", { status: 401 });
+      if (!ok) return new Response("invalid signature", { status: 401, headers: SECURITY_HEADERS });
 
       let payload: unknown;
       try {
         payload = JSON.parse(new TextDecoder().decode(raw));
       } catch {
-        return new Response("bad json", { status: 400 });
+        return new Response("bad json", { status: 400, headers: SECURITY_HEADERS });
       }
 
       const jobs = extractJobs(payload);
       if (jobs.length) {
         await env.INBOX.sendBatch(jobs.map((body) => ({ body })));
       }
-      return new Response("ok", { status: 200 });
+      return new Response("ok", { status: 200, headers: SECURITY_HEADERS });
     }
 
-    return new Response("method not allowed", { status: 405 });
+    return new Response("method not allowed", { status: 405, headers: SECURITY_HEADERS });
   },
 
   async queue(batch: MessageBatch<InboundJob>, env: Env): Promise<void> {
@@ -651,15 +584,24 @@ export default {
     }
   },
 
-  async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
     console.log("[CRON] Executando rotina de confirmações automáticas de véspera às 20h...");
-    await runDayBeforeConfirmations(env);
+    const result = await runDayBeforeConfirmations(env);
+    console.log("[CRON] Confirmações finalizadas:", JSON.stringify(result));
   },
 } satisfies ExportedHandler<Env, InboundJob>;
 
-export async function runDayBeforeConfirmations(env: Env): Promise<{ total: number; sent: number }> {
+interface AppointmentWithTenant extends AppointmentRecord {
+  phone_number_id: string;
+  access_token_enc: string | null;
+}
+
+export async function runDayBeforeConfirmations(
+  env: Env,
+  targetTenantId?: string
+): Promise<{ total: number; sent: number; skipped: number; failed: number }> {
   await ensureAuthAndAppointments(env.DB);
-  const tenantId = "lab";
+
   // Data de amanhã no fuso de Brasília (YYYY-MM-DD)
   const now = new Date();
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -670,48 +612,69 @@ export async function runDayBeforeConfirmations(env: Env): Promise<{ total: numb
     day: "2-digit",
   }).format(tomorrow);
 
-  // Busca agendamentos de amanhã que ainda NÃO foram confirmados
-  // Se o atendente já confirmou manualmente antes das 20h, o status já é 'confirmado' e NÃO reenviamos!
-  const { results } = await env.DB.prepare(
-    `SELECT * FROM appointments 
-     WHERE tenant_id = ?1 
-       AND scheduled_at LIKE ?2 
-       AND status IN ('agendado', 'pre_agendado')`
-  )
-    .bind(tenantId, `${tomorrowDateStr}%`)
-    .all<AppointmentRecord>();
+  // Busca agendamentos de amanhã ainda não confirmados de TODAS as clínicas ativas (ou de uma clínica específica)
+  const query = targetTenantId
+    ? `SELECT a.*, t.phone_number_id, t.access_token_enc
+       FROM appointments a
+       INNER JOIN tenants t ON t.id = a.tenant_id
+       WHERE t.active = 1
+         AND a.tenant_id = ?2
+         AND a.scheduled_at LIKE ?1
+         AND a.status IN ('agendado', 'pre_agendado')`
+    : `SELECT a.*, t.phone_number_id, t.access_token_enc
+       FROM appointments a
+       INNER JOIN tenants t ON t.id = a.tenant_id
+       WHERE t.active = 1
+         AND a.scheduled_at LIKE ?1
+         AND a.status IN ('agendado', 'pre_agendado')`;
 
-  let sent = 0;
+  const stmt = targetTenantId
+    ? env.DB.prepare(query).bind(`${tomorrowDateStr}%`, targetTenantId)
+    : env.DB.prepare(query).bind(`${tomorrowDateStr}%`);
+
+  const { results } = await stmt.all<AppointmentWithTenant>();
+
   const list = results || [];
-  const token = env.WA_LAB_TOKEN;
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
 
   for (const app of list) {
-    const contactPhone = app.contact_wa_id;
+    const contactPhone = app.contact_wa_id?.trim();
+    if (!contactPhone || !isConfiguredPhoneNumberId(app.phone_number_id)) {
+      skipped++;
+      continue;
+    }
+
+    const token = await resolveTenantAccessToken({ access_token_enc: app.access_token_enc }, env);
+    if (!token) {
+      console.warn(`[CRON] Clínica ${app.tenant_id} sem token WhatsApp configurado; pulando confirmação.`);
+      skipped++;
+      continue;
+    }
+
     const patientName = app.patient_name || "Paciente";
     const proc = app.procedure || "sua consulta";
     const timePart = app.scheduled_at.includes(" ") ? app.scheduled_at.split(" ")[1] : app.scheduled_at;
 
     const msgText = `Olá, ${patientName}! 😊\nPassando para confirmar seu horário de *${proc}* amanhã (${tomorrowDateStr}) às *${timePart}*.\n\nVocê confirma sua presença? Por favor, responda com *SIM* para confirmar.`;
 
-    if (token && contactPhone) {
-      try {
-        const sentId = await sendText(env, "1459702903890342", token, contactPhone, msgText);
-        await saveOutbound(env.DB, tenantId, contactPhone, msgText, sentId);
-        sent++;
-      } catch (e) {
-        console.warn("Aviso ao enviar confirmação de véspera no WhatsApp:", e);
-        await saveOutbound(env.DB, tenantId, contactPhone, msgText, null);
-        sent++;
-      }
+    try {
+      const sentId = await sendText(env, app.phone_number_id, token, contactPhone, msgText);
+      await saveOutbound(env.DB, app.tenant_id, contactPhone, msgText, sentId);
+      sent++;
+    } catch (e) {
+      console.error(`[CRON] Falha ao enviar confirmação para ${contactPhone} (tenant=${app.tenant_id}):`, String(e));
+      failed++;
     }
   }
 
-  return { total: list.length, sent };
+  return { total: list.length, sent, skipped, failed };
 }
 
 async function processJob(job: InboundJob, env: Env): Promise<void> {
   const tenant = await getTenantByPhoneNumberId(env.DB, job.phoneNumberId);
-  if (!tenant || !tenant.active) {
+  if (!tenant || !tenant.active || !isConfiguredPhoneNumberId(tenant.phone_number_id)) {
     console.warn("número sem clínica ativa:", job.phoneNumberId);
     return;
   }
@@ -724,7 +687,7 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   // mas NÃO chamamos o Claude nem disparamos resposta automática.
   const paused = await isAiPaused(env.DB, tenant.id, job.from);
   if (paused) {
-    console.log(`[HUMAN_TAKEOVER] IA pausada para o contato ${job.from}. Mensagem recebida sem resposta automática.`);
+    console.log(`[HUMAN_TAKEOVER] IA pausada para o contato ${job.from} (tenant=${tenant.id}).`);
     await markAnswered(env.DB, job.waMessageId);
     return;
   }
@@ -742,8 +705,10 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
     return;
   }
 
-  const token = env.WA_LAB_TOKEN;
-  if (!token) throw new Error("WA_LAB_TOKEN não configurado");
+  const token = await resolveTenantAccessToken(tenant, env);
+  if (!token) {
+    throw new Error(`Token WhatsApp não configurado para a clínica ${tenant.id}`);
+  }
 
   let reply: string;
   if (!job.text) {
@@ -815,9 +780,9 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
 
   let sentId: string | null = null;
   try {
-    sentId = await sendText(env, job.phoneNumberId, token, job.from, reply);
+    sentId = await sendText(env, tenant.phone_number_id, token, job.from, reply);
   } catch (err) {
-    console.warn("Aviso: WhatsApp não entregou (ex: restrição geográfica de número de teste da Meta):", String(err));
+    console.warn("Aviso: WhatsApp não entregou (ex: restrição geográfica ou token/janela Meta):", String(err));
   }
 
   await saveOutbound(env.DB, tenant.id, job.from, reply, sentId);

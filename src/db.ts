@@ -10,19 +10,41 @@ export async function getTenantByPhoneNumberId(db: D1Database, phoneNumberId: st
     .first<Tenant>();
 }
 
-// Garante que a tabela de controle de intervenção humana (Pausar IA) existe se necessário
+export async function getTenantById(db: D1Database, tenantId: string): Promise<Tenant | null> {
+  return db
+    .prepare("SELECT * FROM tenants WHERE id = ?1")
+    .bind(tenantId)
+    .first<Tenant>();
+}
+
+export function isConfiguredPhoneNumberId(phoneNumberId?: string | null): boolean {
+  const trimmed = phoneNumberId?.trim();
+  return Boolean(trimmed && !trimmed.startsWith("unconfigured:"));
+}
+
+let conversationStatesPromise: Promise<void> | null = null;
+
+// Garante que a tabela de controle de intervenção humana (Pausar IA) existe (memoizado por isolate)
 export async function ensureConversationStatesTable(db: D1Database): Promise<void> {
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS conversation_states (
-        tenant_id TEXT NOT NULL,
-        contact_wa_id TEXT NOT NULL,
-        ai_paused INTEGER NOT NULL DEFAULT 0,
-        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-        PRIMARY KEY (tenant_id, contact_wa_id)
-      );`,
-    )
-    .run();
+  if (!conversationStatesPromise) {
+    conversationStatesPromise = db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS conversation_states (
+          tenant_id TEXT NOT NULL,
+          contact_wa_id TEXT NOT NULL,
+          ai_paused INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          PRIMARY KEY (tenant_id, contact_wa_id)
+        );`,
+      )
+      .run()
+      .then(() => undefined)
+      .catch((err) => {
+        conversationStatesPromise = null;
+        throw err;
+      });
+  }
+  await conversationStatesPromise;
 }
 export const ensureConversationStateTable = ensureConversationStatesTable;
 
@@ -113,12 +135,13 @@ export async function saveHumanOutbound(
   body: string,
   waMessageId: string | null = null,
 ): Promise<void> {
+  const fallbackId = `human_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
   await db
     .prepare(
       `INSERT INTO messages (tenant_id, contact_wa_id, direction, wa_message_id, body, status)
        VALUES (?1, ?2, 'out', ?3, ?4, 'human')`,
     )
-    .bind(tenantId, contact, waMessageId ?? `human_${Date.now()}`, body)
+    .bind(tenantId, contact, waMessageId ?? fallbackId, body)
     .run();
 }
 
@@ -264,78 +287,90 @@ export interface AppointmentRecord {
   created_at: string;
 }
 
+let authAndAppointmentsPromise: Promise<void> | null = null;
+
 export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
-  await ensureConversationStatesTable(db);
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS users (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        tenant_id     TEXT NOT NULL,
-        email         TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        name          TEXT NOT NULL,
-        role          TEXT NOT NULL DEFAULT 'admin',
-        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-      );`
-    )
-    .run();
+  if (!authAndAppointmentsPromise) {
+    authAndAppointmentsPromise = (async () => {
+      await ensureConversationStatesTable(db);
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS users (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id     TEXT NOT NULL,
+            email         TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            name          TEXT NOT NULL,
+            role          TEXT NOT NULL DEFAULT 'admin',
+            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+          );`
+        )
+        .run();
 
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS appointments (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        tenant_id     TEXT NOT NULL,
-        contact_wa_id TEXT NOT NULL,
-        patient_name  TEXT NOT NULL,
-        procedure     TEXT,
-        scheduled_at  TEXT NOT NULL,
-        status        TEXT NOT NULL DEFAULT 'agendado',
-        notes         TEXT,
-        duration      TEXT DEFAULT '30 min',
-        confirmed_at  TEXT,
-        confirmed_by  TEXT,
-        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-      );`
-    )
-    .run();
+      await db
+        .prepare(
+          `CREATE TABLE IF NOT EXISTS appointments (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id     TEXT NOT NULL,
+            contact_wa_id TEXT NOT NULL,
+            patient_name  TEXT NOT NULL,
+            procedure     TEXT,
+            scheduled_at  TEXT NOT NULL,
+            status        TEXT NOT NULL DEFAULT 'agendado',
+            notes         TEXT,
+            duration      TEXT DEFAULT '30 min',
+            confirmed_at  TEXT,
+            confirmed_by  TEXT,
+            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+          );`
+        )
+        .run();
 
-  // Adiciona colunas se a tabela foi criada antes sem elas
-  try {
-    await db.prepare("ALTER TABLE appointments ADD COLUMN duration TEXT DEFAULT '30 min';").run();
-  } catch {}
-  try {
-    await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_at TEXT;").run();
-  } catch {}
-  try {
-    await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_by TEXT;").run();
-  } catch {}
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_messages_tenant_id ON messages (tenant_id, id);").run();
 
-  // Verifica se o usuário padrão de Pedro existe
-  const user = await db.prepare("SELECT id FROM users LIMIT 1").first();
-  if (!user) {
-    // Senha padrão inicial para testes: 'admin123'
-    // Hash SHA-256 de "admin123:odonto_salt_2026"
-    const defaultHash = "219f1b54263a28a320ddb777b89011a54d75d32bc5d0e6b20b9fdbdc02d61876";
-    await db
-      .prepare(
-        `INSERT OR IGNORE INTO users (tenant_id, email, password_hash, name, role)
-         VALUES 
-         ('lab', 'pedrogutierres@protonmail.com', ?1, 'Pedro Gutierres', 'admin'),
-         ('lab', 'admin@clinica.com', ?1, 'Dra. Fernanda (Admin)', 'admin');`
-      )
-      .bind(defaultHash)
-      .run();
+      // Adiciona colunas se a tabela foi criada antes sem elas
+      try {
+        await db.prepare("ALTER TABLE appointments ADD COLUMN duration TEXT DEFAULT '30 min';").run();
+      } catch {}
+      try {
+        await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_at TEXT;").run();
+      } catch {}
+      try {
+        await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_by TEXT;").run();
+      } catch {}
 
-    // Cria agendamentos iniciais de exemplo para a clínica
-    await db
-      .prepare(
-        `INSERT OR IGNORE INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
-         VALUES 
-         ('lab', '5511988881234', 'Mariana Silveira', 'Botox / Toxina Botulínica', '2026-11-14 10:00', 'confirmado', 'Agendado automaticamente pela Secretária IA Claude 24h'),
-         ('lab', '5521973401655', 'Pedro (Paciente Teste)', 'Avaliação Geral & Clareamento', '2026-11-11 15:30', 'agendado', 'Paciente aguardando confirmação de véspera');`
-      )
-      .run();
+      // Verifica se o usuário padrão inicial existe (apenas em banco recém-criado)
+      const user = await db.prepare("SELECT id FROM users LIMIT 1").first();
+      if (!user) {
+        // Senha padrão inicial para testes: 'admin123'
+        // Hash SHA-256 de "admin123:odonto_salt_2026"
+        const defaultHash = "219f1b54263a28a320ddb777b89011a54d75d32bc5d0e6b20b9fdbdc02d61876";
+        await db
+          .prepare(
+            `INSERT OR IGNORE INTO users (tenant_id, email, password_hash, name, role)
+             VALUES 
+             ('lab', 'pedrogutierres@protonmail.com', ?1, 'Pedro Gutierres', 'admin'),
+             ('lab', 'admin@clinica.com', ?1, 'Dra. Fernanda (Admin)', 'admin');`
+          )
+          .bind(defaultHash)
+          .run();
+
+        // Cria agendamentos iniciais de exemplo para a clínica
+        await db
+          .prepare(
+            `INSERT OR IGNORE INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
+             VALUES 
+             ('lab', '5511988881234', 'Mariana Silveira', 'Botox / Toxina Botulínica', '2026-11-14 10:00', 'confirmado', 'Agendado automaticamente pela Secretária IA Claude 24h'),
+             ('lab', '5521973401655', 'Pedro (Paciente Teste)', 'Avaliação Geral & Clareamento', '2026-11-11 15:30', 'agendado', 'Paciente aguardando confirmação de véspera');`
+          )
+          .run();
+      }
+    })().catch((err) => {
+      authAndAppointmentsPromise = null;
+      throw err;
+    });
   }
+  await authAndAppointmentsPromise;
 }
 
 export async function getUserByEmail(db: D1Database, email: string): Promise<UserRecord | null> {
@@ -608,14 +643,26 @@ export async function updateTenantConfig(
   config: BotConfig
 ): Promise<void> {
   const configJson = JSON.stringify(config);
-  await db
-    .prepare(
-      `INSERT INTO tenants (id, name, phone_number_id, bot_config, active)
-       VALUES (?1, ?2, '1459702903890342', ?3, 1)
-       ON CONFLICT(id) DO UPDATE SET bot_config = excluded.bot_config, name = excluded.name`
-    )
-    .bind(tenantId, config.clinic_name || "Clínica Sorriso & Estética", configJson)
+  const clinicName = config.clinic_name?.trim() || "Clínica Sorriso & Estética";
+
+  // Atualiza clínica já cadastrada sem tocar em phone_number_id (evita colisão na constraint UNIQUE)
+  const updateResult = await db
+    .prepare("UPDATE tenants SET bot_config = ?1, name = ?2 WHERE id = ?3")
+    .bind(configJson, clinicName, tenantId)
     .run();
+
+  if ((updateResult.meta?.changes ?? 0) === 0) {
+    // Fallback seguro caso o tenant ainda não exista na tabela tenants
+    const placeholderPhoneNumberId = `unconfigured:${tenantId}`;
+    await db
+      .prepare(
+        `INSERT INTO tenants (id, name, phone_number_id, bot_config, active)
+         VALUES (?1, ?2, ?3, ?4, 1)
+         ON CONFLICT(id) DO UPDATE SET bot_config = excluded.bot_config, name = excluded.name`
+      )
+      .bind(tenantId, clinicName, placeholderPhoneNumberId, configJson)
+      .run();
+  }
 }
 
 export function isCrucialConfigComplete(cfg: BotConfig | null | undefined): boolean {

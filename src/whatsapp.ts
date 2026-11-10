@@ -13,7 +13,7 @@ export async function verifySignature(
   if (!/^[0-9a-fA-F]{64}$/.test(hex)) return false;
   const sig = new Uint8Array(hex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
 
-  for (const secret of secrets.split(",").map((s) => s.trim()).filter(Boolean)) {
+  for (const secret of (secrets ?? "").split(",").map((s) => s.trim()).filter(Boolean)) {
     const key = await crypto.subtle.importKey(
       "raw",
       new TextEncoder().encode(secret),
