@@ -441,6 +441,55 @@ export const INBOX_HTML = `<!DOCTYPE html>
       <!-- FORMULÁRIO COMPLETO DO QUESTIONÁRIO -->
       <form id="clinicConfigForm" onsubmit="event.preventDefault(); saveClinicConfig();" class="space-y-6">
 
+        <!-- AVISO DE FUNCIONAMENTO & CONDUTA PARA CAMPOS NÃO PREENCHIDOS -->
+        <div class="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-500/30 rounded-2xl p-5 shadow-sm space-y-4">
+          <div class="flex items-start gap-3.5">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-[#008069] dark:text-emerald-400 flex items-center justify-center shrink-0 text-base">
+              <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <div class="flex-1 space-y-1">
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                Como a IA utiliza estas informações
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">Preenchimento Opcional</span>
+              </h3>
+              <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                A Secretária IA utiliza <strong>todas as informações salvas nesta página</strong> para conduzir o atendimento no WhatsApp com precisão. <strong>Não é obrigatório preencher todos os campos</strong> para ela funcionar.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-emerald-500/20 space-y-2">
+            <span class="block text-xs font-bold text-slate-800 dark:text-slate-200">
+              Caso o paciente pergunte algo sobre um assunto ou procedimento que você deixou em branco, como a IA deve proceder?
+            </span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 text-xs">
+              <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 cursor-pointer hover:border-emerald-500 transition">
+                <input type="radio" name="unfilledFallbackRadio" value="avaliacao" checked class="mt-0.5 text-[#008069] focus:ring-0">
+                <div class="text-[11px] leading-snug">
+                  <span class="font-bold text-slate-900 dark:text-white block mb-0.5">🩺 Avaliação Presencial</span>
+                  <span class="text-slate-500 dark:text-slate-400">Informa que essas dúvidas são tiradas exclusivamente na consulta presencial.</span>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 cursor-pointer hover:border-emerald-500 transition">
+                <input type="radio" name="unfilledFallbackRadio" value="contato_secundario" class="mt-0.5 text-[#008069] focus:ring-0">
+                <div class="text-[11px] leading-snug">
+                  <span class="font-bold text-slate-900 dark:text-white block mb-0.5">📞 Contato Secundário</span>
+                  <span class="text-slate-500 dark:text-slate-400">Disponibiliza o WhatsApp secundário da clínica para falar direto com a equipe.</span>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 cursor-pointer hover:border-emerald-500 transition">
+                <input type="radio" name="unfilledFallbackRadio" value="aguardar_humano" class="mt-0.5 text-[#008069] focus:ring-0">
+                <div class="text-[11px] leading-snug">
+                  <span class="font-bold text-slate-900 dark:text-white block mb-0.5">⏳ Aguardar Atendente</span>
+                  <span class="text-slate-500 dark:text-slate-400">Avisa com clareza que não pode responder no momento e pede para aguardar resposta humana no mesmo número.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
         <!-- CARD 1: IDENTIDADE DA CLÍNICA & RESPONSÁVEL TÉCNICO -->
         <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -691,6 +740,31 @@ export const INBOX_HTML = `<!DOCTYPE html>
           </div>
         </div>
 
+        <!-- CARD 7: ENCAMINHAMENTO DE CONTATO PÓS-AGENDAMENTO -->
+        <div class="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-bold">
+              7
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white">Encaminhamento de Contato Pós-Agendamento</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Fluxo de transição e envio de dados para continuidade do atendimento.</p>
+            </div>
+          </div>
+
+          <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 cursor-pointer hover:border-emerald-500 transition">
+            <input type="checkbox" id="cfgSendSecondaryContact" class="mt-0.5 rounded text-[#008069] focus:ring-0 w-4 h-4 cursor-pointer">
+            <div class="text-xs space-y-1">
+              <span class="font-bold text-slate-900 dark:text-white block">
+                Ao concluir cada agendamento/avaliação, a IA deve encaminhar o número de telefone secundário da clínica?
+              </span>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Se marcado, assim que o paciente informar nome e procedimento preferido, a IA confirma o registro e envia uma mensagem com os dados de contato secundário da recepção/plantão para que o paciente salve e possa continuar por lá se preferir.
+              </p>
+            </div>
+          </label>
+        </div>
+
         <!-- BARRA FINAL DE SALVAR (NO RODAPÉ) -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 pb-12 border-t border-slate-200 dark:border-slate-800">
           <div class="flex items-center gap-2">
@@ -698,10 +772,6 @@ export const INBOX_HTML = `<!DOCTYPE html>
             <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">As alterações entram em vigor instantaneamente para todas as próximas mensagens.</span>
           </div>
           <div class="flex items-center gap-3">
-            <a href="/simulador" target="_blank" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition">
-              <i class="fa-solid fa-mobile-screen text-emerald-500"></i>
-              <span>Abrir Simulador</span>
-            </a>
             <button type="submit" id="btnSaveConfig" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#008069] to-emerald-600 hover:from-[#006a57] hover:to-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition">
               <i class="fa-solid fa-floppy-disk"></i>
               <span id="btnSaveConfigText">Salvar Alterações na IA</span>
@@ -1463,22 +1533,22 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const note = proc.note || '';
 
       return \`
-        <div class="proc-row flex flex-col md:flex-row md:items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 transition" data-category="\${category}">
+        <div class="proc-row flex flex-col md:flex-row md:items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 transition" data-category="\${category}">
           <!-- Checkbox + Nome -->
-          <div class="flex items-center gap-2 md:w-5/12 min-w-0">
+          <div class="flex items-center gap-2 md:w-5/12 min-w-0 md:pt-1.5">
             <input type="checkbox" class="proc-checkbox rounded text-[#008069] focus:ring-0 w-4 h-4 shrink-0 cursor-pointer" \${isChecked ? 'checked' : ''}>
             <input type="text" class="proc-name w-full bg-transparent font-bold text-xs text-slate-800 dark:text-slate-100 border-b border-transparent hover:border-slate-300 focus:border-[#008069] focus:outline-none px-1" value="\${escapeHtml(name)}" placeholder="Nome do procedimento">
           </div>
           
           <!-- Duração -->
-          <div class="md:w-3/12">
+          <div class="md:w-3/12 md:pt-0.5">
             <input type="text" class="proc-duration w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Duração (ex: 45 min)" value="\${escapeHtml(duration)}">
           </div>
 
-          <!-- Observações + Remover -->
-          <div class="flex-1 flex items-center gap-2">
-            <input type="text" class="proc-note w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Obs / Regras (ex: pré-requisito)" value="\${escapeHtml(note)}">
-            <button type="button" onclick="removeProcedureRow(this)" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition" title="Remover procedimento">
+          <!-- Observações (3 linhas) + Remover -->
+          <div class="flex-1 flex items-start gap-2">
+            <textarea rows="3" class="proc-note w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069] leading-relaxed resize-none" placeholder="Observações e regras do procedimento...">\${escapeHtml(note)}</textarea>
+            <button type="button" onclick="removeProcedureRow(this)" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition shrink-0 md:mt-1" title="Remover procedimento">
               <i class="fa-regular fa-trash-can text-xs"></i>
             </button>
           </div>
@@ -1554,6 +1624,20 @@ export const INBOX_HTML = `<!DOCTYPE html>
         if (currentConfig.emergency_contact) document.getElementById('cfgEmergencyContact').value = currentConfig.emergency_contact;
         if (currentConfig.extra) document.getElementById('cfgExtra').value = currentConfig.extra;
 
+        // Fallback para dúvidas não cadastradas (campos vazios)
+        const fallbackRadios = document.getElementsByName('unfilledFallbackRadio');
+        for (const r of fallbackRadios) {
+          if (r.value === (currentConfig.unfilled_fallback || 'avaliacao')) {
+            r.checked = true;
+          }
+        }
+
+        // Toggle pós-agendamento de envio de contato secundário
+        const sendSecEl = document.getElementById('cfgSendSecondaryContact');
+        if (sendSecEl) {
+          sendSecEl.checked = !!currentConfig.send_secondary_contact_on_finish;
+        }
+
         // Estratégia de preço (radios)
         const radios = document.getElementsByName('priceStrategyRadio');
         for (const r of radios) {
@@ -1604,13 +1688,23 @@ export const INBOX_HTML = `<!DOCTYPE html>
         if (r.checked) priceStrategy = r.value;
       }
 
+      // Colhe fallback para dúvidas não cadastradas
+      let unfilledFallback = 'avaliacao';
+      const fallbackRadios = document.getElementsByName('unfilledFallbackRadio');
+      for (const r of fallbackRadios) {
+        if (r.checked) unfilledFallback = r.value;
+      }
+
       const holidayService = document.getElementById('cfgHolidayService')?.checked || false;
+      const sendSecondaryContact = document.getElementById('cfgSendSecondaryContact')?.checked || false;
 
       const configPayload = {
         clinic_name: document.getElementById('cfgClinicName').value.trim() || "Clínica Sorriso & Estética",
         doctor_name: document.getElementById('cfgDoctorName').value.trim() || undefined,
         doctor_cro: document.getElementById('cfgDoctorCro').value.trim() || undefined,
         tone: document.getElementById('cfgTone').value,
+        unfilled_fallback: unfilledFallback,
+        send_secondary_contact_on_finish: sendSecondaryContact,
         procedure_items: procedureItems,
         procedures: procedureItems.filter(p => p.checked).map(p => p.name),
         price_strategy: priceStrategy,

@@ -39,7 +39,35 @@ export function buildSystemPrompt(cfg: BotConfig): string {
     "- Responda à dúvida do paciente de forma clara, segura e rápida.",
     "- Ao final da explicação, convide o paciente a registrar um pré-agendamento ou avaliação.",
     "- Para registrar o agendamento, colha com simpatia: 1) Nome completo, 2) Procedimento de interesse, 3) Melhor dia e período (manhã ou tarde).",
-    "- Ao receber esses dados, avise que a solicitação foi registrada no sistema com prioridade e que a equipe de recepção vai confirmar o horário na grade.",
+    "- Ao receber esses dados, avise que a solicitação foi registrada no sistema com prioridade e que a equipe de recepção vai confirmar o horário na grade."
+  );
+
+  if (cfg.send_secondary_contact_on_finish) {
+    linhas.push(
+      `- AÇÃO AO CONCLUIR AGENDAMENTO: Imediatamente após registrar o pedido de agendamento, envie também uma mensagem com os dados de contato secundário da recepção da clínica (${cfg.emergency_contact || "WhatsApp da nossa equipe de atendimento"}) para que o paciente salve na agenda e possa continuar o atendimento por lá caso prefira.`
+    );
+  }
+
+  linhas.push(
+    "",
+    "CONDUTA PARA DÚVIDAS NÃO CADASTRADAS (CAMPOS EM BRANCO)"
+  );
+
+  if (cfg.unfilled_fallback === "contato_secundario") {
+    linhas.push(
+      `- Se o paciente fizer perguntas sobre assuntos ou procedimentos que NÃO constam nos dados abaixo (ou que estejam em branco), disponibilize o número de contato secundário da clínica (${cfg.emergency_contact || "da recepção"}) para que ele tire essa dúvida diretamente com a equipe.`
+    );
+  } else if (cfg.unfilled_fallback === "aguardar_humano") {
+    linhas.push(
+      "- Se o paciente fizer perguntas sobre assuntos ou procedimentos que NÃO constam nos dados abaixo (ou que estejam em branco), deixe claro educadamente que você não pode responder essa pergunta no momento e peça para ele aguardar o atendimento humano no horário comercial da clínica, avisando que nossa equipe responderá por este mesmo número."
+    );
+  } else {
+    linhas.push(
+      "- Se o paciente fizer perguntas sobre assuntos ou procedimentos que NÃO constam nos dados abaixo (ou que estejam em branco), responda educadamente explicando que essas dúvidas técnicas e específicas são tiradas e esclarecidas somente durante a Avaliação Presencial com o especialista."
+    );
+  }
+
+  linhas.push(
     "",
     "CONDUTA SOBRE PREÇOS E ORÇAMENTOS"
   );

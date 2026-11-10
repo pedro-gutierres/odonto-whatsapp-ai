@@ -74,6 +74,8 @@ export interface BotConfig {
   delay_tolerance?: string;
   emergency_contact?: string;
   clinical_rules?: string;
+  unfilled_fallback?: "avaliacao" | "contato_secundario" | "aguardar_humano" | string;
+  send_secondary_contact_on_finish?: boolean;
   extra?: string; // qualquer regra específica da clínica
 }
 
