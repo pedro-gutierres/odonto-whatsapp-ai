@@ -1834,7 +1834,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         }
 
         const noteHtml = a.notes ? '<p class="text-[11px] text-slate-500 dark:text-slate-400 italic">“' + escapeHtml(a.notes) + '”</p>' : '';
-        const conclBtn = (!isDone && a.status !== 'cancelado') ? '<button onclick="handleUpdateAppointmentStatus(' + a.id + ', \'concluido\')" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-[10px] font-bold transition">Concluir</button>' : '';
+        const conclBtn = (!isDone && a.status !== 'cancelado') ? '<button onclick="handleConcludeAppointment(' + a.id + ')" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-[10px] font-bold transition">Concluir</button>' : '';
 
         return [
           '<div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2 hover:border-slate-300 dark:hover:border-slate-600 transition">',
@@ -1856,7 +1856,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
             '</div>',
             noteHtml,
             '<div class="flex items-center justify-end gap-1.5 pt-1">',
-              '<button onclick="goToChatWithPatient(\'' + a.contact_wa_id + '\')" class="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[10px] font-bold transition flex items-center gap-1" title="Abrir conversa no WhatsApp">',
+              '<button onclick="goToChatWithPatient(&quot;' + escapeHtml(a.contact_wa_id) + '&quot;)" class="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[10px] font-bold transition flex items-center gap-1" title="Abrir conversa no WhatsApp">',
                 '<i class="fa-brands fa-whatsapp"></i>',
                 '<span>WhatsApp</span>',
               '</button>',
@@ -1926,7 +1926,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
               escapeHtml(a.notes || '-'),
             '</td>',
             '<td class="py-3 px-4 text-right space-x-1 whitespace-nowrap">',
-              '<button onclick="goToChatWithPatient(\'' + a.contact_wa_id + '\')" title="Abrir conversa no WhatsApp" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400">',
+              '<button onclick="goToChatWithPatient(&quot;' + escapeHtml(a.contact_wa_id) + '&quot;)" title="Abrir conversa no WhatsApp" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400">',
                 '<i class="fa-brands fa-whatsapp text-sm"></i>',
               '</button>',
               '<select onchange="handleUpdateAppointmentStatus(' + a.id + ', this.value)" class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] rounded-lg px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none">',
@@ -1946,6 +1946,10 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
     function filterAppointments() {
       renderAppointmentsTable();
+    }
+
+    function handleConcludeAppointment(id) {
+      handleUpdateAppointmentStatus(id, 'concluido');
     }
 
     async function handleUpdateAppointmentStatus(id, newStatus) {
