@@ -1783,7 +1783,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
     function formatScheduleDateTime(dateStr) {
       if (!dateStr) return '-';
-      const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+      const match = dateStr.match(/^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2}))?/);
       if (match) {
         const [_, y, m, d, hh, mm] = match;
         const dateFormatted = d + '/' + m + '/' + y;
@@ -2186,9 +2186,9 @@ export const INBOX_HTML = `<!DOCTYPE html>
       if (!durationStr) return 30;
       const s = String(durationStr).toLowerCase().trim();
       let total = 0;
-      const hMatch = s.match(/(\d+)\s*(?:h|hora)/);
+      const hMatch = s.match(/(\\d+)\\s*(?:h|hora)/);
       if (hMatch) total += parseInt(hMatch[1], 10) * 60;
-      const mMatch = s.match(/(\d+)\s*(?:m|min)/);
+      const mMatch = s.match(/(\\d+)\\s*(?:m|min)/);
       if (mMatch) total += parseInt(mMatch[1], 10);
       if (total === 0) {
         const num = parseInt(s, 10);
@@ -2334,7 +2334,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
     function openAppointmentModal(defaultProc = '', defaultDate = '', defaultTime = '09:00') {
       if (!isCrucialTrainingComplete()) {
         const missing = getMissingListFromConfig(currentConfig);
-        alert("Treinamento obrigatório pendente:\n• " + missing.join("\n• ") + "\n\nVamos abrir o Treinamento da IA com os campos destacados em vermelho.");
+        alert("Treinamento obrigatório pendente:\\n• " + missing.join("\\n• ") + "\\n\\nVamos abrir o Treinamento da IA com os campos destacados em vermelho.");
         goToTrainingAndHighlightMissing();
         return;
       }
@@ -3344,7 +3344,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       let s = String(isoString).trim();
       if (!s) return null;
       if (s.includes(' ') && !s.includes('T')) s = s.replace(' ', 'T');
-      if (!s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+      if (!s.endsWith('Z') && !/[+-]\\d{2}:?\\d{2}$/.test(s)) s += 'Z';
       const d = new Date(s);
       return isNaN(d.getTime()) ? null : d;
     }
