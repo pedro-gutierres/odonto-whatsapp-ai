@@ -6,6 +6,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
+    "test": "esbuild tests/etapa2.test.ts --bundle --platform=node --format=esm --outfile=.wrangler/tmp/etapa2.test.mjs && node --test .wrangler/tmp/etapa2.test.mjs",
     "logs": "wrangler tail",
     "db:migrate:remote": "wrangler d1 migrations apply odonto-db --remote",
     "db:migrate:local": "wrangler d1 migrations apply odonto-db --local"

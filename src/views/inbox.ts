@@ -2,9 +2,10 @@ import { INBOX_HEADER_HTML } from "./inbox/header";
 import { INBOX_CHAT_VIEW_HTML } from "./inbox/chat-view";
 import { INBOX_AGENDA_VIEW_HTML } from "./inbox/agenda-view";
 import { INBOX_TRAINING_VIEW_HTML } from "./inbox/training-view";
+import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "1";
+const ASSET_VERSION = "2";
 
 export const INBOX_HTML = `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -56,6 +57,7 @@ ${INBOX_HEADER_HTML}
 ${INBOX_CHAT_VIEW_HTML}
 ${INBOX_AGENDA_VIEW_HTML}
 ${INBOX_TRAINING_VIEW_HTML}
+${INBOX_SETTINGS_VIEW_HTML}
 ${INBOX_MODALS_HTML}
   <!-- SCRIPTS MODULARES DA PLATAFORMA (Cloudflare Static Assets) -->
   <script src="/js/inbox/core.js?v=${ASSET_VERSION}"></script>
@@ -63,6 +65,7 @@ ${INBOX_MODALS_HTML}
   <script src="/js/inbox/professionals.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/agenda.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/training.js?v=${ASSET_VERSION}"></script>
+  <script src="/js/inbox/settings.js?v=${ASSET_VERSION}"></script>
 </body>
 </html>
 `;

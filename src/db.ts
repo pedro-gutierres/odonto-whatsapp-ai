@@ -1,6 +1,14 @@
 // Tudo que lê e escreve no banco (D1). Toda consulta passa por tenant_id:
 // é isso que impede a conversa de uma clínica de aparecer em outra.
-import type { InboundJob, Tenant, ConversationSummary, ConversationMessage, BotConfig, ProfessionalRecord } from "./types";
+import type {
+  InboundJob,
+  Tenant,
+  ConversationSummary,
+  ConversationMessage,
+  BotConfig,
+  ProfessionalRecord,
+  ClinicUserSummary,
+} from "./types";
 import type { ChatTurn } from "./claude";
 
 export async function getTenantByPhoneNumberId(db: D1Database, phoneNumberId: string): Promise<Tenant | null> {
@@ -305,6 +313,7 @@ export interface UserRecord {
   password_hash: string;
   name: string;
   role: string;
+  active?: number;
   created_at: string;
 }
 
@@ -417,6 +426,31 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
   if (!existingMsgCols.has("media_type")) {
     await db.prepare("ALTER TABLE messages ADD COLUMN media_type TEXT;").run();
   }
+
+  const tenantCols = await db.prepare("PRAGMA table_info(tenants)").all<{ name: string }>();
+  const existingTenantCols = new Set((tenantCols.results || []).map((c) => c.name));
+  const tenantAdditions = [
+    "legal_name",
+    "cnpj",
+    "admin_phone",
+    "responsible_name",
+    "contact_email",
+    "wa_display_phone",
+    "wa_verified_name",
+    "wa_connected_at",
+  ];
+  for (const col of tenantAdditions) {
+    if (!existingTenantCols.has(col)) {
+      await db.prepare(`ALTER TABLE tenants ADD COLUMN ${col} TEXT;`).run();
+    }
+  }
+
+  const userCols = await db.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+  const existingUserCols = new Set((userCols.results || []).map((c) => c.name));
+  if (!existingUserCols.has("active")) {
+    await db.prepare("ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1;").run();
+  }
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users (tenant_id, active);").run();
 
   // Semeia usuários iniciais apenas se a tabela users estiver vazia
   const user = await db.prepare("SELECT id FROM users LIMIT 1").first();
@@ -1320,6 +1354,261 @@ export async function resetUserPassword(db: D1Database, userId: number, password
   const res = await db
     .prepare("UPDATE users SET password_hash = ?1 WHERE id = ?2")
     .bind(passwordHash, userId)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+// -----------------------------------------------------------------------------
+// CONFIGURAÇÕES DA CLÍNICA, EQUIPE INTERNA & CONEXÃO WHATSAPP (ETAPA 2)
+// -----------------------------------------------------------------------------
+export async function updateClinicProfile(
+  db: D1Database,
+  tenantId: string,
+  updates: {
+    name?: string;
+    legalName?: string | null;
+    cnpj?: string | null;
+    adminPhone?: string | null;
+    responsibleName?: string | null;
+    contactEmail?: string | null;
+  }
+): Promise<boolean> {
+  const existing = await db
+    .prepare("SELECT name, bot_config FROM tenants WHERE id = ?1")
+    .bind(tenantId)
+    .first<{ name: string; bot_config: string }>();
+  if (!existing) return false;
+
+  const sets: string[] = [];
+  const bindings: (string | number | null)[] = [];
+  let idx = 1;
+
+  if (typeof updates.name === "string" && updates.name.trim()) {
+    const cleanName = updates.name.trim();
+    sets.push(`name = ?${idx++}`);
+    bindings.push(cleanName);
+
+    // Mantém bot_config.clinic_name sincronizado com tenants.name
+    let cfg: Record<string, unknown> = {};
+    try {
+      const parsed = JSON.parse(existing.bot_config || "{}");
+      if (parsed && typeof parsed === "object") cfg = parsed as Record<string, unknown>;
+    } catch {}
+    cfg.clinic_name = cleanName;
+    sets.push(`bot_config = ?${idx++}`);
+    bindings.push(JSON.stringify(cfg));
+  }
+
+  if (typeof updates.legalName !== "undefined") {
+    sets.push(`legal_name = ?${idx++}`);
+    bindings.push(updates.legalName?.trim() || null);
+  }
+  if (typeof updates.cnpj !== "undefined") {
+    sets.push(`cnpj = ?${idx++}`);
+    bindings.push(updates.cnpj?.trim() || null);
+  }
+  if (typeof updates.adminPhone !== "undefined") {
+    sets.push(`admin_phone = ?${idx++}`);
+    bindings.push(updates.adminPhone?.trim() || null);
+  }
+  if (typeof updates.responsibleName !== "undefined") {
+    sets.push(`responsible_name = ?${idx++}`);
+    bindings.push(updates.responsibleName?.trim() || null);
+  }
+  if (typeof updates.contactEmail !== "undefined") {
+    sets.push(`contact_email = ?${idx++}`);
+    bindings.push(updates.contactEmail?.trim().toLowerCase() || null);
+  }
+
+  if (sets.length === 0) return false;
+
+  bindings.push(tenantId);
+  const res = await db
+    .prepare(`UPDATE tenants SET ${sets.join(", ")} WHERE id = ?${idx}`)
+    .bind(...bindings)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function isPhoneNumberIdTakenByOtherTenant(
+  db: D1Database,
+  phoneNumberId: string,
+  currentTenantId: string
+): Promise<boolean> {
+  const row = await db
+    .prepare("SELECT id FROM tenants WHERE phone_number_id = ?1 AND id != ?2")
+    .bind(phoneNumberId.trim(), currentTenantId)
+    .first<{ id: string }>();
+  return Boolean(row?.id);
+}
+
+export async function updateTenantWhatsAppConnection(
+  db: D1Database,
+  tenantId: string,
+  data: {
+    phoneNumberId: string;
+    wabaId?: string | null;
+    accessTokenEnc?: string | null;
+    waDisplayPhone?: string | null;
+    waVerifiedName?: string | null;
+    markConnected?: boolean;
+  }
+): Promise<boolean> {
+  const sets: string[] = ["phone_number_id = ?1"];
+  const bindings: (string | number | null)[] = [data.phoneNumberId.trim()];
+  let idx = 2;
+
+  if (typeof data.wabaId !== "undefined") {
+    sets.push(`waba_id = ?${idx++}`);
+    bindings.push(data.wabaId?.trim() || null);
+  }
+  if (typeof data.accessTokenEnc === "string" && data.accessTokenEnc.trim()) {
+    sets.push(`access_token_enc = ?${idx++}`);
+    bindings.push(data.accessTokenEnc.trim());
+  }
+  if (typeof data.waDisplayPhone !== "undefined") {
+    sets.push(`wa_display_phone = ?${idx++}`);
+    bindings.push(data.waDisplayPhone?.trim() || null);
+  }
+  if (typeof data.waVerifiedName !== "undefined") {
+    sets.push(`wa_verified_name = ?${idx++}`);
+    bindings.push(data.waVerifiedName?.trim() || null);
+  }
+  if (data.markConnected) {
+    sets.push(`wa_connected_at = datetime('now')`);
+  }
+
+  bindings.push(tenantId);
+  const res = await db
+    .prepare(`UPDATE tenants SET ${sets.join(", ")} WHERE id = ?${idx}`)
+    .bind(...bindings)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function disconnectTenantWhatsApp(db: D1Database, tenantId: string): Promise<boolean> {
+  const placeholder = `unconfigured:${tenantId}`;
+  const res = await db
+    .prepare(
+      `UPDATE tenants
+       SET phone_number_id = ?1,
+           waba_id = NULL,
+           access_token_enc = NULL,
+           wa_display_phone = NULL,
+           wa_verified_name = NULL,
+           wa_connected_at = NULL
+       WHERE id = ?2`
+    )
+    .bind(placeholder, tenantId)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function listClinicUsers(db: D1Database, tenantId: string): Promise<ClinicUserSummary[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT id, tenant_id, email, name, role, COALESCE(active, 1) AS active, created_at
+       FROM users
+       WHERE tenant_id = ?1
+       ORDER BY id ASC`
+    )
+    .bind(tenantId)
+    .all<ClinicUserSummary>();
+  return results || [];
+}
+
+export async function getClinicUserById(
+  db: D1Database,
+  tenantId: string,
+  userId: number
+): Promise<ClinicUserSummary | null> {
+  return db
+    .prepare(
+      `SELECT id, tenant_id, email, name, role, COALESCE(active, 1) AS active, created_at
+       FROM users
+       WHERE id = ?1 AND tenant_id = ?2`
+    )
+    .bind(userId, tenantId)
+    .first<ClinicUserSummary>();
+}
+
+export async function countActiveClinicAdmins(db: D1Database, tenantId: string): Promise<number> {
+  const row = await db
+    .prepare(
+      `SELECT COUNT(*) AS cnt
+       FROM users
+       WHERE tenant_id = ?1
+         AND role IN ('admin', 'superadmin')
+         AND COALESCE(active, 1) = 1`
+    )
+    .bind(tenantId)
+    .first<{ cnt: number }>();
+  return row?.cnt ?? 0;
+}
+
+export async function updateClinicUser(
+  db: D1Database,
+  tenantId: string,
+  userId: number,
+  updates: {
+    name?: string;
+    role?: "admin" | "staff";
+    active?: boolean;
+    passwordHash?: string;
+  }
+): Promise<boolean> {
+  const sets: string[] = [];
+  const bindings: (string | number | null)[] = [];
+  let idx = 1;
+
+  if (typeof updates.name === "string" && updates.name.trim()) {
+    sets.push(`name = ?${idx++}`);
+    bindings.push(updates.name.trim());
+  }
+  if (updates.role === "admin" || updates.role === "staff") {
+    sets.push(`role = ?${idx++}`);
+    bindings.push(updates.role);
+  }
+  if (typeof updates.active === "boolean") {
+    sets.push(`active = ?${idx++}`);
+    bindings.push(updates.active ? 1 : 0);
+  }
+  if (typeof updates.passwordHash === "string" && updates.passwordHash.trim()) {
+    sets.push(`password_hash = ?${idx++}`);
+    bindings.push(updates.passwordHash.trim());
+  }
+
+  if (sets.length === 0) return false;
+
+  bindings.push(userId, tenantId);
+  const res = await db
+    .prepare(
+      `UPDATE users
+       SET ${sets.join(", ")}
+       WHERE id = ?${idx++} AND tenant_id = ?${idx} AND role != 'superadmin'`
+    )
+    .bind(...bindings)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function deleteClinicUser(db: D1Database, tenantId: string, userId: number): Promise<boolean> {
+  const res = await db
+    .prepare("DELETE FROM users WHERE id = ?1 AND tenant_id = ?2 AND role != 'superadmin'")
+    .bind(userId, tenantId)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function updateOwnPassword(
+  db: D1Database,
+  tenantId: string,
+  userId: number,
+  passwordHash: string
+): Promise<boolean> {
+  const res = await db
+    .prepare("UPDATE users SET password_hash = ?1 WHERE id = ?2 AND tenant_id = ?3")
+    .bind(passwordHash, userId, tenantId)
     .run();
   return (res.meta?.changes ?? 0) > 0;
 }

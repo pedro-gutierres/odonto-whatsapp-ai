@@ -41,17 +41,19 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 | Caminho | Responsabilidade |
 |---|---|
 | `src/index.ts` | Entrypoint do Worker (`fetch`, `queue`, `scheduled`), rotas públicas/autenticadas, `/webhook`, `processJob` e `runDayBeforeConfirmations`. |
+| `src/clinic-routes.ts` | Rotas autenticadas por clínica (`/api/clinic/*`): dados cadastrais, alteração de senha, gestão de equipe e conexão WhatsApp via Meta Embedded Signup / diagnóstico. |
+| `src/http.ts` | Helpers compartilhados de resposta (`htmlResponse`, `jsonResponse`) e `SECURITY_HEADERS`. |
 | `src/auth.ts` | Sessão HMAC-SHA256 em cookie `HttpOnly` (`auth_session`), hash de senha PBKDF2 (`pbkdf2_v1:...`, com suporte legado SHA-256), criptografia AES-256-GCM (`enc:v1:...`) e `resolveTenantAccessToken`. |
-| `src/db.ts` | Camada de acesso ao Cloudflare D1 filtrada por `tenant_id`, gestão de profissionais (`professionals`), controle de conflitos por profissional/expediente (`checkAppointmentConflict`), configuração `bot_config` e queries operacionais sem DDL em runtime. |
+| `src/db.ts` | Camada de acesso ao Cloudflare D1 filtrada por `tenant_id`, gestão de profissionais (`professionals`), equipe (`users`), dados cadastrais da clínica (`tenants`), controle de conflitos por profissional/expediente (`checkAppointmentConflict`), configuração `bot_config` e queries operacionais sem DDL em runtime. |
 | `src/prompt.ts` | Monta o system prompt dividido em bloco estável (em cache) e contexto dinâmico (hora + equipe + agenda ocupada por profissional) a partir do `BotConfig`. |
 | `src/claude.ts` | Integração com a API Messages da Anthropic (`askClaude`) com Prompt Caching (`ephemeral`) e suporte multimodal a imagens (`Vision`). |
-| `src/whatsapp.ts` | Verificação HMAC da Meta (`verifySignature`), extração de texto/áudio/imagem (`extractJobs`), download de mídia (`downloadWhatsAppMedia`) e envio (`sendText`). |
-| `src/types.ts` | Tipagem compartilhada (`Env`, `InboundJob`, `Tenant`, `BotConfig`, `ConversationSummary`, `ConversationMessage`, `ProfessionalRecord`). |
+| `src/whatsapp.ts` | Verificação HMAC da Meta (`verifySignature`), extração de texto/áudio/imagem (`extractJobs`), download de mídia (`downloadWhatsAppMedia`), envio (`sendText`) e integração Graph API para Meta Embedded Signup / diagnóstico. |
+| `src/types.ts` | Tipagem compartilhada (`Env`, `InboundJob`, `Tenant`, `BotConfig`, `ConversationSummary`, `ConversationMessage`, `ProfessionalRecord`, `ClinicUserSummary`, `ClinicWhatsAppStatus`). |
 | `src/views/landing.ts` | Landing page institucional (`/`). |
 | `src/views/login.ts` | Tela de autenticação (`/login`). |
-| `src/views/inbox.ts` | Painel principal (`/inbox` e `/painel`) com 3 módulos: **Atendimento WhatsApp Multi-Chat**, **Agenda & Profissionais com Calendário** e **Treinamento da IA**. |
+| `src/views/inbox.ts` + `src/views/inbox/` + `public/js/inbox/` | Painel principal (`/inbox` e `/painel`) com 4 módulos: **Atendimento WhatsApp Multi-Chat**, **Agenda & Profissionais com Calendário**, **Treinamento da IA** e **Configurações & Perfil** (dados da clínica, equipe e Meta Embedded Signup). |
 | `src/views/admin.ts` | Painel global **Super Admin** (`/admin`) para visão consolidada do SaaS, gestão de clínicas (`tenants`), credenciais WhatsApp e usuários (`users`). |
-| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`), `0004_perf_indexes.sql` (`idx_messages_tenant_id`), `0005_superadmin_role.sql` (`superadmin`), `0006_media_messages.sql` (`media_key`, `media_mime`, `media_type`) e `0007_professionals.sql` (`professionals` e vínculo em `appointments`). |
+| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`), `0004_perf_indexes.sql` (`idx_messages_tenant_id`), `0005_superadmin_role.sql` (`superadmin`), `0006_media_messages.sql` (`media_key`, `media_mime`, `media_type`), `0007_professionals.sql` (`professionals` e vínculo em `appointments`) e `0008_clinic_settings_and_team.sql` (dados cadastrais da clínica, metadados WhatsApp e `users.active`). |
 | `seeds/lab.sql` | Seed inicial da clínica de testes (`lab`). |
 | `wrangler.jsonc` | Bindings D1 (`DB`), Queue (`INBOX`), R2 (`MEDIA_BUCKET` -> `odonto-media`), Workers AI (`AI`), Cron (`0 23 * * *`) e variáveis não secretas. |
 
@@ -85,6 +87,15 @@ Todas exigem sessão válida (`401` se não autenticado) e utilizam **exclusivam
 - `GET | POST | PATCH | DELETE /api/appointments` — CRUD de agendamentos com vínculo opcional a profissional e bloqueio de sobreposição/expediente (`409 Conflict`)
 - `POST /api/appointments/run-confirmations` — Disparo manual das confirmações de véspera restrito à clínica logada
 - `GET | POST /api/config` — Leitura e salvamento do `BotConfig` da clínica (`tenants.bot_config`)
+- `GET | PATCH /api/clinic/profile` — Dados cadastrais da clínica (razão social, CNPJ, responsável, telefone e e-mail administrativo)
+- `POST /api/clinic/password` — Alteração da própria senha do usuário logado (PBKDF2)
+- `GET | POST | PATCH | DELETE /api/clinic/users` — Gestão da equipe interna da clínica (criar, editar cargo, pausar/reativar e remover) restrita ao `session.tenantId`
+- `GET /api/clinic/whatsapp/status` — Status real da conexão WhatsApp da clínica e disponibilidade do Meta Embedded Signup
+- `POST /api/clinic/whatsapp/embedded-signup` — Troca de código OAuth Meta Embedded Signup, descoberta WABA/Phone Number ID, assinatura `subscribed_apps`, registro opcional com PIN e salvamento criptografado (AES-256-GCM)
+- `POST /api/clinic/whatsapp/manual` — Conexão manual validada na Graph API com salvamento criptografado
+- `POST /api/clinic/whatsapp/diagnose` — Diagnóstico em tempo real do número, token e assinatura de webhook no WABA
+- `POST /api/clinic/whatsapp/subscribe` — Assinatura/reassinatura do webhook no WABA via Graph API
+- `POST /api/clinic/whatsapp/disconnect` — Desconexão segura (restaura `unconfigured:<tenantId>` e remove token)
 - `GET | POST /api/init-perf` — Setup manual/idempotente de tabelas e índices no D1 (restrito a usuário autenticado)
 - `GET /api/time` — Horário atual do servidor (`America/Sao_Paulo`)
 
@@ -124,11 +135,14 @@ npx wrangler secret put ANTHROPIC_API_KEY      # Chave da API Anthropic (Claude)
 npx wrangler secret put AUTH_SECRET            # Segredo forte para assinar cookies de sessão HMAC
 npx wrangler secret put TOKEN_ENCRYPTION_KEY   # (Opcional) Chave AES-256-GCM para access_token_enc (fallback: AUTH_SECRET)
 npx wrangler secret put WA_LAB_TOKEN           # (Opcional) Token fallback da Meta / laboratório quando a clínica não tem token próprio
+npx wrangler secret put META_APP_SECRET        # (Opcional) App secret específico para troca OAuth do Meta Embedded Signup (fallback: 1º item de META_APP_SECRETS)
 ```
+Para habilitar o botão **Meta Embedded Signup** na tela **Configurações & Perfil**, configure também as variáveis públicas `META_APP_ID` e `META_EMBEDDED_CONFIG_ID` no `wrangler.jsonc` ou no painel da Cloudflare.
 
 ### 4. Comandos de Desenvolvimento e Deploy
 ```bash
 npm run typecheck          # Verifica tipagem TypeScript (tsc --noEmit)
+npm test                   # Executa suíte automatizada de testes (tests/etapa2.test.ts)
 npm run dev                # Servidor local com Wrangler
 npm run deploy             # Publica o Worker na Cloudflare (npx wrangler deploy)
 npm run logs               # Logs em tempo real (npx wrangler tail)

@@ -61,8 +61,11 @@ import {
   resolveTenantAccessToken,
   encryptTenantTokenForEnv,
   isSuperAdminAuthorized,
+  isClinicAdminRole,
   type SessionUser,
 } from "./auth";
+import { SECURITY_HEADERS, htmlResponse, jsonResponse } from "./http";
+import { handleClinicRoutes } from "./clinic-routes";
 import { LANDING_HTML } from "./views/landing";
 import { LOGIN_HTML } from "./views/login";
 import { INBOX_HTML } from "./views/inbox";
@@ -101,33 +104,6 @@ const DEFAULT_CONFIG_TEMPLATE: BotConfig = {
   clinical_rules: "Gestantes e lactantes não realizam procedimentos injetáveis. Proibido fornecer atestados ou receitas pelo WhatsApp.",
   extra: "Clínica equipada com tecnologia 3D e escaneamento digital intraoral.",
 };
-
-const SECURITY_HEADERS: Record<string, string> = {
-  "X-Content-Type-Options": "nosniff",
-  "X-Frame-Options": "DENY",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-};
-
-function htmlResponse(html: string, status = 200): Response {
-  return new Response(html, {
-    status,
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      ...SECURITY_HEADERS,
-    },
-  });
-}
-
-function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      ...SECURITY_HEADERS,
-      ...extraHeaders,
-    },
-  });
-}
 
 async function requireSession(request: Request, env: Env): Promise<{ session: SessionUser } | { response: Response }> {
   const session = await getSessionFromRequest(request, env.AUTH_SECRET);
@@ -230,6 +206,10 @@ export default {
           return jsonResponse({ error: "Credenciais inválidas. Verifique seu e-mail e senha." }, 401);
         }
 
+        if (user.active === 0) {
+          return jsonResponse({ error: "Sua conta foi pausada pelo administrador da clínica." }, 403);
+        }
+
         const token = await createSessionToken(
           {
             userId: user.id,
@@ -265,15 +245,20 @@ export default {
         return jsonResponse({ authenticated: false }, 401);
       }
       const dbUser = await getUserById(env.DB, session.userId);
-      const isSuperAdmin = dbUser ? isSuperAdminAuthorized(dbUser.email, dbUser.role, env) : false;
+      if (!dbUser || dbUser.active === 0 || dbUser.tenant_id !== session.tenantId) {
+        return jsonResponse({ authenticated: false }, 401, { "Set-Cookie": makeLogoutCookie(isSecure) });
+      }
+      const isSuperAdmin = isSuperAdminAuthorized(dbUser.email, dbUser.role, env);
+      const canManageClinic = isClinicAdminRole(dbUser.email, dbUser.role, env);
       return jsonResponse({
         authenticated: true,
         user: {
           ...session,
-          name: dbUser?.name ?? session.name,
-          email: dbUser?.email ?? session.email,
-          role: dbUser?.role ?? session.role,
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
           isSuperAdmin,
+          canManageClinic,
         },
       });
     }
@@ -469,6 +454,12 @@ export default {
         return jsonResponse({ error: "Erro ao redefinir senha." }, 500);
       }
     }
+
+    // -------------------------------------------------------------------------
+    // APIS DE CONFIGURAÇÕES DA CLÍNICA, EQUIPE & WHATSAPP (ETAPA 2)
+    // -------------------------------------------------------------------------
+    const clinicResponse = await handleClinicRoutes(request, env, url, isSecure);
+    if (clinicResponse) return clinicResponse;
 
     // -------------------------------------------------------------------------
     // APIS DE PROFISSIONAIS (DENTISTAS / ESTETICISTAS DA CLÍNICA LOGADA)

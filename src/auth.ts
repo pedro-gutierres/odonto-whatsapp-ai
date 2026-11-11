@@ -277,6 +277,24 @@ export function isSuperAdminAuthorized(email: string, role: string, env: Env): b
   return allowed.includes(email.trim().toLowerCase());
 }
 
+export function isClinicAdminRole(email: string, role: string, env: Env): boolean {
+  return role === "admin" || isSuperAdminAuthorized(email, role, env);
+}
+
+export function getPrimaryMetaAppSecret(env: Env): string | null {
+  const dedicated = env.META_APP_SECRET?.trim();
+  if (dedicated) return dedicated;
+  const firstFromList = (env.META_APP_SECRETS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .find(Boolean);
+  return firstFromList || null;
+}
+
+export function isEncryptedTenantToken(stored?: string | null): boolean {
+  return Boolean(stored && stored.trim().startsWith(ENCRYPTED_TOKEN_PREFIX));
+}
+
 export async function resolveTenantAccessToken(
   tenant: Pick<Tenant, "access_token_enc"> | null | undefined,
   env: Env

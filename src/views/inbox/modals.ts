@@ -340,6 +340,57 @@ export const INBOX_MODALS_HTML = `
     </div>
   </div>
 
+  <!-- ======================================================================= -->
+  <!-- MODAL 5: CRIAR / EDITAR USUÁRIO DA CLÍNICA (EQUIPE INTERNA)             -->
+  <!-- ======================================================================= -->
+  <div id="clinicUserModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-900 dark:text-white">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="text-sm font-bold flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-emerald-500"></i>
+          <span id="cuModalTitle">Novo Usuário da Equipe</span>
+        </h3>
+        <button type="button" onclick="closeClinicUserModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form onsubmit="handleSaveClinicUser(event)" class="space-y-3 pt-4 text-xs">
+        <input type="hidden" id="cuEditId">
+        <div>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Nome Completo *</label>
+          <input type="text" id="cuName" required placeholder="Ex: Recepção Manhã"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+        </div>
+        <div>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">E-mail de Login *</label>
+          <input type="email" id="cuEmail" required placeholder="atendimento@clinica.com.br"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Cargo / Permissão</label>
+            <select id="cuRole" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+              <option value="staff">Atendente / Recepção</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <div>
+            <label id="cuPasswordLabel" class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Senha Inicial *</label>
+            <input type="password" id="cuPassword" minlength="6" placeholder="Mín. 6 caracteres"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+          <strong>Atendente / Recepção</strong> opera o atendimento WhatsApp e a Agenda. <strong>Administrador</strong> também gerencia equipe, dados da clínica e conexão WhatsApp.
+        </p>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button type="button" onclick="closeClinicUserModal()" class="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 font-medium">Cancelar</button>
+          <button type="submit" id="btnSaveClinicUser" class="px-4 py-2 rounded-xl bg-[#008069] hover:bg-[#006a57] text-white font-bold shadow-sm transition">Salvar Usuário</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- TOAST DE NOTIFICAÇÃO FLUTUANTE -->
   <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold">
     <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>

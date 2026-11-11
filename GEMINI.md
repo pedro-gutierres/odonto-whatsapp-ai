@@ -23,9 +23,9 @@ Este projeto é um **SaaS multi-tenant** em **Cloudflare Workers (TypeScript)** 
   - Resolve o token via `resolveTenantAccessToken(tenant, env)`: prioriza `tenants.access_token_enc` (suporta `enc:v1:...` em AES-256-GCM ou texto direto) com fallback para `env.WA_LAB_TOKEN`.
   - Monta o prompt em 2 blocos (`buildSystemPromptParts` em `src/prompt.ts`: bloco estável em cache + contexto dinâmico) considerando a grade de agendamentos futuros (`getUpcomingAppointments`) e consulta o Claude em `src/claude.ts` (com Prompt Caching `ephemeral` e suporte a imagem `Vision`).
   - Interpreta comandos ocultos retornados pelo modelo: `<<<AGENDAR: {...}>>>` (com prevenção de conflitos em `createAppointment` e interceptação da resposta para impedir falso positivo ao paciente em caso de conflito) e `<<<CONFIRMAR: {...}>>>`.
-- **Painel Web (`src/views/inbox.ts`, `src/views/login.ts`, `src/views/landing.ts`, `src/views/admin.ts`)**:
+- **Painel Web (`src/views/inbox.ts`, `src/views/inbox/*.ts`, `public/js/inbox/*.js`, `src/views/login.ts`, `src/views/landing.ts`, `src/views/admin.ts`)**:
   - Protegido por sessão HMAC (`auth_session` cookie `HttpOnly`).
-  - `/inbox` possui Central Multi-Chat WhatsApp (com reprodução de áudio estilo WhatsApp + botão de transcrição, visualização/download de fotos via `/api/media`, envio manual e pausa automática da IA), Agenda/Calendário CRM e Treinamento da IA (`tenants.bot_config`).
+  - `/inbox` possui Central Multi-Chat WhatsApp (com reprodução de áudio estilo WhatsApp + botão de transcrição, visualização/download de fotos via `/api/media`, envio manual e pausa automática da IA), Agenda/Calendário CRM com Multi-Profissionais, Treinamento da IA (`tenants.bot_config`) e Configurações & Perfil (`src/clinic-routes.ts`: dados cadastrais, alteração de senha PBKDF2, gestão de equipe e Meta Embedded Signup / diagnóstico WhatsApp).
   - `/admin` é o painel global **Super Admin**, restrito via `requireSuperAdmin` (`users.role === 'superadmin'` no D1 + `SUPERADMIN_EMAILS`).
 - **Cron de Confirmação (`scheduled` -> `runDayBeforeConfirmations`)**:
   - Executa às `23:00 UTC` (`20h America/Sao_Paulo`, configurado em `wrangler.jsonc`).
@@ -42,8 +42,8 @@ Este projeto é um **SaaS multi-tenant** em **Cloudflare Workers (TypeScript)** 
 2. **Segredos e Criptografia**:
    - `src/auth.ts` usa PBKDF2 (`pbkdf2_v1:...`) para novos hashes de senha (mantendo verificação retrocompatível para hashes legados SHA-256), HMAC-SHA256 em tempo constante para cookies de sessão (`AUTH_SECRET`) e AES-256-GCM (`enc:v1:...`) para tokens por clínica (`TOKEN_ENCRYPTION_KEY` ou `AUTH_SECRET`).
 3. **Performance D1**:
-   - Rotas de leitura, escrita e polling (`/api/sync-check`, agenda, atendimento e cron) **nunca** executam `CREATE TABLE` ou `ALTER TABLE`. A estrutura do banco fica exclusivamente em `migrations/` (`0001` a `0007`) e na rota autenticada de inicialização manual `/api/init-perf`.
+   - Rotas de leitura, escrita e polling (`/api/sync-check`, agenda, atendimento e cron) **nunca** executam `CREATE TABLE` ou `ALTER TABLE`. A estrutura do banco fica exclusivamente em `migrations/` (`0001` a `0008`) e na rota autenticada de inicialização manual `/api/init-perf`.
 4. **Arquivos-Chave**:
-   - `src/index.ts` | `src/db.ts` | `src/auth.ts` | `src/prompt.ts` | `src/claude.ts` | `src/whatsapp.ts` | `src/types.ts`
-   - Views inline: `src/views/landing.ts` | `src/views/login.ts` | `src/views/inbox.ts` | `src/views/admin.ts`
-   - Banco e Infra: `migrations/*.sql` (`0001`–`0007`) | `seeds/lab.sql` | `wrangler.jsonc` | `package.json`
+   - `src/index.ts` | `src/clinic-routes.ts` | `src/http.ts` | `src/db.ts` | `src/auth.ts` | `src/prompt.ts` | `src/claude.ts` | `src/whatsapp.ts` | `src/types.ts`
+   - Views inline e assets: `src/views/landing.ts` | `src/views/login.ts` | `src/views/inbox.ts` | `src/views/inbox/*.ts` | `public/js/inbox/*.js` | `src/views/admin.ts`
+   - Banco e Infra: `migrations/*.sql` (`0001`–`0008`) | `seeds/lab.sql` | `wrangler.jsonc` | `package.json` | `tests/etapa2.test.ts`

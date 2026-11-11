@@ -153,3 +153,184 @@ export async function sendText(
   const data = (await res.json()) as { messages?: { id: string }[] };
   return data.messages?.[0]?.id ?? null;
 }
+
+// -----------------------------------------------------------------------------
+// META EMBEDDED SIGNUP & DIAGNÓSTICO DE CONEXÃO WHATSAPP CLOUD API
+// -----------------------------------------------------------------------------
+interface MetaGraphErrorPayload {
+  error?: { message?: string; type?: string; code?: number; error_subcode?: number };
+}
+
+async function parseMetaError(res: Response, fallbackPrefix: string): Promise<string> {
+  const text = await res.text();
+  try {
+    const parsed = JSON.parse(text) as MetaGraphErrorPayload;
+    if (parsed?.error?.message) {
+      return `${fallbackPrefix} (${res.status}): ${parsed.error.message}`;
+    }
+  } catch {}
+  return `${fallbackPrefix} (${res.status}): ${text.slice(0, 300)}`;
+}
+
+export async function exchangeMetaOAuthCode(
+  env: Env,
+  appId: string,
+  appSecret: string,
+  code: string,
+): Promise<string> {
+  const graphVersion = env.GRAPH_VERSION || "v26.0";
+  const params = new URLSearchParams({
+    client_id: appId,
+    client_secret: appSecret,
+    code,
+  });
+
+  const res = await fetch(`https://graph.facebook.com/${graphVersion}/oauth/access_token`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseMetaError(res, "Falha na troca do código OAuth com a Meta"));
+  }
+
+  const data = (await res.json()) as { access_token?: string };
+  const token = data.access_token?.trim();
+  if (!token) {
+    throw new Error("A Meta não retornou access_token válido na troca OAuth.");
+  }
+  return token;
+}
+
+export async function inspectMetaDebugTokenWabaId(
+  env: Env,
+  appId: string,
+  appSecret: string,
+  inputToken: string,
+): Promise<string | null> {
+  const graphVersion = env.GRAPH_VERSION || "v26.0";
+  const url = `https://graph.facebook.com/${graphVersion}/debug_token?input_token=${encodeURIComponent(inputToken)}`;
+  const res = await fetch(url, {
+    headers: { authorization: `Bearer ${appId}|${appSecret}` },
+  });
+  if (!res.ok) return null;
+
+  const json = (await res.json()) as {
+    data?: {
+      is_valid?: boolean;
+      granular_scopes?: Array<{ scope?: string; target_ids?: string[] }>;
+    };
+  };
+  const scopes = json?.data?.granular_scopes || [];
+  const wabaScope =
+    scopes.find((s) => s.scope === "whatsapp_business_management" && Array.isArray(s.target_ids) && s.target_ids.length > 0) ||
+    scopes.find((s) => s.scope === "whatsapp_business_messaging" && Array.isArray(s.target_ids) && s.target_ids.length > 0);
+  return wabaScope?.target_ids?.[0]?.trim() || null;
+}
+
+export interface MetaPhoneNumberInfo {
+  id: string;
+  display_phone_number?: string;
+  verified_name?: string;
+  quality_rating?: string;
+  code_verification_status?: string;
+  name_status?: string;
+  platform_type?: string;
+}
+
+export async function listWabaPhoneNumbers(
+  env: Env,
+  token: string,
+  wabaId: string,
+): Promise<MetaPhoneNumberInfo[]> {
+  const graphVersion = env.GRAPH_VERSION || "v26.0";
+  const res = await fetch(
+    `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(wabaId)}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status`,
+    { headers: { authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    throw new Error(await parseMetaError(res, "Falha ao listar números do WABA"));
+  }
+  const json = (await res.json()) as { data?: MetaPhoneNumberInfo[] };
+  return Array.isArray(json.data) ? json.data : [];
+}
+
+export async function fetchMetaPhoneNumberInfo(
+  env: Env,
+  token: string,
+  phoneNumberId: string,
+): Promise<MetaPhoneNumberInfo> {
+  const graphVersion = env.GRAPH_VERSION || "v26.0";
+  const res = await fetch(
+    `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(phoneNumberId)}?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,name_status,platform_type`,
+    { headers: { authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    throw new Error(await parseMetaError(res, "Falha ao consultar Phone Number ID na Meta"));
+  }
+  return (await res.json()) as MetaPhoneNumberInfo;
+}
+
+export async function subscribeAppToWaba(
+  env: Env,
+  token: string,
+  wabaId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const graphVersion = env.GRAPH_VERSION || "v26.0";
+  const res = await fetch(
+    `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(wabaId)}/subscribed_apps`,
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    },
+  );
+  if (!res.ok) {
+    return { success: false, error: await parseMetaError(res, "Falha ao assinar webhook do WABA") };
+  }
+  return { success: true };
+}
+
+export async function getWabaSubscribedApps(
+  env: Env,
+  token: string,
+  wabaId: string,
+): Promise<{ subscribed: boolean; apps: Array<{ id?: string; name?: string }>; error?: string }> {
+  const graphVersion = env.GRAPH_VERSION || "v26.0";
+  const res = await fetch(
+    `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(wabaId)}/subscribed_apps`,
+    { headers: { authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    return { subscribed: false, apps: [], error: await parseMetaError(res, "Falha ao consultar webhooks assinados no WABA") };
+  }
+  const json = (await res.json()) as {
+    data?: Array<{ whatsapp_business_api_data?: { id?: string; name?: string } }>;
+  };
+  const apps = (json.data || []).map((item) => ({
+    id: item.whatsapp_business_api_data?.id,
+    name: item.whatsapp_business_api_data?.name,
+  }));
+  return { subscribed: apps.length > 0, apps };
+}
+
+export async function registerWhatsAppPhoneNumber(
+  env: Env,
+  token: string,
+  phoneNumberId: string,
+  pin: string,
+): Promise<{ success: boolean; error?: string }> {
+  const graphVersion = env.GRAPH_VERSION || "v26.0";
+  const res = await fetch(
+    `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(phoneNumberId)}/register`,
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", pin }),
+    },
+  );
+  if (!res.ok) {
+    return { success: false, error: await parseMetaError(res, "Aviso ao registrar número na Cloud API") };
+  }
+  return { success: true };
+}

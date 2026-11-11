@@ -10,17 +10,20 @@ export interface Env {
 
   // Segredos (guardados na Cloudflare, nunca no código)
   META_APP_SECRETS: string; // um ou mais "app secrets" da Meta, separados por vírgula
+  META_APP_SECRET?: string; // app secret específico para troca OAuth do Embedded Signup (fallback: primeiro item de META_APP_SECRETS)
   WA_VERIFY_TOKEN: string;  // frase que você inventa; a Meta devolve na verificação do webhook
   ANTHROPIC_API_KEY: string;
   WA_LAB_TOKEN?: string;    // token fallback / laboratório da Meta (quando a clínica não tem access_token_enc)
   AUTH_SECRET?: string;     // segredo HMAC para sessões (configure via wrangler secret put AUTH_SECRET)
   TOKEN_ENCRYPTION_KEY?: string; // chave opcional para criptografia AES-GCM de tokens por clínica (fallback: AUTH_SECRET)
 
-  // Variáveis comuns (wrangler.jsonc)
+  // Variáveis comuns (wrangler.jsonc ou dashboard)
   GRAPH_VERSION: string;
   CLAUDE_MODEL: string;
   CLAUDE_EFFORT: string;
   SUPERADMIN_EMAILS?: string; // lista separada por vírgula de e-mails autorizados no /admin
+  META_APP_ID?: string;       // App ID público da Meta para inicializar o SDK JS (Embedded Signup)
+  META_EMBEDDED_CONFIG_ID?: string; // Configuration ID do Facebook Login for Business (WhatsApp Embedded Signup)
 }
 
 // Uma mensagem recebida do paciente, já "limpa", que viaja pela fila.
@@ -43,6 +46,47 @@ export interface Tenant {
   access_token_enc: string | null;
   bot_config: string; // JSON em texto; veja BotConfig
   active: number;
+  legal_name?: string | null;
+  cnpj?: string | null;
+  admin_phone?: string | null;
+  responsible_name?: string | null;
+  contact_email?: string | null;
+  wa_display_phone?: string | null;
+  wa_verified_name?: string | null;
+  wa_connected_at?: string | null;
+  created_at?: string;
+}
+
+export interface ClinicUserSummary {
+  id: number;
+  tenant_id: string;
+  email: string;
+  name: string;
+  role: string;
+  active: number;
+  created_at: string;
+}
+
+export interface ClinicWhatsAppStatus {
+  configured: boolean;
+  phone_number_id: string | null;
+  raw_phone_number_id: string;
+  waba_id: string | null;
+  has_custom_token: boolean;
+  token_source: "custom_encrypted" | "custom_plain" | "lab_fallback" | "none";
+  display_phone_number: string | null;
+  verified_name: string | null;
+  connected_at: string | null;
+  webhook_url: string;
+  verify_token_configured: boolean;
+  app_secrets_configured: boolean;
+  embedded_signup: {
+    enabled: boolean;
+    app_id: string | null;
+    config_id: string | null;
+    graph_version: string;
+    missing_env: string[];
+  };
 }
 
 export interface ProcedureItem {

@@ -82,6 +82,21 @@ export const INBOX_HEADER_HTML = `
           <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">IA</span>
         </button>
 
+        <!-- Opção 4: Configurações & Perfil da Clínica + WhatsApp -->
+        <button onclick="selectNavigationTab('settings', 'Configurações & Perfil', 'fa-solid fa-gear', 'amber')" 
+          class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-sm group-hover:scale-105 transition-transform">
+              <i class="fa-solid fa-gear"></i>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-slate-900 dark:text-white block">Configurações & Perfil</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400">Clínica, equipe e WhatsApp Meta</span>
+            </div>
+          </div>
+          <span id="menuWhatsappStatusDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600" title="Status da conexão WhatsApp"></span>
+        </button>
+
       </div>
     </div>
 

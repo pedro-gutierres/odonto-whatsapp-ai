@@ -6,6 +6,7 @@
     let professionals = [];
     let selectedAgendaProfId = 'all';
     let currentConfig = null;
+    let currentUser = null;
 
     // Otimização de polling
     let highestKnownMsgId = 0;
@@ -105,6 +106,8 @@
           iconContainer.className = "w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-xs";
         } else if (colorTheme === 'purple') {
           iconContainer.className = "w-6 h-6 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xs";
+        } else if (colorTheme === 'amber') {
+          iconContainer.className = "w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs";
         } else {
           iconContainer.className = "w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs";
         }
@@ -114,10 +117,12 @@
       const viewChat = document.getElementById('viewChat');
       const viewAgenda = document.getElementById('viewAgenda');
       const viewConfig = document.getElementById('viewConfig');
+      const viewSettings = document.getElementById('viewSettings');
 
       viewChat.classList.add('hidden');
       viewAgenda.classList.add('hidden');
       viewConfig.classList.add('hidden');
+      if (viewSettings) viewSettings.classList.add('hidden');
 
       if (tabId === 'agenda') {
         viewAgenda.classList.remove('hidden');
@@ -126,6 +131,9 @@
       } else if (tabId === 'config') {
         viewConfig.classList.remove('hidden');
         loadClinicConfig().then(() => updateTrainingValidationHighlights());
+      } else if (tabId === 'settings') {
+        if (viewSettings) viewSettings.classList.remove('hidden');
+        if (typeof loadClinicSettingsView === 'function') loadClinicSettingsView();
       } else {
         viewChat.classList.remove('hidden');
       }
@@ -141,6 +149,7 @@
         }
         const data = await res.json();
         if (data && data.user) {
+          currentUser = data.user;
           const nameEl = document.getElementById('topUserName');
           const emailEl = document.getElementById('topUserEmail');
           const adminBtn = document.getElementById('superAdminNavBtn');
@@ -167,6 +176,9 @@
       await loadProfessionals();
       await loadAppointments();
       await loadClinicConfig();
+      if (typeof refreshWhatsappStatusIndicator === 'function') {
+        refreshWhatsappStatusIndicator();
+      }
       updateCrucialTrainingLockUI();
       startPolling();
     }
@@ -237,6 +249,8 @@
         toastIcon.className = "fa-solid fa-wand-magic-sparkles text-purple-400";
       } else if (color === "amber") {
         toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400";
+      } else if (color === "rose") {
+        toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400";
       } else {
         toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
       }
