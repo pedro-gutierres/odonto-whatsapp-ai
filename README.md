@@ -42,16 +42,16 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 |---|---|
 | `src/index.ts` | Entrypoint do Worker (`fetch`, `queue`, `scheduled`), rotas públicas/autenticadas, `/webhook`, `processJob` e `runDayBeforeConfirmations`. |
 | `src/auth.ts` | Sessão HMAC-SHA256 em cookie `HttpOnly` (`auth_session`), hash de senha PBKDF2 (`pbkdf2_v1:...`, com suporte legado SHA-256), criptografia AES-256-GCM (`enc:v1:...`) e `resolveTenantAccessToken`. |
-| `src/db.ts` | Camada de acesso ao Cloudflare D1 filtrada por `tenant_id`, controle de conflitos de horário (`checkAppointmentConflict`), configuração `bot_config` e queries operacionais sem DDL em runtime. |
-| `src/prompt.ts` | Monta o system prompt dividido em bloco estável (em cache) e contexto dinâmico (hora + agenda ocupada) a partir do `BotConfig`. |
+| `src/db.ts` | Camada de acesso ao Cloudflare D1 filtrada por `tenant_id`, gestão de profissionais (`professionals`), controle de conflitos por profissional/expediente (`checkAppointmentConflict`), configuração `bot_config` e queries operacionais sem DDL em runtime. |
+| `src/prompt.ts` | Monta o system prompt dividido em bloco estável (em cache) e contexto dinâmico (hora + equipe + agenda ocupada por profissional) a partir do `BotConfig`. |
 | `src/claude.ts` | Integração com a API Messages da Anthropic (`askClaude`) com Prompt Caching (`ephemeral`) e suporte multimodal a imagens (`Vision`). |
 | `src/whatsapp.ts` | Verificação HMAC da Meta (`verifySignature`), extração de texto/áudio/imagem (`extractJobs`), download de mídia (`downloadWhatsAppMedia`) e envio (`sendText`). |
-| `src/types.ts` | Tipagem compartilhada (`Env`, `InboundJob`, `Tenant`, `BotConfig`, `ConversationSummary`, `ConversationMessage`). |
+| `src/types.ts` | Tipagem compartilhada (`Env`, `InboundJob`, `Tenant`, `BotConfig`, `ConversationSummary`, `ConversationMessage`, `ProfessionalRecord`). |
 | `src/views/landing.ts` | Landing page institucional (`/`). |
 | `src/views/login.ts` | Tela de autenticação (`/login`). |
-| `src/views/inbox.ts` | Painel principal (`/inbox` e `/painel`) com 3 módulos: **Atendimento WhatsApp Multi-Chat**, **Agenda / CRM com Calendário** e **Treinamento da IA**. |
+| `src/views/inbox.ts` | Painel principal (`/inbox` e `/painel`) com 3 módulos: **Atendimento WhatsApp Multi-Chat**, **Agenda & Profissionais com Calendário** e **Treinamento da IA**. |
 | `src/views/admin.ts` | Painel global **Super Admin** (`/admin`) para visão consolidada do SaaS, gestão de clínicas (`tenants`), credenciais WhatsApp e usuários (`users`). |
-| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`), `0004_perf_indexes.sql` (`idx_messages_tenant_id`), `0005_superadmin_role.sql` (`superadmin`) e `0006_media_messages.sql` (`media_key`, `media_mime`, `media_type`). |
+| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`), `0004_perf_indexes.sql` (`idx_messages_tenant_id`), `0005_superadmin_role.sql` (`superadmin`), `0006_media_messages.sql` (`media_key`, `media_mime`, `media_type`) e `0007_professionals.sql` (`professionals` e vínculo em `appointments`). |
 | `seeds/lab.sql` | Seed inicial da clínica de testes (`lab`). |
 | `wrangler.jsonc` | Bindings D1 (`DB`), Queue (`INBOX`), R2 (`MEDIA_BUCKET` -> `odonto-media`), Workers AI (`AI`), Cron (`0 23 * * *`) e variáveis não secretas. |
 
@@ -81,7 +81,8 @@ Todas exigem sessão válida (`401` se não autenticado) e utilizam **exclusivam
 - `POST /api/send` — Envio manual pela recepcionista usando `phone_number_id` e token da clínica logada (pausa a IA automaticamente)
 - `POST /api/toggle-ai` — Pausa ou retoma a IA para um contato específico
 - `POST /api/clear-chat` — Limpa histórico de mensagens de um contato específico da clínica
-- `GET | POST | PATCH | DELETE /api/appointments` — CRUD de agendamentos com bloqueio de sobreposição de horários (`409 Conflict`)
+- `GET | POST | PATCH | DELETE /api/professionals` — CRUD de profissionais da clínica (dentistas/esteticistas, dias, expediente, intervalo e procedimentos vinculados)
+- `GET | POST | PATCH | DELETE /api/appointments` — CRUD de agendamentos com vínculo opcional a profissional e bloqueio de sobreposição/expediente (`409 Conflict`)
 - `POST /api/appointments/run-confirmations` — Disparo manual das confirmações de véspera restrito à clínica logada
 - `GET | POST /api/config` — Leitura e salvamento do `BotConfig` da clínica (`tenants.bot_config`)
 - `GET | POST /api/init-perf` — Setup manual/idempotente de tabelas e índices no D1 (restrito a usuário autenticado)

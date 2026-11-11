@@ -1,6 +1,6 @@
 // Tudo que lê e escreve no banco (D1). Toda consulta passa por tenant_id:
 // é isso que impede a conversa de uma clínica de aparecer em outra.
-import type { InboundJob, Tenant, ConversationSummary, ConversationMessage, BotConfig } from "./types";
+import type { InboundJob, Tenant, ConversationSummary, ConversationMessage, BotConfig, ProfessionalRecord } from "./types";
 import type { ChatTurn } from "./claude";
 
 export async function getTenantByPhoneNumberId(db: D1Database, phoneNumberId: string): Promise<Tenant | null> {
@@ -318,6 +318,8 @@ export interface AppointmentRecord {
   status: "agendado" | "pre_agendado" | "confirmado" | "concluido" | "cancelado";
   duration?: string;
   notes: string | null;
+  professional_id?: number | null;
+  professional_name?: string | null;
   confirmed_at?: string;
   confirmed_by?: "human" | "ai" | string;
   created_at: string;
@@ -359,9 +361,31 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
     )
     .run();
 
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS professionals (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id       TEXT NOT NULL REFERENCES tenants(id),
+        name            TEXT NOT NULL,
+        specialty       TEXT,
+        cro_crm         TEXT,
+        working_days    TEXT NOT NULL DEFAULT '[1,2,3,4,5]',
+        start_hour      TEXT NOT NULL DEFAULT '08:00',
+        end_hour        TEXT NOT NULL DEFAULT '18:00',
+        break_start     TEXT DEFAULT '12:00',
+        break_end       TEXT DEFAULT '13:00',
+        procedures_json TEXT NOT NULL DEFAULT '[]',
+        color           TEXT NOT NULL DEFAULT '#10b981',
+        active          INTEGER NOT NULL DEFAULT 1,
+        created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+      );`
+    )
+    .run();
+
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_messages_tenant_id ON messages (tenant_id, id);").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_appointments_tenant ON appointments (tenant_id, scheduled_at);").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_professionals_tenant ON professionals (tenant_id, active);").run();
 
   // Verifica colunas via PRAGMA antes de alterar (sem gerar erros propositais no D1)
   const cols = await db.prepare("PRAGMA table_info(appointments)").all<{ name: string }>();
@@ -374,6 +398,12 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
   }
   if (!existingCols.has("confirmed_by")) {
     await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_by TEXT;").run();
+  }
+  if (!existingCols.has("professional_id")) {
+    await db.prepare("ALTER TABLE appointments ADD COLUMN professional_id INTEGER;").run();
+  }
+  if (!existingCols.has("professional_name")) {
+    await db.prepare("ALTER TABLE appointments ADD COLUMN professional_name TEXT;").run();
   }
 
   const msgCols = await db.prepare("PRAGMA table_info(messages)").all<{ name: string }>();
@@ -423,6 +453,181 @@ export async function getUserById(db: D1Database, id: number): Promise<UserRecor
   return db.prepare("SELECT * FROM users WHERE id = ?1").bind(id).first<UserRecord>();
 }
 
+// -----------------------------------------------------------------------------
+// GESTÃO DE PROFISSIONAIS (DENTISTAS / ESTETICISTAS POR CLÍNICA)
+// -----------------------------------------------------------------------------
+export async function listProfessionals(
+  db: D1Database,
+  tenantId: string,
+  activeOnly = false
+): Promise<ProfessionalRecord[]> {
+  const query = activeOnly
+    ? "SELECT * FROM professionals WHERE tenant_id = ?1 AND active = 1 ORDER BY name ASC, id ASC"
+    : "SELECT * FROM professionals WHERE tenant_id = ?1 ORDER BY active DESC, name ASC, id ASC";
+  const { results } = await db.prepare(query).bind(tenantId).all<ProfessionalRecord>();
+  return results || [];
+}
+
+export async function getProfessionalById(
+  db: D1Database,
+  tenantId: string,
+  id: number
+): Promise<ProfessionalRecord | null> {
+  return db
+    .prepare("SELECT * FROM professionals WHERE id = ?1 AND tenant_id = ?2")
+    .bind(id, tenantId)
+    .first<ProfessionalRecord>();
+}
+
+export async function createProfessional(
+  db: D1Database,
+  tenantId: string,
+  input: {
+    name: string;
+    specialty?: string | null;
+    croCrm?: string | null;
+    workingDays?: number[];
+    startHour?: string;
+    endHour?: string;
+    breakStart?: string | null;
+    breakEnd?: string | null;
+    procedures?: string[];
+    color?: string;
+    active?: boolean;
+  }
+): Promise<number> {
+  const workingDaysJson = JSON.stringify(
+    Array.isArray(input.workingDays) && input.workingDays.length > 0 ? input.workingDays : [1, 2, 3, 4, 5]
+  );
+  const proceduresJson = JSON.stringify(Array.isArray(input.procedures) ? input.procedures : []);
+  const res = await db
+    .prepare(
+      `INSERT INTO professionals
+         (tenant_id, name, specialty, cro_crm, working_days, start_hour, end_hour, break_start, break_end, procedures_json, color, active)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`
+    )
+    .bind(
+      tenantId,
+      input.name.trim(),
+      input.specialty?.trim() || null,
+      input.croCrm?.trim() || null,
+      workingDaysJson,
+      input.startHour || "08:00",
+      input.endHour || "18:00",
+      input.breakStart?.trim() || null,
+      input.breakEnd?.trim() || null,
+      proceduresJson,
+      input.color || "#10b981",
+      input.active === false ? 0 : 1
+    )
+    .run();
+  return res.meta?.last_row_id ?? 0;
+}
+
+export async function updateProfessional(
+  db: D1Database,
+  tenantId: string,
+  id: number,
+  updates: {
+    name?: string;
+    specialty?: string | null;
+    croCrm?: string | null;
+    workingDays?: number[];
+    startHour?: string;
+    endHour?: string;
+    breakStart?: string | null;
+    breakEnd?: string | null;
+    procedures?: string[];
+    color?: string;
+    active?: boolean;
+  }
+): Promise<boolean> {
+  const sets: string[] = [];
+  const bindings: (string | number | null)[] = [];
+  let idx = 1;
+
+  if (typeof updates.name === "string" && updates.name.trim()) {
+    sets.push(`name = ?${idx++}`);
+    bindings.push(updates.name.trim());
+  }
+  if (typeof updates.specialty !== "undefined") {
+    sets.push(`specialty = ?${idx++}`);
+    bindings.push(updates.specialty?.trim() || null);
+  }
+  if (typeof updates.croCrm !== "undefined") {
+    sets.push(`cro_crm = ?${idx++}`);
+    bindings.push(updates.croCrm?.trim() || null);
+  }
+  if (Array.isArray(updates.workingDays)) {
+    sets.push(`working_days = ?${idx++}`);
+    bindings.push(JSON.stringify(updates.workingDays));
+  }
+  if (typeof updates.startHour === "string") {
+    sets.push(`start_hour = ?${idx++}`);
+    bindings.push(updates.startHour);
+  }
+  if (typeof updates.endHour === "string") {
+    sets.push(`end_hour = ?${idx++}`);
+    bindings.push(updates.endHour);
+  }
+  if (typeof updates.breakStart !== "undefined") {
+    sets.push(`break_start = ?${idx++}`);
+    bindings.push(updates.breakStart?.trim() || null);
+  }
+  if (typeof updates.breakEnd !== "undefined") {
+    sets.push(`break_end = ?${idx++}`);
+    bindings.push(updates.breakEnd?.trim() || null);
+  }
+  if (Array.isArray(updates.procedures)) {
+    sets.push(`procedures_json = ?${idx++}`);
+    bindings.push(JSON.stringify(updates.procedures));
+  }
+  if (typeof updates.color === "string" && updates.color.trim()) {
+    sets.push(`color = ?${idx++}`);
+    bindings.push(updates.color.trim());
+  }
+  if (typeof updates.active === "boolean") {
+    sets.push(`active = ?${idx++}`);
+    bindings.push(updates.active ? 1 : 0);
+  }
+
+  if (sets.length === 0) return false;
+
+  bindings.push(id, tenantId);
+  const res = await db
+    .prepare(`UPDATE professionals SET ${sets.join(", ")} WHERE id = ?${idx++} AND tenant_id = ?${idx}`)
+    .bind(...bindings)
+    .run();
+
+  if ((res.meta?.changes ?? 0) > 0 && typeof updates.name === "string" && updates.name.trim()) {
+    await db
+      .prepare("UPDATE appointments SET professional_name = ?1 WHERE professional_id = ?2 AND tenant_id = ?3")
+      .bind(updates.name.trim(), id, tenantId)
+      .run();
+  }
+
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function deleteProfessional(db: D1Database, tenantId: string, id: number): Promise<void> {
+  // Desvincula agendamentos existentes mantendo professional_name histórico antes de excluir
+  await db.batch([
+    db.prepare("UPDATE appointments SET professional_id = NULL WHERE professional_id = ?1 AND tenant_id = ?2").bind(id, tenantId),
+    db.prepare("DELETE FROM professionals WHERE id = ?1 AND tenant_id = ?2").bind(id, tenantId),
+  ]);
+}
+
+export async function getAppointmentById(
+  db: D1Database,
+  tenantId: string,
+  id: number
+): Promise<AppointmentRecord | null> {
+  return db
+    .prepare("SELECT * FROM appointments WHERE id = ?1 AND tenant_id = ?2")
+    .bind(id, tenantId)
+    .first<AppointmentRecord>();
+}
+
 export async function listAppointments(db: D1Database, tenantId: string): Promise<AppointmentRecord[]> {
   const { results } = await db
     .prepare(
@@ -470,18 +675,77 @@ export function parseAppointmentTimeInterval(
   return { date, startMin, endMin };
 }
 
+function parseHmMinutes(hm?: string | null): number | null {
+  if (!hm) return null;
+  const m = String(hm).trim().match(/^(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+const WEEKDAY_SHORT_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
 export async function checkAppointmentConflict(
   db: D1Database,
   tenantId: string,
   scheduledAt: string,
   durationStr?: string | null,
-  excludeId?: number
-): Promise<{ conflict: boolean; conflictWith?: AppointmentRecord }> {
+  excludeId?: number,
+  professionalId?: number | null
+): Promise<{ conflict: boolean; reason?: string; conflictWith?: AppointmentRecord }> {
   const targetInterval = parseAppointmentTimeInterval(scheduledAt, durationStr);
   if (!targetInterval) {
     return { conflict: false };
   }
 
+  // 1. Se um profissional foi informado, valida dia da semana, expediente e intervalo dele
+  if (professionalId) {
+    const prof = await getProfessionalById(db, tenantId, professionalId);
+    if (prof) {
+      if (!prof.active) {
+        return { conflict: true, reason: `O profissional ${prof.name} está pausado/inativo no momento.` };
+      }
+
+      const [yy, mm, dd] = targetInterval.date.split("-").map(Number);
+      const dayOfWeek = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+      let workingDays: number[] = [1, 2, 3, 4, 5];
+      try {
+        const parsedDays = JSON.parse(prof.working_days);
+        if (Array.isArray(parsedDays)) workingDays = parsedDays.map(Number);
+      } catch {}
+
+      if (!workingDays.includes(dayOfWeek)) {
+        const daysLabel = workingDays.map((d) => WEEKDAY_SHORT_PT[d] ?? "").filter(Boolean).join(", ");
+        return {
+          conflict: true,
+          reason: `${prof.name} não atende neste dia (${WEEKDAY_SHORT_PT[dayOfWeek]}). Dias de atendimento: ${daysLabel || "não configurados"}.`,
+        };
+      }
+
+      const shiftStart = parseHmMinutes(prof.start_hour);
+      const shiftEnd = parseHmMinutes(prof.end_hour);
+      if (shiftStart !== null && shiftEnd !== null) {
+        if (targetInterval.startMin < shiftStart || targetInterval.endMin > shiftEnd) {
+          return {
+            conflict: true,
+            reason: `Horário fora do expediente de ${prof.name} (${prof.start_hour} às ${prof.end_hour}).`,
+          };
+        }
+      }
+
+      const breakStart = parseHmMinutes(prof.break_start);
+      const breakEnd = parseHmMinutes(prof.break_end);
+      if (breakStart !== null && breakEnd !== null && breakStart < breakEnd) {
+        if (targetInterval.startMin < breakEnd && targetInterval.endMin > breakStart) {
+          return {
+            conflict: true,
+            reason: `Horário coincide com o intervalo de ${prof.name} (${prof.break_start} às ${prof.break_end}).`,
+          };
+        }
+      }
+    }
+  }
+
+  // 2. Verifica sobreposição de consultas na agenda do mesmo profissional (ou geral se sem profissional)
   const { results } = await db
     .prepare(
       `SELECT * FROM appointments 
@@ -498,6 +762,15 @@ export async function checkAppointmentConflict(
 
   for (const existing of results) {
     if (excludeId && existing.id === excludeId) continue;
+
+    if (professionalId) {
+      if (existing.professional_id !== professionalId) continue;
+    } else if (existing.professional_id) {
+      // Sem profissional específico: não bloqueia consultas já atribuídas a um profissional diferente,
+      // a menos que este agendamento também seja geral (NULL)
+      continue;
+    }
+
     const exInterval = parseAppointmentTimeInterval(existing.scheduled_at, existing.duration);
     if (!exInterval) continue;
 
@@ -526,25 +799,44 @@ export async function createAppointment(
   scheduledAt: string,
   status: string = "agendado",
   notes: string = "",
-  duration: string = "30 min"
+  duration: string = "30 min",
+  professionalId: number | null = null,
+  professionalName: string | null = null
 ): Promise<CreateAppointmentResult> {
-  // Verificação centralizada de conflitos na grade
-  const conflictCheck = await checkAppointmentConflict(db, tenantId, scheduledAt, duration);
-  if (conflictCheck.conflict && conflictCheck.conflictWith) {
-    const c = conflictCheck.conflictWith;
-    return {
-      success: false,
-      conflict: true,
-      message: `Conflito de horário! Já existe consulta agendada para ${c.patient_name} (${c.procedure || "Consulta"}) em ${c.scheduled_at} (${c.duration || "30 min"}).`,
-    };
+  // Verificação centralizada de conflitos na grade (por profissional quando informado)
+  const conflictCheck = await checkAppointmentConflict(db, tenantId, scheduledAt, duration, undefined, professionalId);
+  if (conflictCheck.conflict) {
+    if (conflictCheck.reason) {
+      return { success: false, conflict: true, message: conflictCheck.reason };
+    }
+    if (conflictCheck.conflictWith) {
+      const c = conflictCheck.conflictWith;
+      const profSuffix = c.professional_name ? ` com ${c.professional_name}` : "";
+      return {
+        success: false,
+        conflict: true,
+        message: `Conflito de horário! Já existe consulta agendada${profSuffix} para ${c.patient_name} (${c.procedure || "Consulta"}) em ${c.scheduled_at} (${c.duration || "30 min"}).`,
+      };
+    }
   }
 
   const result = await db
     .prepare(
-      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes, duration)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`
+      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes, duration, professional_id, professional_name)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
     )
-    .bind(tenantId, contactWaId, patientName, procedure, scheduledAt, status, notes, duration)
+    .bind(
+      tenantId,
+      contactWaId,
+      patientName,
+      procedure,
+      scheduledAt,
+      status,
+      notes,
+      duration,
+      professionalId,
+      professionalName
+    )
     .run();
   return { success: true, id: result.meta.last_row_id ?? 0 };
 }
@@ -553,10 +845,18 @@ export async function updateAppointmentDetails(
   db: D1Database,
   tenantId: string,
   id: number,
-  updates: { status?: string; notes?: string; procedure?: string; scheduledAt?: string; duration?: string }
+  updates: {
+    status?: string;
+    notes?: string;
+    procedure?: string;
+    scheduledAt?: string;
+    duration?: string;
+    professionalId?: number | null;
+    professionalName?: string | null;
+  }
 ): Promise<void> {
   const sets: string[] = [];
-  const bindings: (string | number)[] = [];
+  const bindings: (string | number | null)[] = [];
   let paramIdx = 1;
 
   if (typeof updates.status !== "undefined") {
@@ -582,6 +882,14 @@ export async function updateAppointmentDetails(
   if (typeof updates.duration !== "undefined") {
     sets.push(`duration = ?${paramIdx++}`);
     bindings.push(updates.duration);
+  }
+  if (typeof updates.professionalId !== "undefined") {
+    sets.push(`professional_id = ?${paramIdx++}`);
+    bindings.push(updates.professionalId);
+  }
+  if (typeof updates.professionalName !== "undefined") {
+    sets.push(`professional_name = ?${paramIdx++}`);
+    bindings.push(updates.professionalName);
   }
 
   if (sets.length === 0) return;

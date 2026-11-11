@@ -1,10 +1,17 @@
 // Monta as instruções de alta performance do Claude a partir das configurações da clínica.
 // Especializado em Odontologia & Estética Avançada no Brasil.
-import type { BotConfig } from "./types";
+import type { BotConfig, ProfessionalRecord } from "./types";
 
 export interface PromptContext {
   nowBrasiliaStr?: string;
-  existingAppointments?: { scheduled_at: string; procedure: string; duration?: string }[];
+  existingAppointments?: {
+    scheduled_at: string;
+    procedure: string;
+    duration?: string;
+    professional_id?: number | null;
+    professional_name?: string | null;
+  }[];
+  professionals?: ProfessionalRecord[];
 }
 
 export interface SystemPromptParts {
@@ -212,14 +219,50 @@ export function buildSystemPromptParts(cfg: BotConfig, context?: PromptContext):
     }
   }
 
+  const activeProfs = (context?.professionals || []).filter((p) => p.active !== 0);
+  if (activeProfs.length > 0) {
+    const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    linhas.push("", "EQUIPE DE PROFISSIONAIS & AGENDAS INDEPENDENTES:");
+    for (const p of activeProfs) {
+      let daysLabel = "Seg a Sex";
+      try {
+        const dArr = JSON.parse(p.working_days);
+        if (Array.isArray(dArr) && dArr.length > 0) {
+          daysLabel = dArr.map((d: number) => dayNames[Number(d)] ?? "").filter(Boolean).join(", ");
+        }
+      } catch {}
+
+      let procLabel = "Todos os procedimentos da clínica";
+      try {
+        const pArr = JSON.parse(p.procedures_json);
+        if (Array.isArray(pArr) && pArr.length > 0) {
+          procLabel = pArr.join(", ");
+        }
+      } catch {}
+
+      const breakText = p.break_start && p.break_end ? ` | Intervalo: ${p.break_start} às ${p.break_end}` : "";
+      linhas.push(
+        `- [ID ${p.id}] ${p.name}${p.specialty ? ` (${p.specialty})` : ""}${p.cro_crm ? ` - ${p.cro_crm}` : ""}: ` +
+          `Atende ${daysLabel} das ${p.start_hour} às ${p.end_hour}${breakText} | Procedimentos: ${procLabel}`
+      );
+    }
+    linhas.push(
+      "- IMPORTANTE: Cada profissional possui agenda própria. Horário ocupado de um profissional NÃO bloqueia outro profissional disponível no mesmo horário."
+    );
+  }
+
   // Regras estáveis de agendamento (mantidas no bloco em cache)
   linhas.push(
     "",
     "SISTEMA DE AGENDAMENTO AUTOMÁTICO & CONTROLE DE HORÁRIOS",
     "- REGRA DE CONFLITO: Sempre consulte os horários ocupados informados no contexto dinâmico antes de sugerir ou aceitar um horário. Cada procedimento ocupa o horário de início mais sua duração.",
-    "- Se o horário solicitado pelo paciente já estiver ocupado ou fora do expediente, avise com gentileza que aquele horário está preenchido e ofereça as alternativas livres mais próximas.",
-    "- Quando você e o paciente alinharem e confirmarem dia, horário e procedimento, confirme amigavelmente no texto e inclua OBRIGATORIAMENTE no final da mensagem a tag oculta de agendamento:",
-    '  <<<AGENDAR: {"patient_name": "Nome", "procedure": "Procedimento", "scheduled_at": "YYYY-MM-DD HH:MM", "duration": "30 min", "notes": "Detalhes"}>>>',
+    "- Se o horário solicitado pelo paciente já estiver ocupado ou fora do expediente/dia de atendimento do profissional (ou no intervalo de almoço), avise com gentileza e ofereça as alternativas livres mais próximas.",
+    "- Quando você e o paciente alinharem e confirmarem dia, horário, procedimento" +
+      (activeProfs.length > 0 ? " e profissional" : "") +
+      ", confirme amigavelmente no texto e inclua OBRIGATORIAMENTE no final da mensagem a tag oculta de agendamento:",
+    activeProfs.length > 0
+      ? '  <<<AGENDAR: {"patient_name": "Nome", "procedure": "Procedimento", "scheduled_at": "YYYY-MM-DD HH:MM", "duration": "30 min", "professional_id": 1, "professional_name": "Nome do Profissional", "notes": "Detalhes"}>>>'
+      : '  <<<AGENDAR: {"patient_name": "Nome", "procedure": "Procedimento", "scheduled_at": "YYYY-MM-DD HH:MM", "duration": "30 min", "notes": "Detalhes"}>>>',
     "- Se o paciente estiver confirmando uma consulta previamente agendada para amanhã, confirme e inclua no final:",
     '  <<<CONFIRMAR: {"patient_name": "Nome"}>>>'
   );
@@ -236,7 +279,8 @@ export function buildSystemPromptParts(cfg: BotConfig, context?: PromptContext):
   if (context?.existingAppointments && context.existingAppointments.length > 0) {
     dynamicLines.push("- HORÁRIOS JÁ OCUPADOS NA GRADE (NÃO AGENDE NESTES HORÁRIOS PARA EVITAR CONFLITOS):");
     for (const a of context.existingAppointments) {
-      dynamicLines.push(`  * ${a.scheduled_at} (${a.procedure || "Consulta"} - Duração: ${a.duration || "30 min"})`);
+      const profLabel = a.professional_name ? ` - Profissional: ${a.professional_name}` : "";
+      dynamicLines.push(`  * ${a.scheduled_at} (${a.procedure || "Consulta"} - Duração: ${a.duration || "30 min"}${profLabel})`);
     }
   } else {
     dynamicLines.push("- Grade atual livre para novos agendamentos nos próximos dias.");

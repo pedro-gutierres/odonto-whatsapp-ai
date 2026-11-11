@@ -3,7 +3,7 @@
 //   fetch     -> Landing Page (/), Login (/login), Painel (/inbox), Webhooks da Meta e APIs REST autenticadas
 //   queue     -> Processa cada mensagem recebida (busca clínica, checa pausa da IA, chama Claude, responde no WhatsApp)
 //   scheduled -> Cron diário (23:00 UTC / 20h Brasília) para confirmações de véspera multi-tenant
-import type { BotConfig, Env, InboundJob } from "./types";
+import type { BotConfig, Env, InboundJob, ProfessionalRecord } from "./types";
 import { arrayBufferToBase64, downloadWhatsAppMedia, extractJobs, sendText, verifySignature } from "./whatsapp";
 import { askClaude, type ImageAttachment } from "./claude";
 import { buildSystemPromptParts } from "./prompt";
@@ -29,11 +29,18 @@ import {
   getUserByEmail,
   getUserById,
   listAppointments,
+  getAppointmentById,
+  checkAppointmentConflict,
   createAppointment,
   updateAppointmentDetails,
   getUpcomingAppointments,
   confirmUpcomingAppointmentForContact,
   deleteAppointment,
+  listProfessionals,
+  getProfessionalById,
+  createProfessional,
+  updateProfessional,
+  deleteProfessional,
   getTenantConfig,
   updateTenantConfig,
   isCrucialConfigComplete,
@@ -464,6 +471,142 @@ export default {
     }
 
     // -------------------------------------------------------------------------
+    // APIS DE PROFISSIONAIS (DENTISTAS / ESTETICISTAS DA CLÍNICA LOGADA)
+    // -------------------------------------------------------------------------
+    if (url.pathname === "/api/professionals") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+      const tenantId = auth.session.tenantId;
+
+      if (request.method === "GET") {
+        const activeOnly = url.searchParams.get("active_only") === "1";
+        const professionals = await listProfessionals(env.DB, tenantId, activeOnly);
+        return jsonResponse({ professionals });
+      }
+
+      if (request.method === "POST") {
+        try {
+          const body = (await request.json()) as {
+            name?: string;
+            specialty?: string;
+            croCrm?: string;
+            workingDays?: number[];
+            startHour?: string;
+            endHour?: string;
+            breakStart?: string | null;
+            breakEnd?: string | null;
+            procedures?: string[];
+            color?: string;
+            active?: boolean;
+          };
+
+          const name = body.name?.trim();
+          if (!name) {
+            return jsonResponse({ error: "Nome do profissional é obrigatório." }, 400);
+          }
+
+          const startHour = body.startHour?.trim() || "08:00";
+          const endHour = body.endHour?.trim() || "18:00";
+          if (!/^\d{2}:\d{2}$/.test(startHour) || !/^\d{2}:\d{2}$/.test(endHour) || startHour >= endHour) {
+            return jsonResponse({ error: "Horário de expediente inválido (início deve ser menor que fim)." }, 400);
+          }
+
+          const breakStart = body.breakStart?.trim() || null;
+          const breakEnd = body.breakEnd?.trim() || null;
+          if ((breakStart && !breakEnd) || (!breakStart && breakEnd)) {
+            return jsonResponse({ error: "Informe início e fim do intervalo de almoço ou deixe ambos vazios." }, 400);
+          }
+          if (breakStart && breakEnd && (!/^\d{2}:\d{2}$/.test(breakStart) || !/^\d{2}:\d{2}$/.test(breakEnd) || breakStart >= breakEnd)) {
+            return jsonResponse({ error: "Horário de intervalo inválido." }, 400);
+          }
+
+          const workingDays = Array.isArray(body.workingDays)
+            ? body.workingDays.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+            : [1, 2, 3, 4, 5];
+          if (workingDays.length === 0) {
+            return jsonResponse({ error: "Selecione pelo menos 1 dia de atendimento." }, 400);
+          }
+
+          const id = await createProfessional(env.DB, tenantId, {
+            name,
+            specialty: body.specialty,
+            croCrm: body.croCrm,
+            workingDays,
+            startHour,
+            endHour,
+            breakStart,
+            breakEnd,
+            procedures: Array.isArray(body.procedures) ? body.procedures : [],
+            color: body.color,
+            active: body.active,
+          });
+          return jsonResponse({ success: true, id });
+        } catch (err) {
+          console.error("Erro em POST /api/professionals:", String(err));
+          return jsonResponse({ error: "Erro ao cadastrar profissional." }, 500);
+        }
+      }
+
+      if (request.method === "PATCH") {
+        try {
+          const body = (await request.json()) as {
+            id?: number;
+            name?: string;
+            specialty?: string | null;
+            croCrm?: string | null;
+            workingDays?: number[];
+            startHour?: string;
+            endHour?: string;
+            breakStart?: string | null;
+            breakEnd?: string | null;
+            procedures?: string[];
+            color?: string;
+            active?: boolean;
+          };
+          if (!body.id) {
+            return jsonResponse({ error: "id obrigatório" }, 400);
+          }
+
+          if (body.startHour && body.endHour && body.startHour >= body.endHour) {
+            return jsonResponse({ error: "Horário de início deve ser menor que fim." }, 400);
+          }
+          if (body.breakStart && body.breakEnd && body.breakStart >= body.breakEnd) {
+            return jsonResponse({ error: "Intervalo inválido." }, 400);
+          }
+          if (Array.isArray(body.workingDays) && body.workingDays.length === 0) {
+            return jsonResponse({ error: "Selecione pelo menos 1 dia de atendimento." }, 400);
+          }
+
+          const updated = await updateProfessional(env.DB, tenantId, body.id, body);
+          if (!updated) {
+            return jsonResponse({ error: "Profissional não encontrado." }, 404);
+          }
+          return jsonResponse({ success: true });
+        } catch (err) {
+          console.error("Erro em PATCH /api/professionals:", String(err));
+          return jsonResponse({ error: "Erro ao atualizar profissional." }, 500);
+        }
+      }
+
+      if (request.method === "DELETE") {
+        try {
+          const body = (await request.json().catch(() => ({}))) as { id?: number };
+          const id = body.id || parseInt(url.searchParams.get("id") || "0", 10);
+          if (!id) {
+            return jsonResponse({ error: "id obrigatório" }, 400);
+          }
+          await deleteProfessional(env.DB, tenantId, id);
+          return jsonResponse({ success: true });
+        } catch (err) {
+          console.error("Erro em DELETE /api/professionals:", String(err));
+          return jsonResponse({ error: "Erro ao excluir profissional." }, 500);
+        }
+      }
+
+      return jsonResponse({ error: "Método não permitido" }, 405);
+    }
+
+    // -------------------------------------------------------------------------
     // APIS DO CRM DE AGENDAMENTOS E PRÉ-AGENDAMENTOS (AUTENTICADAS)
     // -------------------------------------------------------------------------
     if (url.pathname === "/api/appointments") {
@@ -491,6 +634,8 @@ export default {
             status?: string;
             notes?: string;
             duration?: string;
+            professionalId?: number | string | null;
+            professional_id?: number | string | null;
           };
 
           const pName = body.patientName || body.patient_name || body.name || "Paciente sem nome";
@@ -501,7 +646,35 @@ export default {
           const pNotes = body.notes || "";
           const pDuration = body.duration || "30 min";
 
-          const res = await createAppointment(env.DB, tenantId, pPhone, pName, pProc, pSched, pStatus, pNotes, pDuration);
+          const rawProfId = body.professionalId ?? body.professional_id;
+          let profId: number | null = null;
+          let profName: string | null = null;
+          if (rawProfId !== null && rawProfId !== undefined && String(rawProfId).trim() !== "") {
+            const parsedId = Number(rawProfId);
+            if (!Number.isInteger(parsedId) || parsedId <= 0) {
+              return jsonResponse({ error: "Profissional inválido." }, 400);
+            }
+            const prof = await getProfessionalById(env.DB, tenantId, parsedId);
+            if (!prof) {
+              return jsonResponse({ error: "Profissional não encontrado para esta clínica." }, 404);
+            }
+            profId = prof.id;
+            profName = prof.name;
+          }
+
+          const res = await createAppointment(
+            env.DB,
+            tenantId,
+            pPhone,
+            pName,
+            pProc,
+            pSched,
+            pStatus,
+            pNotes,
+            pDuration,
+            profId,
+            profName
+          );
 
           if (!res.success && res.conflict) {
             return jsonResponse({ error: res.message, conflict: true }, 409);
@@ -523,11 +696,69 @@ export default {
             procedure?: string;
             scheduledAt?: string;
             duration?: string;
+            professionalId?: number | string | null;
           };
           if (!body.id) {
             return jsonResponse({ error: "id obrigatório" }, 400);
           }
-          await updateAppointmentDetails(env.DB, tenantId, body.id, body);
+
+          const existing = await getAppointmentById(env.DB, tenantId, body.id);
+          if (!existing) {
+            return jsonResponse({ error: "Agendamento não encontrado." }, 404);
+          }
+
+          let nextProfId: number | null | undefined = undefined;
+          let nextProfName: string | null | undefined = undefined;
+          if (typeof body.professionalId !== "undefined") {
+            if (body.professionalId === null || String(body.professionalId).trim() === "") {
+              nextProfId = null;
+              nextProfName = null;
+            } else {
+              const parsedId = Number(body.professionalId);
+              if (!Number.isInteger(parsedId) || parsedId <= 0) {
+                return jsonResponse({ error: "Profissional inválido." }, 400);
+              }
+              const prof = await getProfessionalById(env.DB, tenantId, parsedId);
+              if (!prof) {
+                return jsonResponse({ error: "Profissional não encontrado para esta clínica." }, 404);
+              }
+              nextProfId = prof.id;
+              nextProfName = prof.name;
+            }
+          }
+
+          const targetStatus = body.status ?? existing.status;
+          const targetSched = body.scheduledAt ?? existing.scheduled_at;
+          const targetDur = body.duration ?? existing.duration;
+          const targetProfId = typeof nextProfId !== "undefined" ? nextProfId : (existing.professional_id ?? null);
+
+          if (
+            targetStatus !== "cancelado" &&
+            (typeof body.scheduledAt !== "undefined" ||
+              typeof body.duration !== "undefined" ||
+              typeof body.professionalId !== "undefined" ||
+              (existing.status === "cancelado" && targetStatus !== "cancelado"))
+          ) {
+            const conflictCheck = await checkAppointmentConflict(env.DB, tenantId, targetSched, targetDur, body.id, targetProfId);
+            if (conflictCheck.conflict) {
+              const msg =
+                conflictCheck.reason ||
+                (conflictCheck.conflictWith
+                  ? `Conflito de horário com ${conflictCheck.conflictWith.patient_name} em ${conflictCheck.conflictWith.scheduled_at}.`
+                  : "Conflito de horário na grade.");
+              return jsonResponse({ error: msg, conflict: true }, 409);
+            }
+          }
+
+          await updateAppointmentDetails(env.DB, tenantId, body.id, {
+            status: body.status,
+            notes: body.notes,
+            procedure: body.procedure,
+            scheduledAt: body.scheduledAt,
+            duration: body.duration,
+            professionalId: nextProfId,
+            professionalName: nextProfName,
+          });
           return jsonResponse({ success: true });
         } catch (err) {
           console.error("Erro em PATCH /api/appointments:", String(err));
@@ -1121,6 +1352,7 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
 
   let reply: string;
   let freshHistory: { role: "user" | "assistant"; content: string }[] = [];
+  let activeProfessionals: ProfessionalRecord[] = [];
   const hasUsableContent =
     (job.type === "text" && Boolean(job.text?.trim())) ||
     (isAudioJob && audioTranscriptReady) ||
@@ -1139,17 +1371,25 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
       timeStyle: "short",
     }).format(new Date());
 
-    // Obtém agendamentos futuros para a IA respeitar a grade e evitar qualquer conflito
-    const upcoming = await getUpcomingAppointments(env.DB, tenant.id);
+    // Obtém profissionais ativos e agendamentos futuros para a IA respeitar a grade por profissional
+    const [upcoming, profs] = await Promise.all([
+      getUpcomingAppointments(env.DB, tenant.id),
+      listProfessionals(env.DB, tenant.id, true),
+    ]);
+    activeProfessionals = profs;
+
     const existingAppointments = upcoming.map((a) => ({
       scheduled_at: a.scheduled_at,
       procedure: a.procedure || "Consulta",
       duration: a.duration || "30 min",
+      professional_id: a.professional_id ?? null,
+      professional_name: a.professional_name ?? null,
     }));
 
     const systemParts = buildSystemPromptParts(cfg, {
       nowBrasiliaStr,
       existingAppointments,
+      professionals: activeProfessionals,
     });
 
     reply = (await askClaude(env, systemParts, freshHistory, imageAttachment)) ?? MSG_FALHA_IA;
@@ -1174,7 +1414,35 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
       const duration = data.duration || "30 min";
       const notes = data.notes || "Agendado via IA WhatsApp";
 
-      const res = await createAppointment(env.DB, tenant.id, job.from, patientName, procedure, scheduledAt, "agendado", notes, duration);
+      let matchedProf: ProfessionalRecord | undefined;
+      if (activeProfessionals.length > 0) {
+        if (data.professional_id) {
+          matchedProf = activeProfessionals.find((p) => p.id === Number(data.professional_id));
+        }
+        if (!matchedProf && data.professional_name) {
+          const targetName = String(data.professional_name).toLowerCase().trim();
+          matchedProf = activeProfessionals.find(
+            (p) => p.name.toLowerCase().includes(targetName) || targetName.includes(p.name.toLowerCase())
+          );
+        }
+        if (!matchedProf && activeProfessionals.length === 1) {
+          matchedProf = activeProfessionals[0];
+        }
+      }
+
+      const res = await createAppointment(
+        env.DB,
+        tenant.id,
+        job.from,
+        patientName,
+        procedure,
+        scheduledAt,
+        "agendado",
+        notes,
+        duration,
+        matchedProf?.id ?? null,
+        matchedProf?.name ?? null
+      );
       if (res.success) {
         bookingSucceeded = true;
         console.log(`[AGENDAMENTO_IA] Agendamento criado com sucesso para ${patientName} em ${scheduledAt}`);
@@ -1210,7 +1478,10 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
               scheduled_at: a.scheduled_at,
               procedure: a.procedure || "Consulta",
               duration: a.duration || "30 min",
+              professional_id: a.professional_id ?? null,
+              professional_name: a.professional_name ?? null,
             })),
+            professionals: activeProfessionals,
           });
           retryParts.dynamicContext +=
             `\n\nATENÇÃO CRÍTICA DO SISTEMA:\n` +

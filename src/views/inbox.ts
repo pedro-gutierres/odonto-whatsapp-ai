@@ -347,9 +347,18 @@ export const INBOX_HTML = `<!DOCTYPE html>
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div class="flex items-center gap-2.5">
           <span class="w-3 h-3 rounded-full bg-sky-500 animate-pulse"></span>
-          <h2 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">Agenda</h2>
+          <h2 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">Agenda & Profissionais</h2>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="agendaProfessionalFilter" onchange="onAgendaProfessionalFilterChange()"
+            class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] text-slate-700 dark:text-slate-200 text-xs font-semibold focus:outline-none focus:border-[#008069]">
+            <option value="all">Todos os Profissionais</option>
+          </select>
+          <button onclick="openProfessionalsModal()" class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
+            <i class="fa-solid fa-user-doctor text-sky-500"></i>
+            <span>Profissionais</span>
+            <span id="profCountBadge" class="px-1.5 py-0.2 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[10px] font-bold">0</span>
+          </button>
           <button onclick="loadAppointments()" class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs transition" title="Atualizar">
             <i class="fa-solid fa-rotate-right" id="agendaRefreshIcon"></i>
           </button>
@@ -359,6 +368,9 @@ export const INBOX_HTML = `<!DOCTYPE html>
           </button>
         </div>
       </div>
+
+      <!-- BARRA RÁPIDA DE FILTRO POR PROFISSIONAL -->
+      <div id="agendaProfChips" class="hidden flex flex-wrap items-center gap-2"></div>
 
       <!-- BANNER DE BLOQUEIO DA AGENDA POR TREINAMENTO INCOMPLETO -->
       <div id="agendaCrucialLockBanner" class="hidden p-4 rounded-2xl bg-rose-500/10 border-2 border-rose-500/40 text-rose-900 dark:text-rose-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -991,6 +1003,14 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
 
         <div>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Profissional (Dentista / Esteticista)</label>
+          <select id="appProfessional" onchange="onAppointmentTimeOrProcChange()"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
+            <option value="">Agenda Geral (Sem profissional específico)</option>
+          </select>
+        </div>
+
+        <div>
           <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Data & Horário de Início (Formato 24h)</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <!-- SELETOR DE DATA INTERATIVO -->
@@ -1114,16 +1134,24 @@ export const INBOX_HTML = `<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- CAMPOS EDITÁVEIS: STATUS & OBSERVAÇÕES AMPLAS (6 LINHAS) -->
+      <!-- CAMPOS EDITÁVEIS: PROFISSIONAL, STATUS & OBSERVAÇÕES -->
       <div class="space-y-3 pt-1 text-xs">
-        <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Alterar Status da Consulta</label>
-          <select id="detStatus" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#008069]">
-            <option value="agendado">Agendado</option>
-            <option value="confirmado">Confirmado</option>
-            <option value="concluido">Concluído</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Profissional Responsável</label>
+            <select id="detProfessional" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <option value="">Agenda Geral</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Alterar Status da Consulta</label>
+            <select id="detStatus" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <option value="agendado">Agendado</option>
+              <option value="confirmado">Confirmado</option>
+              <option value="concluido">Concluído</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
         </div>
 
         <div>
@@ -1153,6 +1181,116 @@ export const INBOX_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- ======================================================================= -->
+  <!-- MODAL 4: GERENCIAR PROFISSIONAIS (DENTISTAS / ESTETICISTAS)             -->
+  <!-- ======================================================================= -->
+  <div id="professionalsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-[#131b2a] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl text-slate-900 dark:text-white overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div>
+          <h3 class="text-sm font-bold flex items-center gap-2">
+            <i class="fa-solid fa-user-doctor text-sky-500"></i>
+            <span>Equipe de Profissionais & Grades Independentes</span>
+          </h3>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">Cadastre dentistas e esteticistas com horários e dias próprios. A IA respeita a agenda de cada profissional.</p>
+        </div>
+        <button onclick="closeProfessionalsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto custom-scroll p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- LISTA DE PROFISSIONAIS -->
+        <div class="lg:col-span-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Profissionais Cadastrados</span>
+            <button type="button" onclick="resetProfessionalForm()" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i> Novo
+            </button>
+          </div>
+          <div id="professionalsList" class="space-y-2.5">
+            <div class="p-4 text-center text-xs text-slate-400">Carregando...</div>
+          </div>
+        </div>
+
+        <!-- FORMULÁRIO DE CADASTRO / EDIÇÃO -->
+        <form onsubmit="handleSaveProfessional(event)" class="lg:col-span-7 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
+          <input type="hidden" id="profEditId">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+            <h4 id="profFormTitle" class="font-bold text-slate-900 dark:text-white">Novo Profissional</h4>
+            <div class="flex items-center gap-1.5" id="profColorSwatches">
+              <button type="button" onclick="selectProfColor('#10b981')" data-color="#10b981" class="prof-color-btn w-5 h-5 rounded-full bg-emerald-500 ring-2 ring-offset-2 ring-emerald-500"></button>
+              <button type="button" onclick="selectProfColor('#0ea5e9')" data-color="#0ea5e9" class="prof-color-btn w-5 h-5 rounded-full bg-sky-500"></button>
+              <button type="button" onclick="selectProfColor('#8b5cf6')" data-color="#8b5cf6" class="prof-color-btn w-5 h-5 rounded-full bg-violet-500"></button>
+              <button type="button" onclick="selectProfColor('#f59e0b')" data-color="#f59e0b" class="prof-color-btn w-5 h-5 rounded-full bg-amber-500"></button>
+              <button type="button" onclick="selectProfColor('#ec4899')" data-color="#ec4899" class="prof-color-btn w-5 h-5 rounded-full bg-pink-500"></button>
+              <button type="button" onclick="selectProfColor('#14b8a6')" data-color="#14b8a6" class="prof-color-btn w-5 h-5 rounded-full bg-teal-500"></button>
+            </div>
+            <input type="hidden" id="profColor" value="#10b981">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block font-semibold mb-1">Nome Completo *</label>
+              <input type="text" id="profName" required placeholder="Ex: Dra. Ana Paula Costa"
+                class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1">Especialidade</label>
+              <input type="text" id="profSpecialty" placeholder="Ex: Harmonização / Ortodontia"
+                class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1">CRO / CRM</label>
+              <input type="text" id="profCro" placeholder="Ex: CRO-SP 123456"
+                class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-[#008069]">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-semibold mb-1.5">Dias de Atendimento *</label>
+            <div class="flex flex-wrap gap-1.5">
+              <label class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer flex items-center gap-1"><input type="checkbox" name="profWorkDay" value="0"><span>Dom</span></label>
+              <label class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer flex items-center gap-1"><input type="checkbox" name="profWorkDay" value="1" checked><span>Seg</span></label>
+              <label class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer flex items-center gap-1"><input type="checkbox" name="profWorkDay" value="2" checked><span>Ter</span></label>
+              <label class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer flex items-center gap-1"><input type="checkbox" name="profWorkDay" value="3" checked><span>Qua</span></label>
+              <label class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer flex items-center gap-1"><input type="checkbox" name="profWorkDay" value="4" checked><span>Qui</span></label>
+              <label class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer flex items-center gap-1"><input type="checkbox" name="profWorkDay" value="5" checked><span>Sex</span></label>
+              <label class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer flex items-center gap-1"><input type="checkbox" name="profWorkDay" value="6"><span>Sáb</span></label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label class="block font-semibold mb-1">Início *</label>
+              <input type="time" id="profStartHour" value="08:00" required class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1">Fim *</label>
+              <input type="time" id="profEndHour" value="18:00" required class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1">Almoço Início</label>
+              <input type="time" id="profBreakStart" value="12:00" class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1">Almoço Fim</label>
+              <input type="time" id="profBreakEnd" value="13:00" class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-semibold mb-1">Procedimentos que realiza <span class="text-[10px] font-normal text-slate-400">(deixe todos desmarcados para atender qualquer procedimento)</span></label>
+            <div id="profProceduresCheckboxes" class="max-h-32 overflow-y-auto custom-scroll p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg grid grid-cols-1 sm:grid-cols-2 gap-1.5"></div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+            <button type="button" onclick="resetProfessionalForm()" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 font-medium">Limpar</button>
+            <button type="submit" id="btnSaveProfessional" class="px-4 py-1.5 rounded-lg bg-[#008069] hover:bg-[#006a57] text-white font-semibold shadow-sm transition">Salvar Profissional</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST DE NOTIFICAÇÃO FLUTUANTE -->
   <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-semibold">
     <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
@@ -1166,6 +1304,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
     let activePhone = null;
     let activeAiPaused = false;
     let appointments = [];
+    let professionals = [];
+    let selectedAgendaProfId = 'all';
     let currentConfig = null;
 
     // Otimização de polling
@@ -1282,6 +1422,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
       if (tabId === 'agenda') {
         viewAgenda.classList.remove('hidden');
+        loadProfessionals();
         loadAppointments();
       } else if (tabId === 'config') {
         viewConfig.classList.remove('hidden');
@@ -1324,6 +1465,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       if (!ok) return;
       startLiveBrasiliaSync();
       await loadConversations(false);
+      await loadProfessionals();
       await loadAppointments();
       await loadClinicConfig();
       updateCrucialTrainingLockUI();
@@ -1931,6 +2073,460 @@ export const INBOX_HTML = `<!DOCTYPE html>
       "Quinta-feira", "Sexta-feira", "Sábado"
     ];
 
+    const PROF_WEEKDAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    function parseProfWorkingDays(raw) {
+      if (Array.isArray(raw)) return raw.map(Number);
+      try {
+        const parsed = JSON.parse(raw || '[1,2,3,4,5]');
+        if (Array.isArray(parsed)) return parsed.map(Number);
+      } catch {}
+      return [1, 2, 3, 4, 5];
+    }
+
+    function parseProfProcedures(raw) {
+      if (Array.isArray(raw)) return raw.map(String);
+      try {
+        const parsed = JSON.parse(raw || '[]');
+        if (Array.isArray(parsed)) return parsed.map(String);
+      } catch {}
+      return [];
+    }
+
+    function sanitizeHexColor(hex) {
+      return /^#[0-9a-fA-F]{3,8}$/.test(String(hex || '').trim()) ? String(hex).trim() : '#10b981';
+    }
+
+    function getFilteredAppointments() {
+      if (selectedAgendaProfId === 'all') return appointments;
+      if (selectedAgendaProfId === 'unassigned') return appointments.filter(a => !a.professional_id);
+      const pid = Number(selectedAgendaProfId);
+      return appointments.filter(a => Number(a.professional_id) === pid);
+    }
+
+    function getProfessionalBadgeHtml(profId, profName) {
+      const prof = profId ? professionals.find(p => Number(p.id) === Number(profId)) : null;
+      const name = prof ? prof.name : (profName || '');
+      if (!name) return '';
+      const color = sanitizeHexColor(prof ? prof.color : '#0ea5e9');
+      return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-semibold text-slate-700 dark:text-slate-200 max-w-full">' +
+               '<span class="w-2 h-2 rounded-full shrink-0" style="background-color:' + color + '"></span>' +
+               '<span class="truncate">' + escapeHtml(name) + '</span>' +
+             '</span>';
+    }
+
+    async function loadProfessionals() {
+      try {
+        const res = await fetch('/api/professionals');
+        if (!res.ok) return;
+        const data = await res.json();
+        professionals = Array.isArray(data.professionals) ? data.professionals : [];
+
+        const badge = document.getElementById('profCountBadge');
+        if (badge) {
+          badge.innerText = String(professionals.filter(p => Number(p.active) === 1 || p.active === true).length);
+        }
+
+        renderProfessionalsFilter();
+        populateAppointmentProfessionalSelects();
+        const modalEl = document.getElementById('professionalsModal');
+        if (modalEl && !modalEl.classList.contains('hidden')) {
+          renderProfessionalsList();
+        }
+        renderCalendar();
+        renderAppointmentsTable();
+      } catch (err) {
+        console.error('Erro ao carregar profissionais:', err);
+      }
+    }
+
+    function renderProfessionalsFilter() {
+      const select = document.getElementById('agendaProfessionalFilter');
+      if (select) {
+        let opts = '<option value="all">Todos os Profissionais</option>';
+        opts += '<option value="unassigned">Agenda Geral (Sem profissional)</option>';
+        professionals.forEach(p => {
+          const isActive = Number(p.active) === 1 || p.active === true;
+          const label = p.name + (p.specialty ? ' — ' + p.specialty : '') + (isActive ? '' : ' (Pausado)');
+          opts += '<option value="' + p.id + '">' + escapeHtml(label) + '</option>';
+        });
+        select.innerHTML = opts;
+        const hasVal = Array.from(select.options).some(o => o.value === String(selectedAgendaProfId));
+        if (!hasVal) selectedAgendaProfId = 'all';
+        select.value = String(selectedAgendaProfId);
+      }
+
+      const chipsEl = document.getElementById('agendaProfChips');
+      if (!chipsEl) return;
+
+      if (professionals.length === 0) {
+        chipsEl.classList.add('hidden');
+        chipsEl.innerHTML = '';
+        return;
+      }
+
+      chipsEl.classList.remove('hidden');
+      let chipsHtml = '';
+      const allActive = selectedAgendaProfId === 'all';
+      chipsHtml += '<button type="button" onclick="setAgendaProfFilter(&quot;all&quot;)" class="px-3 py-1.5 rounded-full text-xs font-bold border transition ' +
+        (allActive
+          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-sm'
+          : 'bg-white dark:bg-[#111827] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400') +
+        '">Todos (' + appointments.length + ')</button>';
+
+      professionals.forEach(p => {
+        const isSel = String(selectedAgendaProfId) === String(p.id);
+        const color = sanitizeHexColor(p.color);
+        const count = appointments.filter(a => Number(a.professional_id) === Number(p.id)).length;
+        const isActive = Number(p.active) === 1 || p.active === true;
+        chipsHtml += '<button type="button" onclick="setAgendaProfFilter(&quot;' + p.id + '&quot;)" class="px-3 py-1.5 rounded-full text-xs font-bold border transition flex items-center gap-1.5 ' +
+          (isSel
+            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+            : 'bg-white dark:bg-[#111827] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-400') +
+          (isActive ? '' : ' opacity-60') + '">' +
+          '<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:' + (isSel ? '#ffffff' : color) + '"></span>' +
+          '<span>' + escapeHtml(p.name) + '</span>' +
+          '<span class="text-[10px] opacity-75">(' + count + ')</span>' +
+        '</button>';
+      });
+
+      const unassignedCount = appointments.filter(a => !a.professional_id).length;
+      if (unassignedCount > 0) {
+        const isUnassigned = selectedAgendaProfId === 'unassigned';
+        chipsHtml += '<button type="button" onclick="setAgendaProfFilter(&quot;unassigned&quot;)" class="px-3 py-1.5 rounded-full text-xs font-bold border transition ' +
+          (isUnassigned
+            ? 'bg-slate-700 text-white border-slate-700 shadow-sm'
+            : 'bg-white dark:bg-[#111827] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400') +
+          '">Agenda Geral (' + unassignedCount + ')</button>';
+      }
+
+      chipsEl.innerHTML = chipsHtml;
+    }
+
+    function setAgendaProfFilter(id) {
+      selectedAgendaProfId = String(id || 'all');
+      renderProfessionalsFilter();
+      updateAppointmentMetrics();
+      renderCalendar();
+      renderAppointmentsTable();
+    }
+
+    function onAgendaProfessionalFilterChange() {
+      const sel = document.getElementById('agendaProfessionalFilter');
+      setAgendaProfFilter(sel ? sel.value : 'all');
+    }
+
+    function populateAppointmentProfessionalSelects(preferredCreateId) {
+      const createSel = document.getElementById('appProfessional');
+      if (createSel) {
+        const currentVal = preferredCreateId !== undefined ? String(preferredCreateId) : createSel.value;
+        let opts = '<option value="">Agenda Geral (Sem profissional específico)</option>';
+        professionals.forEach(p => {
+          const isActive = Number(p.active) === 1 || p.active === true;
+          if (!isActive && String(p.id) !== currentVal) return;
+          const label = p.name + (p.specialty ? ' (' + p.specialty + ')' : '') + (isActive ? '' : ' [Pausado]');
+          opts += '<option value="' + p.id + '">' + escapeHtml(label) + '</option>';
+        });
+        createSel.innerHTML = opts;
+        if (currentVal && Array.from(createSel.options).some(o => o.value === currentVal)) {
+          createSel.value = currentVal;
+        }
+      }
+    }
+
+    function populateDetailProfessionalSelect(selectedId) {
+      const detSel = document.getElementById('detProfessional');
+      if (!detSel) return;
+      const valStr = selectedId ? String(selectedId) : '';
+      let opts = '<option value="">Agenda Geral</option>';
+      professionals.forEach(p => {
+        const isActive = Number(p.active) === 1 || p.active === true;
+        const label = p.name + (p.specialty ? ' (' + p.specialty + ')' : '') + (isActive ? '' : ' (Pausado)');
+        opts += '<option value="' + p.id + '">' + escapeHtml(label) + '</option>';
+      });
+      detSel.innerHTML = opts;
+      detSel.value = Array.from(detSel.options).some(o => o.value === valStr) ? valStr : '';
+    }
+
+    function selectProfColor(hex) {
+      const cleanHex = sanitizeHexColor(hex);
+      const input = document.getElementById('profColor');
+      if (input) input.value = cleanHex;
+      document.querySelectorAll('.prof-color-btn').forEach(btn => {
+        if (btn.getAttribute('data-color') === cleanHex) {
+          btn.classList.add('ring-2', 'ring-offset-2', 'ring-slate-900', 'dark:ring-white');
+        } else {
+          btn.classList.remove('ring-2', 'ring-offset-2', 'ring-slate-900', 'dark:ring-white');
+        }
+      });
+    }
+
+    function populateProfProceduresCheckboxes(selectedList = []) {
+      const container = document.getElementById('profProceduresCheckboxes');
+      if (!container) return;
+
+      const selectedSet = new Set((selectedList || []).map(s => String(s).trim()).filter(Boolean));
+      const names = ['Avaliação Inicial / Consulta'];
+
+      if (currentConfig && Array.isArray(currentConfig.procedure_items) && currentConfig.procedure_items.length > 0) {
+        currentConfig.procedure_items.filter(p => p.checked !== false).forEach(p => {
+          if (p.name && !names.includes(p.name)) names.push(p.name);
+        });
+      } else {
+        DEFAULT_ODONTO_SERVICES.concat(DEFAULT_ESTETICA_SERVICES).forEach(p => {
+          if (p.name && !names.includes(p.name)) names.push(p.name);
+        });
+      }
+
+      selectedSet.forEach(s => {
+        if (!names.includes(s)) names.push(s);
+      });
+
+      container.innerHTML = names.map(name => {
+        const checkedAttr = selectedSet.has(name) ? ' checked' : '';
+        return '<label class="flex items-center gap-2 p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer text-[11px]">' +
+          '<input type="checkbox" name="profProcedureItem" value="' + escapeHtml(name) + '"' + checkedAttr + ' class="rounded">' +
+          '<span class="truncate">' + escapeHtml(name) + '</span>' +
+        '</label>';
+      }).join('');
+    }
+
+    function resetProfessionalForm() {
+      const editId = document.getElementById('profEditId');
+      if (editId) editId.value = '';
+      const title = document.getElementById('profFormTitle');
+      if (title) title.innerText = 'Novo Profissional';
+      const saveBtn = document.getElementById('btnSaveProfessional');
+      if (saveBtn) saveBtn.innerText = 'Salvar Profissional';
+
+      const nameEl = document.getElementById('profName');
+      if (nameEl) nameEl.value = '';
+      const specEl = document.getElementById('profSpecialty');
+      if (specEl) specEl.value = '';
+      const croEl = document.getElementById('profCro');
+      if (croEl) croEl.value = '';
+
+      document.querySelectorAll('input[name="profWorkDay"]').forEach(cb => {
+        const day = parseInt(cb.value, 10);
+        cb.checked = day >= 1 && day <= 5;
+      });
+
+      const startEl = document.getElementById('profStartHour');
+      if (startEl) startEl.value = '08:00';
+      const endEl = document.getElementById('profEndHour');
+      if (endEl) endEl.value = '18:00';
+      const breakStartEl = document.getElementById('profBreakStart');
+      if (breakStartEl) breakStartEl.value = '12:00';
+      const breakEndEl = document.getElementById('profBreakEnd');
+      if (breakEndEl) breakEndEl.value = '13:00';
+
+      selectProfColor('#10b981');
+      populateProfProceduresCheckboxes([]);
+    }
+
+    function openProfessionalsModal() {
+      resetProfessionalForm();
+      const modal = document.getElementById('professionalsModal');
+      if (modal) modal.classList.remove('hidden');
+      renderProfessionalsList();
+      loadProfessionals();
+    }
+
+    function closeProfessionalsModal() {
+      const modal = document.getElementById('professionalsModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function renderProfessionalsList() {
+      const listEl = document.getElementById('professionalsList');
+      if (!listEl) return;
+
+      if (professionals.length === 0) {
+        listEl.innerHTML =
+          '<div class="p-6 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-xs space-y-2">' +
+            '<i class="fa-solid fa-user-doctor text-2xl opacity-50"></i>' +
+            '<p class="font-medium text-slate-600 dark:text-slate-300">Nenhum profissional cadastrado.</p>' +
+            '<p class="text-[11px]">Cadastre dentistas ou esteticistas ao lado para liberar agendas independentes na mesma hora.</p>' +
+          '</div>';
+        return;
+      }
+
+      listEl.innerHTML = professionals.map(p => {
+        const isActive = Number(p.active) === 1 || p.active === true;
+        const color = sanitizeHexColor(p.color);
+        const days = parseProfWorkingDays(p.working_days).map(d => PROF_WEEKDAY_SHORT[d] || '').filter(Boolean).join(', ');
+        const procs = parseProfProcedures(p.procedures_json);
+        const breakTxt = (p.break_start && p.break_end) ? ' • Intervalo ' + p.break_start + '–' + p.break_end : '';
+        const procsTxt = procs.length > 0 ? procs.length + (procs.length === 1 ? ' procedimento' : ' procedimentos') : 'Todos os procedimentos';
+
+        return '<div class="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">' +
+          '<div class="flex items-start justify-between gap-2">' +
+            '<div class="flex items-center gap-2 min-w-0">' +
+              '<span class="w-3 h-3 rounded-full shrink-0" style="background-color:' + color + '"></span>' +
+              '<div class="min-w-0">' +
+                '<div class="font-bold text-xs text-slate-900 dark:text-white truncate">' + escapeHtml(p.name) + '</div>' +
+                '<div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">' +
+                  escapeHtml([p.specialty, p.cro_crm].filter(Boolean).join(' • ') || 'Sem especialidade informada') +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<button type="button" onclick="toggleProfessionalActive(' + p.id + ', ' + (isActive ? 'false' : 'true') + ')" class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ' +
+              (isActive ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300') + '">' +
+              (isActive ? 'Ativo' : 'Pausado') +
+            '</button>' +
+          '</div>' +
+          '<div class="text-[10px] text-slate-500 dark:text-slate-400 space-y-0.5">' +
+            '<div><i class="fa-regular fa-calendar mr-1"></i>' + escapeHtml(days || 'Dias não definidos') + '</div>' +
+            '<div><i class="fa-regular fa-clock mr-1"></i>' + escapeHtml((p.start_hour || '08:00') + ' às ' + (p.end_hour || '18:00') + breakTxt) + '</div>' +
+            '<div><i class="fa-solid fa-tooth mr-1"></i>' + escapeHtml(procsTxt) + '</div>' +
+          '</div>' +
+          '<div class="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-700/60">' +
+            '<button type="button" onclick="editProfessionalInModal(' + p.id + ')" class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-600 text-[10px] font-bold hover:bg-slate-100 dark:hover:bg-slate-700">Editar</button>' +
+            '<button type="button" onclick="handleDeleteProfessional(' + p.id + ')" class="px-2.5 py-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[10px] font-bold">Excluir</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function editProfessionalInModal(id) {
+      const prof = professionals.find(p => Number(p.id) === Number(id));
+      if (!prof) return;
+
+      document.getElementById('profEditId').value = String(prof.id);
+      document.getElementById('profFormTitle').innerText = 'Editando: ' + prof.name;
+      document.getElementById('btnSaveProfessional').innerText = 'Atualizar Profissional';
+
+      document.getElementById('profName').value = prof.name || '';
+      document.getElementById('profSpecialty').value = prof.specialty || '';
+      document.getElementById('profCro').value = prof.cro_crm || '';
+
+      const daysSet = new Set(parseProfWorkingDays(prof.working_days));
+      document.querySelectorAll('input[name="profWorkDay"]').forEach(cb => {
+        cb.checked = daysSet.has(parseInt(cb.value, 10));
+      });
+
+      document.getElementById('profStartHour').value = prof.start_hour || '08:00';
+      document.getElementById('profEndHour').value = prof.end_hour || '18:00';
+      document.getElementById('profBreakStart').value = prof.break_start || '';
+      document.getElementById('profBreakEnd').value = prof.break_end || '';
+
+      selectProfColor(prof.color || '#10b981');
+      populateProfProceduresCheckboxes(parseProfProcedures(prof.procedures_json));
+    }
+
+    async function toggleProfessionalActive(id, nextActive) {
+      try {
+        const res = await fetch('/api/professionals', {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: Number(id), active: Boolean(nextActive) })
+        });
+        if (!res.ok) throw new Error('Falha ao atualizar status do profissional.');
+        await loadProfessionals();
+        showToast(nextActive ? 'Profissional ativado!' : 'Profissional pausado!', 'emerald');
+      } catch (err) {
+        alert(err?.message || 'Erro ao alterar status.');
+      }
+    }
+
+    async function handleSaveProfessional(e) {
+      e.preventDefault();
+      const editIdRaw = document.getElementById('profEditId')?.value || '';
+      const id = editIdRaw ? parseInt(editIdRaw, 10) : null;
+      const name = (document.getElementById('profName')?.value || '').trim();
+      const specialty = (document.getElementById('profSpecialty')?.value || '').trim();
+      const croCrm = (document.getElementById('profCro')?.value || '').trim();
+      const startHour = document.getElementById('profStartHour')?.value || '08:00';
+      const endHour = document.getElementById('profEndHour')?.value || '18:00';
+      const breakStart = (document.getElementById('profBreakStart')?.value || '').trim() || null;
+      const breakEnd = (document.getElementById('profBreakEnd')?.value || '').trim() || null;
+      const color = document.getElementById('profColor')?.value || '#10b981';
+
+      const workingDays = Array.from(document.querySelectorAll('input[name="profWorkDay"]:checked')).map(cb => parseInt(cb.value, 10));
+      const procedures = Array.from(document.querySelectorAll('input[name="profProcedureItem"]:checked')).map(cb => cb.value);
+
+      if (!name) {
+        alert('Informe o nome do profissional.');
+        return;
+      }
+      if (workingDays.length === 0) {
+        alert('Selecione pelo menos 1 dia de atendimento.');
+        return;
+      }
+      if (startHour >= endHour) {
+        alert('O horário de início deve ser menor que o horário de término.');
+        return;
+      }
+      if ((breakStart && !breakEnd) || (!breakStart && breakEnd)) {
+        alert('Informe início e fim do intervalo de almoço ou deixe ambos vazios.');
+        return;
+      }
+      if (breakStart && breakEnd && breakStart >= breakEnd) {
+        alert('O início do intervalo deve ser menor que o fim.');
+        return;
+      }
+
+      const saveBtn = document.getElementById('btnSaveProfessional');
+      const prevTxt = saveBtn ? saveBtn.innerText : 'Salvar Profissional';
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Salvando...';
+      }
+
+      try {
+        const res = await fetch('/api/professionals', {
+          method: id ? 'PATCH' : 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            id: id || undefined,
+            name,
+            specialty,
+            croCrm,
+            workingDays,
+            startHour,
+            endHour,
+            breakStart,
+            breakEnd,
+            procedures,
+            color
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Erro ao salvar profissional.');
+
+        resetProfessionalForm();
+        await loadProfessionals();
+        showToast(id ? 'Profissional atualizado!' : 'Profissional cadastrado!', 'emerald');
+      } catch (err) {
+        alert(err?.message || 'Erro de comunicação ao salvar profissional.');
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = prevTxt;
+        }
+      }
+    }
+
+    async function handleDeleteProfessional(id) {
+      if (!confirm('Excluir este profissional? As consultas já agendadas serão mantidas na Agenda Geral.')) return;
+      try {
+        const res = await fetch('/api/professionals?id=' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Falha ao excluir profissional.');
+
+        if (String(document.getElementById('profEditId')?.value || '') === String(id)) {
+          resetProfessionalForm();
+        }
+        if (String(selectedAgendaProfId) === String(id)) {
+          selectedAgendaProfId = 'all';
+        }
+        await loadProfessionals();
+        await loadAppointments();
+        showToast('Profissional excluído!', 'amber');
+      } catch (err) {
+        alert(err?.message || 'Erro ao excluir profissional.');
+      }
+    }
+
     async function loadAppointments() {
       const icon = document.getElementById('agendaRefreshIcon');
       if (icon) icon.classList.add('fa-spin');
@@ -1938,6 +2534,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const res = await fetch('/api/appointments');
         const data = await res.json();
         appointments = data.appointments || [];
+        renderProfessionalsFilter();
         updateAppointmentMetrics();
         renderAppointmentsTable();
         renderCalendar();
@@ -2027,23 +2624,25 @@ export const INBOX_HTML = `<!DOCTYPE html>
     }
 
     function updateAppointmentMetrics() {
+      const visibleApps = getFilteredAppointments();
+
       // 1. Total cadastrados: número de conversas no chat (com fallback para total de agendamentos)
       const totalCadastrados = conversations.length > 0 ? conversations.length : appointments.length;
       const metricTotalEl = document.getElementById('metricTotal');
       if (metricTotalEl) metricTotalEl.innerText = totalCadastrados;
 
       // 2. Agendados: pessoas com procedimentos, consultas ou avaliações agendados com antecedência
-      const agendados = appointments.filter(a => a.status === 'agendado' || a.status === 'pre_agendado').length;
+      const agendados = visibleApps.filter(a => a.status === 'agendado' || a.status === 'pre_agendado').length;
       const metricAgendadosEl = document.getElementById('metricAgendados');
       if (metricAgendadosEl) metricAgendadosEl.innerText = agendados;
 
       // 3. Confirmados: somente quando houver confirmação
-      const confirmed = appointments.filter(a => a.status === 'confirmado').length;
+      const confirmed = visibleApps.filter(a => a.status === 'confirmado').length;
       const metricConfirmedEl = document.getElementById('metricConfirmed');
       if (metricConfirmedEl) metricConfirmedEl.innerText = confirmed;
 
       // 4. Concluídos: atendimentos finalizados
-      const concluidos = appointments.filter(a => a.status === 'concluido').length;
+      const concluidos = visibleApps.filter(a => a.status === 'concluido').length;
       const metricConcluidosEl = document.getElementById('metricConcluidos');
       if (metricConcluidosEl) metricConcluidosEl.innerText = concluidos;
     }
@@ -2105,7 +2704,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const isToday = dateKey === todayStr;
         const isSelected = dateKey === calSelectedDate;
 
-        const dayAppointments = appointments.filter(a => {
+        const visibleApps = getFilteredAppointments();
+        const dayAppointments = visibleApps.filter(a => {
           if (!a.scheduled_at) return false;
           return a.scheduled_at.startsWith(dateKey) || a.scheduled_at.includes(dateKey);
         });
@@ -2166,7 +2766,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
 
       if (titleEl) titleEl.innerText = dateFormatted;
 
-      const dayAppointments = appointments.filter(a => {
+      const visibleApps = getFilteredAppointments();
+      const dayAppointments = visibleApps.filter(a => {
         if (!a.scheduled_at) return false;
         return a.scheduled_at.startsWith(calSelectedDate) || a.scheduled_at.includes(calSelectedDate);
       });
@@ -2198,6 +2799,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
           statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 font-bold text-[10px] border border-amber-200 dark:border-amber-800/60">Agendado</span>';
         }
 
+        const profBadge = getProfessionalBadgeHtml(a.professional_id, a.professional_name);
         const noteHtml = a.notes ? '<p class="text-[11px] text-slate-500 dark:text-slate-400 italic">“' + escapeHtml(a.notes) + '”</p>' : '';
         const conclBtn = (!isDone && a.status !== 'cancelado') ? '<button onclick="handleConcludeAppointment(' + a.id + ')" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-[10px] font-bold transition">Concluir</button>' : '';
 
@@ -2213,11 +2815,12 @@ export const INBOX_HTML = `<!DOCTYPE html>
               '</div>',
               '<div>' + statusBadge + '</div>',
             '</div>',
-            '<div class="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/40 text-slate-600 dark:text-slate-300">',
+            '<div class="flex items-center justify-between gap-2 text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/40 text-slate-600 dark:text-slate-300">',
               '<div class="flex items-center gap-1.5 truncate">',
                 '<i class="fa-solid fa-tooth text-slate-400 text-[10px]"></i>',
                 '<span class="font-medium">' + escapeHtml(a.procedure || 'Consulta') + '</span>',
               '</div>',
+              profBadge ? '<div class="shrink-0">' + profBadge + '</div>' : '',
             '</div>',
             noteHtml,
             '<div class="flex items-center justify-end gap-1.5 pt-1">',
@@ -2244,9 +2847,11 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const search = (document.getElementById('appointmentSearchInput')?.value || '').toLowerCase().trim();
       const filter = document.getElementById('appointmentStatusFilter')?.value || 'todos';
 
-      const filtered = appointments.filter(a => {
+      const visibleApps = getFilteredAppointments();
+      const filtered = visibleApps.filter(a => {
         const matchSearch = (a.patient_name || '').toLowerCase().includes(search) || 
                             (a.procedure || '').toLowerCase().includes(search) || 
+                            (a.professional_name || '').toLowerCase().includes(search) ||
                             (a.contact_wa_id || '').includes(search);
         const matchStatus = filter === 'todos' || 
                             (filter === 'agendado' ? (a.status === 'agendado' || a.status === 'pre_agendado') : a.status === filter);
@@ -2271,6 +2876,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         }
 
         const formattedDate = formatScheduleDateTime(a.scheduled_at);
+        const profBadge = getProfessionalBadgeHtml(a.professional_id, a.professional_name);
 
         return [
           '<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">',
@@ -2280,6 +2886,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
             '</td>',
             '<td class="py-3 px-4">',
               '<div class="font-semibold text-slate-800 dark:text-slate-200">' + escapeHtml(a.procedure || 'Avaliação Inicial') + '</div>',
+              profBadge ? '<div class="mt-1">' + profBadge + '</div>' : '',
             '</td>',
             '<td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">',
               '<i class="fa-regular fa-clock mr-1 text-slate-400"></i>' + escapeHtml(formattedDate),
@@ -2336,6 +2943,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       try {
         await fetch('/api/appointments?id=' + id, { method: 'DELETE' });
         appointments = appointments.filter(a => a.id !== id);
+        renderProfessionalsFilter();
         updateAppointmentMetrics();
         renderAppointmentsTable();
         renderCalendar();
@@ -2395,11 +3003,68 @@ export const INBOX_HTML = `<!DOCTYPE html>
       select.innerHTML = html;
     }
 
-    function checkLocalConflict(dateStr, startMinutes, endMinutes, excludeId = null) {
+    function parseLocalHmMinutes(hm) {
+      if (!hm || !hm.includes(':')) return null;
+      const [h, m] = hm.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return null;
+      return h * 60 + m;
+    }
+
+    function checkLocalConflict(dateStr, startMinutes, endMinutes, excludeId = null, professionalId = null) {
+      const targetProfId = professionalId ? Number(professionalId) : null;
+
+      if (targetProfId) {
+        const prof = professionals.find(p => Number(p.id) === targetProfId);
+        if (prof) {
+          const isActive = Number(prof.active) === 1 || prof.active === true;
+          if (!isActive) {
+            return { conflict: true, reason: 'O profissional ' + prof.name + ' está pausado/inativo no momento.' };
+          }
+
+          const [yy, mm, dd] = dateStr.split('-').map(Number);
+          const dayOfWeek = new Date(Date.UTC(yy, (mm || 1) - 1, dd || 1)).getUTCDay();
+          const workingDays = parseProfWorkingDays(prof.working_days);
+          if (!workingDays.includes(dayOfWeek)) {
+            const daysLabel = workingDays.map(d => PROF_WEEKDAY_SHORT[d] || '').filter(Boolean).join(', ');
+            return {
+              conflict: true,
+              reason: prof.name + ' não atende neste dia (' + (PROF_WEEKDAY_SHORT[dayOfWeek] || '') + '). Dias: ' + (daysLabel || 'não configurados') + '.'
+            };
+          }
+
+          const shiftStart = parseLocalHmMinutes(prof.start_hour);
+          const shiftEnd = parseLocalHmMinutes(prof.end_hour);
+          if (shiftStart !== null && shiftEnd !== null && (startMinutes < shiftStart || endMinutes > shiftEnd)) {
+            return {
+              conflict: true,
+              reason: 'Horário fora do expediente de ' + prof.name + ' (' + prof.start_hour + ' às ' + prof.end_hour + ').'
+            };
+          }
+
+          const breakStart = parseLocalHmMinutes(prof.break_start);
+          const breakEnd = parseLocalHmMinutes(prof.break_end);
+          if (breakStart !== null && breakEnd !== null && breakStart < breakEnd) {
+            if (startMinutes < breakEnd && endMinutes > breakStart) {
+              return {
+                conflict: true,
+                reason: 'Horário coincide com o intervalo de ' + prof.name + ' (' + prof.break_start + ' às ' + prof.break_end + ').'
+              };
+            }
+          }
+        }
+      }
+
       for (const a of appointments) {
         if (excludeId && a.id === excludeId) continue;
         if (a.status === 'cancelado') continue;
         if (!a.scheduled_at) continue;
+
+        const existingProfId = a.professional_id ? Number(a.professional_id) : null;
+        if (targetProfId) {
+          if (existingProfId !== targetProfId) continue;
+        } else if (existingProfId) {
+          continue;
+        }
 
         let aDate = '';
         let aTime = '09:00';
@@ -2443,6 +3108,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const hourSelect = document.getElementById('appHourSelect');
       const minSelect = document.getElementById('appMinuteSelect');
       const procSelect = document.getElementById('appProcedure');
+      const profSelect = document.getElementById('appProfessional');
       const feedbackEl = document.getElementById('appTimeSlotFeedback');
       const submitBtn = document.getElementById('btnSaveAppointmentModal');
 
@@ -2452,6 +3118,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const hourVal = hourSelect ? hourSelect.value : '09';
       const minVal = minSelect ? minSelect.value : '00';
       const procVal = procSelect ? procSelect.value : '';
+      const profVal = profSelect ? profSelect.value : '';
+      const profId = profVal ? Number(profVal) : null;
 
       const durStr = getProcedureDuration(procVal);
       const durMin = parseDurationMinutes(durStr);
@@ -2473,14 +3141,18 @@ export const INBOX_HTML = `<!DOCTYPE html>
         return;
       }
 
-      const check = checkLocalConflict(dateVal, startTotalMin, endTotalMin);
+      const check = checkLocalConflict(dateVal, startTotalMin, endTotalMin, null, profId);
       if (check.conflict) {
+        const conflictDetail = check.reason
+          ? '<span>' + escapeHtml(check.reason) + '</span>'
+          : '<span>Já existe consulta para <strong>' + escapeHtml(check.patientName) + '</strong> agendada das <strong>' + check.startStr + ' às ' + check.endStr + '</strong>. Escolha outro horário, profissional ou data.</span>';
+
         feedbackEl.innerHTML = [
           '<div class="flex items-start gap-2 text-rose-600 dark:text-rose-400 font-medium">',
             '<i class="fa-solid fa-triangle-exclamation text-rose-500 mt-0.5"></i>',
             '<div>',
               '<span class="font-bold block">Horário Indisponível (Conflito de Agenda)!</span>',
-              '<span>Já existe consulta para <strong>' + escapeHtml(check.patientName) + '</strong> agendada das <strong>' + check.startStr + ' às ' + check.endStr + '</strong>. Escolha outro horário ou data.</span>',
+              conflictDetail,
             '</div>',
           '</div>'
         ].join('');
@@ -2510,6 +3182,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
       }
 
       populateProcedureSelect(defaultProc);
+      const preferredProfId = (selectedAgendaProfId !== 'all' && selectedAgendaProfId !== 'unassigned') ? selectedAgendaProfId : '';
+      populateAppointmentProfessionalSelects(preferredProfId);
 
       const dateInput = document.getElementById('appDate');
       if (dateInput) {
@@ -2546,6 +3220,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
       const patientName = document.getElementById('appPatientName').value.trim();
       const contactWaId = document.getElementById('appPatientPhone').value.trim();
       const procedure = document.getElementById('appProcedure').value.trim();
+      const profRaw = document.getElementById('appProfessional')?.value || '';
+      const professionalId = profRaw ? Number(profRaw) : null;
       const dateVal = document.getElementById('appDate').value;
       const hourVal = document.getElementById('appHourSelect')?.value || '09';
       const minVal = document.getElementById('appMinuteSelect')?.value || '00';
@@ -2567,7 +3243,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const res = await fetch('/api/appointments', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ patientName, contactWaId, procedure, scheduledAt, status, notes, duration })
+          body: JSON.stringify({ patientName, contactWaId, procedure, scheduledAt, status, notes, duration, professionalId })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -2614,6 +3290,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
         }
       }
 
+      populateDetailProfessionalSelect(app.professional_id ? String(app.professional_id) : '');
+
       const detStatus = document.getElementById('detStatus');
       if (detStatus) {
         detStatus.value = (app.status === 'pre_agendado') ? 'agendado' : (app.status || 'agendado');
@@ -2643,6 +3321,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
       if (!activeDetailAppointmentId) return;
       const newStatus = document.getElementById('detStatus').value;
       const newNotes = document.getElementById('detNotes').value.trim();
+      const profRaw = document.getElementById('detProfessional')?.value || '';
+      const professionalId = profRaw ? Number(profRaw) : null;
 
       const saveBtn = document.getElementById('btnSaveAppointmentDetails');
       if (saveBtn) {
@@ -2654,20 +3334,25 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const res = await fetch('/api/appointments', {
           method: 'PATCH',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ id: activeDetailAppointmentId, status: newStatus, notes: newNotes })
+          body: JSON.stringify({ id: activeDetailAppointmentId, status: newStatus, notes: newNotes, professionalId })
         });
-        if (!res.ok) throw new Error("Falha ao salvar");
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Falha ao salvar");
 
         const target = appointments.find(a => a.id === activeDetailAppointmentId);
         if (target) {
           target.status = newStatus;
           target.notes = newNotes;
+          target.professional_id = professionalId;
+          const profObj = professionalId ? professionals.find(p => Number(p.id) === professionalId) : null;
+          target.professional_name = profObj ? profObj.name : null;
           if (newStatus === 'confirmado' && !target.confirmed_at) {
             target.confirmed_by = 'manual';
             target.confirmed_at = new Date().toISOString();
           }
         }
 
+        renderProfessionalsFilter();
         updateAppointmentMetrics();
         renderAppointmentsTable();
         renderCalendar();
@@ -2675,7 +3360,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
         closeAppointmentDetailsModal();
         showToast("Alterações salvas com sucesso!", "emerald");
       } catch (err) {
-        alert("Erro ao salvar alterações da consulta.");
+        alert(err?.message || "Erro ao salvar alterações da consulta.");
       } finally {
         if (saveBtn) {
           saveBtn.disabled = false;
@@ -2690,6 +3375,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       try {
         await fetch('/api/appointments?id=' + activeDetailAppointmentId, { method: 'DELETE' });
         appointments = appointments.filter(a => a.id !== activeDetailAppointmentId);
+        renderProfessionalsFilter();
         updateAppointmentMetrics();
         renderAppointmentsTable();
         renderCalendar();

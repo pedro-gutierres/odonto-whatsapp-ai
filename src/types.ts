@@ -118,3 +118,20 @@ export interface ConversationMessage {
   media_type?: string | null;
   created_at: string;
 }
+
+export interface ProfessionalRecord {
+  id: number;
+  tenant_id: string;
+  name: string;
+  specialty: string | null;
+  cro_crm: string | null;
+  working_days: string; // JSON array de dias 0..6
+  start_hour: string;   // HH:MM
+  end_hour: string;     // HH:MM
+  break_start: string | null;
+  break_end: string | null;
+  procedures_json: string; // JSON array de nomes de procedimentos
+  color: string;
+  active: number;
+  created_at: string;
+}
