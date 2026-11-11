@@ -36,11 +36,16 @@ export const LANDING_HTML = `<!DOCTYPE html>
         <a href="#metricas" class="hover:text-emerald-400 transition">Retorno sobre Investimento</a>
       </nav>
 
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
         <a id="navLoginBtn" href="/login" 
+          class="text-xs font-semibold text-slate-300 hover:text-white transition px-3 py-2 flex items-center gap-1.5">
+          <i class="fa-solid fa-lock text-xs text-slate-400"></i>
+          <span>Entrar</span>
+        </a>
+        <a id="navRegisterBtn" href="/cadastro" 
           class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20 flex items-center gap-2">
-          <i class="fa-solid fa-lock text-xs"></i>
-          <span>Acessar Painel</span>
+          <i class="fa-solid fa-sparkles text-xs"></i>
+          <span>Começar Teste Grátis</span>
         </a>
       </div>
     </div>
@@ -64,10 +69,15 @@ export const LANDING_HTML = `<!DOCTYPE html>
         Recupere pacientes que enviam mensagem às 23h de sexta ou no domingo à tarde. Resposta humanizada em 10 segundos, triagem inteligente de procedimentos (Botox, Clareamento, Implantes) e pré-agendamento automático.
       </p>
 
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-16">
-        <a href="/login" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2.5">
-          <span>Entrar na Central da Clínica</span>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-lg mx-auto mb-16">
+        <a href="/cadastro" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2.5">
+          <i class="fa-solid fa-sparkles text-xs"></i>
+          <span>Começar Teste Grátis (7 Dias)</span>
           <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+        <a href="/login" class="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900/80 border border-slate-700 hover:border-slate-500 text-slate-200 font-semibold text-sm transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-lock text-xs text-slate-400"></i>
+          <span>Já sou cliente / Entrar</span>
         </a>
       </div>
 
@@ -140,9 +150,14 @@ export const LANDING_HTML = `<!DOCTYPE html>
         <p class="text-sm text-slate-400 max-w-xl mx-auto mb-8">
           Acesse a central com as credenciais da sua clínica para gerenciar atendimentos, agenda e treinamento da IA.
         </p>
-        <div class="flex flex-wrap items-center justify-center gap-4">
-          <a href="/login" class="px-7 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20">
-            Acessar Minha Clínica
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a href="/cadastro" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-sparkles text-xs"></i>
+            <span>Criar Conta & Testar Grátis</span>
+          </a>
+          <a href="/login" class="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900/80 border border-slate-700 hover:border-slate-500 text-slate-300 font-semibold text-xs transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-lock text-xs text-slate-400"></i>
+            <span>Já possui conta? Entrar</span>
           </a>
         </div>
       </div>
@@ -169,10 +184,14 @@ export const LANDING_HTML = `<!DOCTYPE html>
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.authenticated) {
-          const btn = document.getElementById('navLoginBtn');
-          if (btn) {
-            btn.href = '/inbox';
-            btn.innerHTML = '<i class="fa-solid fa-chart-pie text-xs"></i><span>Meu Painel</span>';
+          const regBtn = document.getElementById('navRegisterBtn');
+          if (regBtn) {
+            regBtn.href = '/inbox';
+            regBtn.innerHTML = '<i class="fa-solid fa-chart-pie text-xs"></i><span>Meu Painel</span>';
+          }
+          const loginBtn = document.getElementById('navLoginBtn');
+          if (loginBtn) {
+            loginBtn.style.display = 'none';
           }
         }
       })

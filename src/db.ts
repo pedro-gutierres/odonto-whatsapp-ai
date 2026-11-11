@@ -8,6 +8,7 @@ import type {
   BotConfig,
   ProfessionalRecord,
   ClinicUserSummary,
+  TenantTrialInfo,
 } from "./types";
 import type { ChatTurn } from "./claude";
 
@@ -444,6 +445,34 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
       await db.prepare(`ALTER TABLE tenants ADD COLUMN ${col} TEXT;`).run();
     }
   }
+
+  // Milestone 1 (Etapa 3): Colunas de controle de plano e limites de trial
+  if (!existingTenantCols.has("plan_status")) {
+    await db
+      .prepare(
+        "ALTER TABLE tenants ADD COLUMN plan_status TEXT NOT NULL DEFAULT 'trial' CHECK (plan_status IN ('trial', 'active', 'past_due', 'canceled'));"
+      )
+      .run();
+  }
+  if (!existingTenantCols.has("trial_ends_at")) {
+    await db.prepare("ALTER TABLE tenants ADD COLUMN trial_ends_at TEXT;").run();
+  }
+  if (!existingTenantCols.has("trial_messages_used")) {
+    await db.prepare("ALTER TABLE tenants ADD COLUMN trial_messages_used INTEGER NOT NULL DEFAULT 0;").run();
+  }
+  if (!existingTenantCols.has("trial_messages_limit")) {
+    await db.prepare("ALTER TABLE tenants ADD COLUMN trial_messages_limit INTEGER NOT NULL DEFAULT 100;").run();
+  }
+  if (!existingTenantCols.has("billing_cycle")) {
+    await db.prepare("ALTER TABLE tenants ADD COLUMN billing_cycle TEXT DEFAULT 'monthly';").run();
+  }
+
+  // Backfill de trial_ends_at para tenants existentes sem expiração definida
+  await db
+    .prepare(
+      "UPDATE tenants SET trial_ends_at = datetime(COALESCE(created_at, datetime('now')), '+7 days') WHERE trial_ends_at IS NULL;"
+    )
+    .run();
 
   const userCols = await db.prepare("PRAGMA table_info(users)").all<{ name: string }>();
   const existingUserCols = new Set((userCols.results || []).map((c) => c.name));
@@ -1612,3 +1641,93 @@ export async function updateOwnPassword(
     .run();
   return (res.meta?.changes ?? 0) > 0;
 }
+
+/**
+ * Normaliza e analisa timestamps de expiração de trial do SQLite ('YYYY-MM-DD HH:MM:SS')
+ * ou ISO 8601 em UTC determinístico.
+ */
+function parseTrialDate(dateStr?: string | null): number | null {
+  if (!dateStr) return null;
+  const raw = dateStr.trim();
+  if (!raw) return null;
+  let normalized = raw;
+  if (!normalized.includes("T")) {
+    normalized = normalized.replace(" ", "T");
+  }
+  if (!normalized.endsWith("Z") && !/[+-]\d{2}:?\d{2}$/.test(normalized)) {
+    normalized += "Z";
+  }
+  const ms = new Date(normalized).getTime();
+  return isNaN(ms) ? null : ms;
+}
+
+/**
+ * Avalia o estado de assinatura e limites de trial de uma clínica.
+ */
+export function getTenantTrialInfo(tenant: Tenant): TenantTrialInfo {
+  const status = (tenant.plan_status || "trial").toLowerCase();
+  const used = Number(tenant.trial_messages_used ?? 0);
+  const limit = Number(tenant.trial_messages_limit ?? 100);
+
+  let daysRemaining = 0;
+  let isExpired = false;
+
+  const endMs = parseTrialDate(tenant.trial_ends_at);
+  if (endMs !== null) {
+    const diffMs = endMs - Date.now();
+    daysRemaining = Math.max(0, Math.ceil(diffMs / 86_400_000));
+    isExpired = diffMs <= 0;
+  }
+
+  let isLimitReached = status === "trial" ? used >= limit : false;
+
+  let canSend = false;
+  if (tenant.active === 0) {
+    // Clínica desativada pelo administrador
+    canSend = false;
+  } else if (status === "active") {
+    // Plano ativo / pago - sem restrições de trial
+    canSend = true;
+    isExpired = false;
+    isLimitReached = false;
+  } else if (status === "trial") {
+    canSend = !isExpired && !isLimitReached;
+  } else {
+    // past_due, canceled ou outros status de bloqueio
+    canSend = false;
+    isExpired = true;
+  }
+
+  return {
+    plan_status: status,
+    trial_ends_at: tenant.trial_ends_at ?? null,
+    trial_messages_used: used,
+    trial_messages_limit: limit,
+    days_remaining: daysRemaining,
+    is_expired: isExpired,
+    is_limit_reached: isLimitReached,
+    can_send_messages: canSend,
+  };
+}
+
+/**
+ * Incrementa atomicamente o contador de mensagens de trial de uma clínica.
+ * Retorna o novo total de mensagens consumidas, ou 0 se a clínica não for encontrada.
+ */
+export async function incrementTenantTrialMessages(
+  db: D1Database,
+  tenantId: string
+): Promise<number> {
+  const row = await db
+    .prepare(
+      `UPDATE tenants
+       SET trial_messages_used = COALESCE(trial_messages_used, 0) + 1
+       WHERE id = ?1
+       RETURNING trial_messages_used`
+    )
+    .bind(tenantId)
+    .first<{ trial_messages_used: number }>();
+
+  return row ? Number(row.trial_messages_used) : 0;
+}
+

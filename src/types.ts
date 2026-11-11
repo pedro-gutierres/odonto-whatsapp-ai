@@ -55,6 +55,12 @@ export interface Tenant {
   wa_verified_name?: string | null;
   wa_connected_at?: string | null;
   created_at?: string;
+  // Controle de Trial e Planos (Milestone 1 / Etapa 3)
+  plan_status?: "trial" | "active" | "past_due" | "canceled" | string;
+  trial_ends_at?: string | null;
+  trial_messages_used?: number;
+  trial_messages_limit?: number;
+  billing_cycle?: "monthly" | "yearly" | string | null;
 }
 
 export interface ClinicUserSummary {
@@ -180,3 +186,15 @@ export interface ProfessionalRecord {
   active: number;
   created_at: string;
 }
+
+export interface TenantTrialInfo {
+  plan_status: "trial" | "active" | "past_due" | "canceled" | string;
+  trial_ends_at: string | null;
+  trial_messages_used: number;
+  trial_messages_limit: number;
+  days_remaining: number;
+  is_expired: boolean;
+  is_limit_reached: boolean;
+  can_send_messages: boolean;
+}
+

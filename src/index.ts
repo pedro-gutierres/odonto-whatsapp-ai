@@ -5,7 +5,7 @@
 //   scheduled -> Cron diário (23:00 UTC / 20h Brasília) para confirmações de véspera multi-tenant
 import type { BotConfig, Env, InboundJob, ProfessionalRecord } from "./types";
 import { arrayBufferToBase64, downloadWhatsAppMedia, extractJobs, sendText, verifySignature } from "./whatsapp";
-import { askClaude, type ImageAttachment } from "./claude";
+import { askClaude, type ChatTurn, type ImageAttachment } from "./claude";
 import { buildSystemPromptParts } from "./prompt";
 import {
   claimInbound,
@@ -44,6 +44,9 @@ import {
   getTenantConfig,
   updateTenantConfig,
   isCrucialConfigComplete,
+  getTenantTrialInfo,
+  incrementTenantTrialMessages,
+  updateAppointmentStatus,
   listAdminOverview,
   createTenantWithOptionalUser,
   updateTenantAdminSettings,
@@ -68,6 +71,7 @@ import { SECURITY_HEADERS, htmlResponse, jsonResponse } from "./http";
 import { handleClinicRoutes } from "./clinic-routes";
 import { LANDING_HTML } from "./views/landing";
 import { LOGIN_HTML } from "./views/login";
+import { REGISTER_HTML } from "./views/register";
 import { INBOX_HTML } from "./views/inbox";
 import { ADMIN_HTML } from "./views/admin";
 
@@ -80,6 +84,18 @@ const DEFAULT_CONFIG_TEMPLATE: BotConfig = {
   doctor_cro: "CRO-SP 102.450 / Harmonização Orofacial",
   specialties: ["Harmonização Orofacial", "Odontologia Estética", "Reabilitação Oral"],
   tone: "acolhedor",
+  initial_consultation: {
+    duration: "30 min",
+    price: "Gratuita",
+    details: "Avaliação inicial completa com planejamento personalizado.",
+  },
+  procedure_items: [
+    { name: "Limpeza & Profilaxia", checked: true, duration: "30 min", price: "R$ 150" },
+    { name: "Avaliação Odontológica", checked: true, duration: "30 min", price: "Gratuita" },
+    { name: "Clareamento Dental", checked: true, duration: "45 min", price: "R$ 600" },
+    { name: "Harmonização Facial", checked: true, duration: "60 min", price: "Sob avaliação" },
+    { name: "Toxina Botulínica (Botox)", checked: true, duration: "30 min", price: "Sob avaliação" },
+  ],
   procedures: [
     "Limpeza & Profilaxia",
     "Clareamento Dental a Laser",
@@ -167,6 +183,15 @@ export default {
       return htmlResponse(LOGIN_HTML);
     }
 
+    // 2.1) TELA DE AUTO-CADASTRO PÚBLICO (/cadastro)
+    if (url.pathname === "/cadastro") {
+      const session = await getSessionFromRequest(request, env.AUTH_SECRET);
+      if (session) {
+        return Response.redirect(`${url.origin}/inbox`, 302);
+      }
+      return htmlResponse(REGISTER_HTML);
+    }
+
     // 3) PAINEL DA CLÍNICA (WhatsApp Inbox + CRM de Agendamentos) - PROTEGIDO POR SESSÃO
     if (url.pathname === "/inbox" || url.pathname === "/painel") {
       const session = await getSessionFromRequest(request, env.AUTH_SECRET);
@@ -186,6 +211,162 @@ export default {
     // -------------------------------------------------------------------------
     // APIS DE AUTENTICAÇÃO
     // -------------------------------------------------------------------------
+    if (url.pathname === "/api/auth/register" && request.method === "POST") {
+      try {
+        let body: any;
+        try {
+          body = await request.json();
+        } catch {
+          return jsonResponse({ error: "JSON inválido." }, 400);
+        }
+
+        const clinicName = typeof body.clinicName === "string" ? body.clinicName.trim() : "";
+        const adminName = typeof body.adminName === "string" ? body.adminName.trim() : "";
+        const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+        const password = typeof body.password === "string" ? body.password : "";
+        const rawPhone = typeof body.phone === "string" ? body.phone.trim() : "";
+
+        if (!clinicName || !adminName || !email || !password || !rawPhone) {
+          return jsonResponse(
+            { error: "Todos os campos são obrigatórios (clínica, responsável, e-mail, senha e telefone)." },
+            400
+          );
+        }
+
+        const EMAIL_REGEX = /^[a-zA-Z0-9]+([._%+-][a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+        if (email.length > 254 || !EMAIL_REGEX.test(email)) {
+          return jsonResponse({ error: "E-mail inválido." }, 400);
+        }
+
+        if (password.length < 6) {
+          return jsonResponse({ error: "A senha deve ter no mínimo 6 caracteres." }, 400);
+        }
+
+        const cleanDigits = rawPhone.replace(/\D/g, "");
+        if (cleanDigits.length < 10) {
+          return jsonResponse({ error: "Telefone inválido (mínimo 10 dígitos)." }, 400);
+        }
+
+        const existingUser = await getUserByEmail(env.DB, email);
+        if (existingUser) {
+          return jsonResponse(
+            { error: "Este e-mail já está cadastrado no sistema. Faça login para acessar." },
+            409
+          );
+        }
+
+        const baseSlug =
+          clinicName
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 30) || "clinica";
+        const tenantId = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
+        const phoneNumberId = `unconfigured:${tenantId}`;
+
+        const botConfig: BotConfig = {
+          clinic_name: clinicName,
+          doctor_name: adminName,
+          doctor_cro: "CRO/SP 123456",
+          tone: "acolhedor",
+          price_strategy: "avaliacao",
+          initial_consultation: {
+            duration: "30 min",
+            price: "Gratuita",
+            details: "Avaliação clínica inicial com planejamento digital do sorriso.",
+          },
+          procedures: [
+            "Limpeza & Profilaxia",
+            "Avaliação Odontológica",
+            "Clareamento Dental",
+            "Restauração Estética",
+            "Tratamento de Canal",
+            "Harmonização Facial",
+            "Botox",
+          ],
+          procedure_items: [
+            { name: "Limpeza & Profilaxia", checked: true, duration: "30 min", price: "R$ 150" },
+            { name: "Avaliação Odontológica", checked: true, duration: "30 min", price: "Gratuita" },
+            { name: "Clareamento Dental", checked: true, duration: "45 min", price: "R$ 600" },
+            { name: "Harmonização Facial", checked: true, duration: "60 min", price: "Sob avaliação" },
+          ],
+          hours: "Segunda a Sexta, das 08:00 às 18:00; Sábados das 08:00 às 12:00",
+          unfilled_fallback: "avaliacao",
+          extra: "Em caso de emergência ou dor aguda, informe imediatamente a recepção.",
+        };
+
+        const passwordHash = await hashPassword(password);
+        const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        await env.DB.batch([
+          env.DB.prepare(
+            `INSERT INTO tenants (
+               id, name, phone_number_id, contact_email, admin_phone, responsible_name,
+               plan_status, trial_ends_at, trial_messages_used, trial_messages_limit, billing_cycle,
+               bot_config, active
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'trial', ?7, 0, 100, 'monthly', ?8, 1)`
+          ).bind(
+            tenantId,
+            clinicName,
+            phoneNumberId,
+            email,
+            rawPhone,
+            adminName,
+            trialEndsAt,
+            JSON.stringify(botConfig)
+          ),
+          env.DB.prepare(
+            `INSERT INTO users (tenant_id, email, password_hash, name, role, active)
+             VALUES (?1, ?2, ?3, ?4, 'admin', 1)`
+          ).bind(tenantId, email, passwordHash, adminName),
+        ]);
+
+        const insertedUser = await getUserByEmail(env.DB, email);
+        const userId = insertedUser ? insertedUser.id : 1;
+
+        const token = await createSessionToken(
+          {
+            userId,
+            tenantId,
+            email,
+            name: adminName,
+            role: "admin",
+          },
+          env.AUTH_SECRET
+        );
+
+        return jsonResponse(
+          {
+            success: true,
+            redirect: "/inbox",
+            tenantId,
+            user: {
+              id: userId,
+              name: adminName,
+              email,
+              role: "admin",
+              tenantId,
+            },
+          },
+          201,
+          {
+            "Set-Cookie": makeSessionCookie(token, isSecure),
+          }
+        );
+      } catch (err: any) {
+        console.error("Erro em /api/auth/register:", String(err));
+        if (String(err).includes("UNIQUE constraint failed: users.email")) {
+          return jsonResponse(
+            { error: "Este e-mail já está cadastrado no sistema. Faça login para acessar." },
+            409
+          );
+        }
+        return jsonResponse({ error: "Erro interno ao processar o cadastro." }, 500);
+      }
+    }
+
     if (url.pathname === "/api/auth/login" && request.method === "POST") {
       try {
         const body = (await request.json()) as { email?: string; password?: string };
@@ -250,6 +431,8 @@ export default {
       }
       const isSuperAdmin = isSuperAdminAuthorized(dbUser.email, dbUser.role, env);
       const canManageClinic = isClinicAdminRole(dbUser.email, dbUser.role, env);
+      const tenant = await getTenantById(env.DB, session.tenantId);
+      const trial = tenant ? getTenantTrialInfo(tenant) : undefined;
       return jsonResponse({
         authenticated: true,
         user: {
@@ -260,6 +443,7 @@ export default {
           isSuperAdmin,
           canManageClinic,
         },
+        ...(trial ? { trial } : {}),
       });
     }
 
@@ -1071,6 +1255,221 @@ export default {
     }
 
     // -------------------------------------------------------------------------
+    // SIMULADOR DE ATENDIMENTO ("TEST DRIVE GUIADO" - ETAPA 3 / MILESTONE 3)
+    // -------------------------------------------------------------------------
+    if (url.pathname === "/api/simulator/chat") {
+      if (request.method !== "POST") {
+        return jsonResponse({ error: "Método não permitido" }, 405);
+      }
+
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
+      const dbUser = await getUserById(env.DB, auth.session.userId);
+      if (!dbUser || dbUser.active === 0 || dbUser.tenant_id !== auth.session.tenantId) {
+        return jsonResponse({ error: "Usuário inativo ou desativado" }, 403);
+      }
+
+      const tenant = await getTenantById(env.DB, auth.session.tenantId);
+      if (!tenant || tenant.active === 0) {
+        return jsonResponse({ error: "Clínica inativa ou suspensa" }, 403);
+      }
+
+      const trialInfo = getTenantTrialInfo(tenant);
+      if (!trialInfo.can_send_messages) {
+        return jsonResponse(
+          {
+            error: "Trial limit reached or trial expired",
+            code: "TRIAL_LIMIT_EXCEEDED",
+            trial: trialInfo,
+          },
+          403
+        );
+      }
+
+      let body: any;
+      try {
+        body = await request.json();
+      } catch {
+        return jsonResponse({ error: "JSON inválido na requisição" }, 400);
+      }
+
+      if (!body || typeof body.message !== "string" || !body.message.trim()) {
+        return jsonResponse({ error: "Mensagem obrigatória não informada ou vazia" }, 400);
+      }
+
+      const rawMessage = body.message.trim().slice(0, 10000);
+
+      let rawHistory: ChatTurn[] = [];
+      if (Array.isArray(body.history)) {
+        for (const item of body.history) {
+          if (
+            item &&
+            typeof item === "object" &&
+            (item.role === "user" || item.role === "assistant") &&
+            typeof item.content === "string" &&
+            item.content.trim()
+          ) {
+            rawHistory.push({
+              role: item.role,
+              content: String(item.content).slice(0, 4000),
+            });
+          }
+        }
+      }
+
+      if (rawHistory.length > 20) {
+        rawHistory = rawHistory.slice(-20);
+      }
+
+      const chatHistory: ChatTurn[] = [
+        ...rawHistory,
+        { role: "user", content: rawMessage },
+      ];
+
+      let cfg: BotConfig = { clinic_name: tenant.name };
+      if (tenant.bot_config) {
+        try {
+          cfg = { ...cfg, ...JSON.parse(tenant.bot_config) };
+        } catch (e) {
+          console.warn("Aviso ao parsear bot_config do tenant no simulador:", e);
+        }
+      }
+
+      const nowBrasiliaStr = new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        dateStyle: "full",
+        timeStyle: "short",
+      }).format(new Date());
+
+      const [upcoming, profs] = await Promise.all([
+        getUpcomingAppointments(env.DB, tenant.id),
+        listProfessionals(env.DB, tenant.id, true),
+      ]);
+
+      const existingAppointments = upcoming.map((a) => ({
+        scheduled_at: a.scheduled_at,
+        procedure: a.procedure || "Consulta",
+        duration: a.duration || "30 min",
+        professional_id: a.professional_id ?? null,
+        professional_name: a.professional_name ?? null,
+      }));
+
+      const systemParts = buildSystemPromptParts(cfg, {
+        nowBrasiliaStr,
+        existingAppointments,
+        professionals: profs,
+      });
+
+      let reply = (await askClaude(env, systemParts, chatHistory)) ?? MSG_FALHA_IA;
+
+      let action: any = undefined;
+
+      const matchAgendar = /<<<AGENDAR:\s*({[\s\S]*?})\s*>>>/i.exec(reply);
+      if (matchAgendar) {
+        try {
+          const data = JSON.parse(matchAgendar[1]);
+          const patientName = data.patient_name?.trim() || "Paciente Simulador";
+          const procedure = data.procedure?.trim() || "Consulta / Avaliação";
+          const scheduledAt = data.scheduled_at?.trim() || "A combinar";
+          const duration = data.duration?.trim() || "30 min";
+          const notes = data.notes?.trim() || "Agendado via Test Drive Simulador";
+
+          let matchedProf: ProfessionalRecord | undefined;
+          if (profs.length > 0) {
+            if (data.professional_id) {
+              matchedProf = profs.find((p) => p.id === Number(data.professional_id));
+            }
+            if (!matchedProf && data.professional_name) {
+              const targetName = String(data.professional_name).toLowerCase().trim();
+              matchedProf = profs.find(
+                (p) => p.name.toLowerCase().includes(targetName) || targetName.includes(p.name.toLowerCase())
+              );
+            }
+            if (!matchedProf && profs.length === 1) {
+              matchedProf = profs[0];
+            }
+          }
+
+          const res = await createAppointment(
+            env.DB,
+            tenant.id,
+            "simulador",
+            patientName,
+            procedure,
+            scheduledAt,
+            "agendado",
+            notes,
+            duration,
+            matchedProf?.id ?? null,
+            matchedProf?.name ?? null
+          );
+
+          if (res.success) {
+            action = {
+              type: "appointment_created",
+              appointmentId: res.id,
+              details: {
+                patient_name: patientName,
+                procedure,
+                scheduled_at: scheduledAt,
+                duration,
+                professional_id: matchedProf?.id ?? null,
+                professional_name: matchedProf?.name ?? null,
+              },
+            };
+          } else {
+            action = {
+              type: "appointment_conflict",
+              message: res.message || "Horário já ocupado na grade.",
+              details: {
+                patient_name: patientName,
+                procedure,
+                scheduled_at: scheduledAt,
+                duration,
+              },
+            };
+          }
+        } catch (e) {
+          console.warn("Erro ao fazer parse de <<<AGENDAR>>> no simulador:", e);
+        }
+      }
+
+      const matchConfirmar = /<<<CONFIRMAR:\s*({[\s\S]*?})\s*>>>/i.exec(reply);
+      if (matchConfirmar) {
+        try {
+          const data = JSON.parse(matchConfirmar[1]);
+          if (data.appointment_id) {
+            await updateAppointmentStatus(env.DB, tenant.id, Number(data.appointment_id), "confirmado", "ai");
+            if (!action) {
+              action = {
+                type: "appointment_confirmed",
+                appointmentId: Number(data.appointment_id),
+              };
+            }
+          }
+        } catch (e) {
+          console.warn("Erro ao processar <<<CONFIRMAR>>> no simulador:", e);
+        }
+      }
+
+      reply = reply
+        .replace(/<<<AGENDAR:[^>]*>>>/gi, "")
+        .replace(/<<<CONFIRMAR:[^>]*>>>/gi, "")
+        .trim();
+
+      const updatedUsed = await incrementTenantTrialMessages(env.DB, tenant.id);
+      tenant.trial_messages_used = updatedUsed;
+      const updatedTrial = getTenantTrialInfo(tenant);
+
+      return jsonResponse({
+        reply,
+        ...(action ? { action } : {}),
+        trial: updatedTrial,
+      });
+    }
+
+    // -------------------------------------------------------------------------
     // FALLBACK EXPLÍCITO PARA ASSETS ESTÁTICOS (/js/*) E WEBHOOK DA META
     // -------------------------------------------------------------------------
     if (env.ASSETS && (request.method === "GET" || request.method === "HEAD") && url.pathname.startsWith("/js/")) {
@@ -1183,7 +1582,7 @@ export async function runDayBeforeConfirmations(
 
   for (const app of list) {
     const contactPhone = app.contact_wa_id?.trim();
-    if (!contactPhone || !isConfiguredPhoneNumberId(app.phone_number_id)) {
+    if (!contactPhone || contactPhone === "simulador" || !isConfiguredPhoneNumberId(app.phone_number_id)) {
       skipped++;
       continue;
     }

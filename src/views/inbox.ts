@@ -3,6 +3,7 @@ import { INBOX_CHAT_VIEW_HTML } from "./inbox/chat-view";
 import { INBOX_AGENDA_VIEW_HTML } from "./inbox/agenda-view";
 import { INBOX_TRAINING_VIEW_HTML } from "./inbox/training-view";
 import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
+import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
 const ASSET_VERSION = "2";
@@ -54,10 +55,31 @@ export const INBOX_HTML = `<!DOCTYPE html>
 </head>
 <body class="bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 h-screen flex flex-col overflow-hidden selection:bg-[#008069] selection:text-white transition-colors duration-200">
 ${INBOX_HEADER_HTML}
+
+  <!-- BANNER GLOBAL DE TRIAL EXPIRADO OU LIMITE ATINGIDO -->
+  <div id="globalTrialExpiredBanner" class="hidden bg-gradient-to-r from-amber-600 via-rose-600 to-amber-700 text-white px-4 py-2.5 text-xs shadow-md shrink-0 flex items-center justify-between z-20 transition-all">
+    <div class="flex items-center gap-2.5 max-w-4xl">
+      <i class="fa-solid fa-triangle-exclamation text-base animate-pulse"></i>
+      <div>
+        <span class="font-extrabold" id="trialExpiredTitle">Período de testes ou cota de 100 mensagens atingida!</span>
+        <span class="opacity-90 block sm:inline sm:ml-1" id="trialExpiredSubtitle">
+          O simulador e novas respostas automáticas da IA estão pausados. Suas consultas, configurações e equipe continuam salvos e acessíveis abaixo.
+        </span>
+      </div>
+    </div>
+    <a href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Gostaria%20de%20ativar%20meu%20plano%20da%20Aura%20AI" 
+       target="_blank" rel="noopener" id="btnTrialUpgrade"
+       class="px-3.5 py-1.5 rounded-xl bg-white text-rose-700 hover:bg-slate-100 font-bold text-xs shadow-sm transition whitespace-nowrap flex items-center gap-1.5 ml-3">
+      <i class="fa-solid fa-crown text-amber-500"></i>
+      <span>Ativar Assinatura</span>
+    </a>
+  </div>
+
 ${INBOX_CHAT_VIEW_HTML}
 ${INBOX_AGENDA_VIEW_HTML}
 ${INBOX_TRAINING_VIEW_HTML}
 ${INBOX_SETTINGS_VIEW_HTML}
+${INBOX_SIMULATOR_VIEW_HTML}
 ${INBOX_MODALS_HTML}
   <!-- SCRIPTS MODULARES DA PLATAFORMA (Cloudflare Static Assets) -->
   <script src="/js/inbox/core.js?v=${ASSET_VERSION}"></script>
@@ -66,6 +88,7 @@ ${INBOX_MODALS_HTML}
   <script src="/js/inbox/agenda.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/training.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/settings.js?v=${ASSET_VERSION}"></script>
+  <script src="/js/inbox/simulator.js?v=${ASSET_VERSION}"></script>
 </body>
 </html>
 `;

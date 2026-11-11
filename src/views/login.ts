@@ -77,6 +77,16 @@ export const LOGIN_HTML = `<!DOCTYPE html>
         </button>
       </form>
 
+      <!-- LINK PARA CADASTRO PÚBLICO -->
+      <div class="mt-5 text-center">
+        <p class="text-xs text-slate-400">
+          Sua clínica ainda não usa a Aura AI?
+          <a href="/cadastro" class="text-emerald-400 font-semibold underline ml-1">
+            Começar Teste Grátis de 7 dias
+          </a>
+        </p>
+      </div>
+
       <!-- CREDENCIAIS DE DEMO / TESTE -->
       <div class="mt-6 pt-5 border-t border-slate-800/80">
         <div class="p-3.5 rounded-xl bg-slate-950/50 border border-slate-800/60 text-xs">

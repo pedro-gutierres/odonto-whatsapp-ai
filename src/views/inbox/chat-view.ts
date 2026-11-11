@@ -93,11 +93,19 @@ export const INBOX_CHAT_VIEW_HTML = `
 
       <!-- ÁREA DE MENSAGENS COM SCROLL -->
       <div id="messagesArea" class="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-3 wa-bg-light dark:wa-bg-dark transition-all">
-        <div class="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs">
+        <div class="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-xs p-6 text-center">
           <div class="w-16 h-16 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center text-2xl text-slate-300 dark:text-slate-600 mb-3">
             <i class="fa-brands fa-whatsapp"></i>
           </div>
-          <p class="font-medium">Selecione um paciente na lista ao lado para ver o histórico.</p>
+          <p class="font-medium text-slate-700 dark:text-slate-300 mb-1">Selecione um paciente na lista ao lado para ver o histórico.</p>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm mb-4">
+            Ainda não recebeu mensagens ou quer testar a IA imediatamente sem conectar número?
+          </p>
+          <button onclick="selectNavigationTab('simulator', 'Test Drive da IA', 'fa-solid fa-flask-vial', 'purple')"
+            class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-500/20 flex items-center gap-2 transition">
+            <i class="fa-solid fa-flask-vial"></i>
+            <span>Fazer Test Drive da IA no Simulador</span>
+          </button>
         </div>
       </div>
 

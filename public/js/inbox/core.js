@@ -118,11 +118,13 @@
       const viewAgenda = document.getElementById('viewAgenda');
       const viewConfig = document.getElementById('viewConfig');
       const viewSettings = document.getElementById('viewSettings');
+      const viewSimulator = document.getElementById('viewSimulator');
 
       viewChat.classList.add('hidden');
       viewAgenda.classList.add('hidden');
       viewConfig.classList.add('hidden');
       if (viewSettings) viewSettings.classList.add('hidden');
+      if (viewSimulator) viewSimulator.classList.add('hidden');
 
       if (tabId === 'agenda') {
         viewAgenda.classList.remove('hidden');
@@ -134,6 +136,9 @@
       } else if (tabId === 'settings') {
         if (viewSettings) viewSettings.classList.remove('hidden');
         if (typeof loadClinicSettingsView === 'function') loadClinicSettingsView();
+      } else if (tabId === 'simulator') {
+        if (viewSimulator) viewSimulator.classList.remove('hidden');
+        if (typeof initSimulatorView === 'function') initSimulatorView();
       } else {
         viewChat.classList.remove('hidden');
       }
@@ -159,6 +164,9 @@
             adminBtn.classList.remove('hidden');
             adminBtn.classList.add('flex');
           }
+        }
+        if (data && data.trial && typeof updateTrialWidget === 'function') {
+          updateTrialWidget(data.trial);
         }
         return true;
       } catch (err) {

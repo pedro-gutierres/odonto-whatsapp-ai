@@ -52,6 +52,21 @@ export const INBOX_HEADER_HTML = `
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
         </button>
 
+        <!-- Opção: Test Drive da IA (Simulador) -->
+        <button onclick="selectNavigationTab('simulator', 'Test Drive da IA', 'fa-solid fa-flask-vial', 'purple')" 
+          class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm group-hover:scale-105 transition-transform">
+              <i class="fa-solid fa-flask-vial"></i>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-slate-900 dark:text-white block">Test Drive da IA</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400">Simulador de conversa sem WhatsApp</span>
+            </div>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-extrabold uppercase">Simular</span>
+        </button>
+
         <!-- Opção 2: Agenda -->
         <button onclick="selectNavigationTab('agenda', 'Agenda', 'fa-regular fa-calendar-check', 'sky')" 
           class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
@@ -103,6 +118,18 @@ export const INBOX_HEADER_HTML = `
     <!-- LADO DIREITO: DARK MODE E USUÁRIO LOGADO -->
     <div class="flex items-center gap-2.5">
       
+      <!-- WIDGET DE STATUS DO TRIAL E COTA DE MENSAGENS -->
+      <div id="trialStatusWidget" onclick="selectNavigationTab('simulator', 'Test Drive da IA', 'fa-solid fa-flask-vial', 'purple')"
+        class="hidden items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition shadow-xs cursor-pointer select-none"
+        title="Clique para abrir o Test Drive da IA">
+        <i id="trialStatusIcon" class="fa-solid fa-clock-rotate-left text-xs text-emerald-500"></i>
+        <div class="flex items-center gap-1.5 text-[11px] leading-tight">
+          <span id="trialDaysBadge" class="font-bold">7 dias restantes</span>
+          <span class="text-slate-300 dark:text-slate-600">•</span>
+          <span id="trialMessagesBadge" class="font-mono">0 / 100 msgs</span>
+        </div>
+      </div>
+
       <!-- BOTÃO DISCRETO SUPER ADMIN (EXIBIDO APENAS PARA SUPERADMIN) -->
       <a id="superAdminNavBtn" href="/admin" title="Painel Global Super Admin"
         class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30 text-xs font-bold transition">

@@ -397,6 +397,11 @@ export const INBOX_TRAINING_VIEW_HTML = `
             <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">As alterações entram em vigor instantaneamente para todas as próximas mensagens.</span>
           </div>
           <div class="flex items-center gap-3">
+            <button type="button" onclick="selectNavigationTab('simulator', 'Test Drive da IA', 'fa-solid fa-flask-vial', 'purple')"
+              class="px-4 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center gap-2 transition border border-purple-200 dark:border-purple-800/60 shadow-sm">
+              <i class="fa-solid fa-flask-vial"></i>
+              <span>Testar IA no Simulador</span>
+            </button>
             <button type="submit" id="btnSaveConfig" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#008069] to-emerald-600 hover:from-[#006a57] hover:to-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition">
               <i class="fa-solid fa-floppy-disk"></i>
               <span id="btnSaveConfigText">Salvar Alterações na IA</span>
