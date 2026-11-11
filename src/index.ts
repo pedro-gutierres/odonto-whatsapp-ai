@@ -968,11 +968,12 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   }
 
   let reply: string;
+  let freshHistory: { role: "user" | "assistant"; content: string }[] = [];
   if (!job.text) {
     reply = MSG_SO_TEXTO;
   } else {
     const cfg = parsedCfg as BotConfig;
-    const history = await loadHistory(env.DB, tenant.id, job.from);
+    freshHistory = await loadHistory(env.DB, tenant.id, job.from);
 
     // Obtém data/hora atual no fuso oficial de Brasília
     const nowBrasiliaStr = new Intl.DateTimeFormat("pt-BR", {
@@ -994,39 +995,99 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
       existingAppointments,
     });
 
-    reply = (await askClaude(env, systemPrompt, history)) ?? MSG_FALHA_IA;
+    reply = (await askClaude(env, systemPrompt, freshHistory)) ?? MSG_FALHA_IA;
   }
 
   // 1. Processa comando de agendamento automático feito pela IA durante a conversa
-  const agendarRegex = /<<<AGENDAR:\s*({[\s\S]*?})\s*>>>/i;
-  const matchAgendar = reply.match(agendarRegex);
+  const agendarRegex = /<<<AGENDAR:\s*({[\s\S]*?})\s*>>>/gi;
+  const confirmarRegex = /<<<CONFIRMAR:\s*({[\s\S]*?})\s*>>>/gi;
+  const matchAgendar = /<<<AGENDAR:\s*({[\s\S]*?})\s*>>>/i.exec(reply);
+
   if (matchAgendar) {
+    let scheduledAt = "o horário escolhido";
+    let procedure = "sua consulta";
+    let bookingSucceeded = false;
+    let conflictReason = "";
+
     try {
       const data = JSON.parse(matchAgendar[1]);
       const patientName = data.patient_name || job.contactName || "Paciente";
-      const procedure = data.procedure || "Consulta / Avaliação";
-      const scheduledAt = data.scheduled_at || "A combinar";
+      procedure = data.procedure || "Consulta / Avaliação";
+      scheduledAt = data.scheduled_at || "A combinar";
       const duration = data.duration || "30 min";
       const notes = data.notes || "Agendado via IA WhatsApp";
+
       const res = await createAppointment(env.DB, tenant.id, job.from, patientName, procedure, scheduledAt, "agendado", notes, duration);
       if (res.success) {
+        bookingSucceeded = true;
         console.log(`[AGENDAMENTO_IA] Agendamento criado com sucesso para ${patientName} em ${scheduledAt}`);
       } else {
-        console.warn(`[AGENDAMENTO_IA_CONFLITO] Não foi possível agendar para ${patientName} em ${scheduledAt}: ${res.message}`);
+        conflictReason = res.message || "Horário já ocupado na grade.";
+        console.warn(`[AGENDAMENTO_IA_CONFLITO] Não foi possível agendar para ${patientName} em ${scheduledAt}: ${conflictReason}`);
       }
     } catch (e) {
+      conflictReason = "Não foi possível validar os dados do horário solicitado.";
       console.error("Erro ao processar tag <<<AGENDAR>>>:", e);
     }
+
     reply = reply.replace(agendarRegex, "").trim();
+
+    // Se houve conflito ou erro ao gravar na agenda, NUNCA envia falso positivo ("Agendei!").
+    // Recalcula a grade atualizada e pede à IA uma resposta natural oferecendo alternativas livres.
+    if (!bookingSucceeded) {
+      const fallbackConflictMsg = `Desculpe! O horário de ${scheduledAt} para ${procedure} acabou de ser preenchido na nossa agenda. 😕\n\nQual outro dia ou horário ficaria melhor para você?`;
+      let correctedReply: string | null = null;
+
+      if (job.text && parsedCfg && freshHistory.length > 0) {
+        try {
+          const latestUpcoming = await getUpcomingAppointments(env.DB, tenant.id);
+          const nowBrasiliaStr = new Intl.DateTimeFormat("pt-BR", {
+            timeZone: "America/Sao_Paulo",
+            dateStyle: "full",
+            timeStyle: "short",
+          }).format(new Date());
+
+          const retrySystemPrompt =
+            buildSystemPrompt(parsedCfg, {
+              nowBrasiliaStr,
+              existingAppointments: latestUpcoming.map((a) => ({
+                scheduled_at: a.scheduled_at,
+                procedure: a.procedure || "Consulta",
+                duration: a.duration || "30 min",
+              })),
+            }) +
+            `\n\nATENÇÃO CRÍTICA DO SISTEMA:\n` +
+            `- A tentativa de registrar o agendamento em "${scheduledAt}" (${procedure}) FALHOU por conflito na grade (${conflictReason}).\n` +
+            `- NÃO diga que o horário foi agendado ou reservado.\n` +
+            `- NÃO inclua a tag <<<AGENDAR>>> nem <<<CONFIRMAR>>> nesta resposta.\n` +
+            `- Peça desculpas com naturalidade, avise que esse horário acabou de ser preenchido e sugira opções livres respeitando a grade atualizada acima.`;
+
+          correctedReply = await askClaude(env, retrySystemPrompt, freshHistory);
+          if (correctedReply) {
+            correctedReply = correctedReply
+              .replace(agendarRegex, "")
+              .replace(confirmarRegex, "")
+              .trim();
+          }
+        } catch (retryErr) {
+          console.warn("Aviso: falha ao regenerar resposta de conflito via Claude, usando fallback padrão:", String(retryErr));
+        }
+      }
+
+      reply = correctedReply || fallbackConflictMsg;
+    }
   }
 
   // 2. Processa confirmação de consulta pelo paciente via IA
-  const confirmarRegex = /<<<CONFIRMAR:\s*({[\s\S]*?})\s*>>>/i;
-  const matchConfirmar = reply.match(confirmarRegex);
+  const matchConfirmar = /<<<CONFIRMAR:\s*({[\s\S]*?})\s*>>>/i.exec(reply);
   if (matchConfirmar) {
     try {
-      await confirmUpcomingAppointmentForContact(env.DB, tenant.id, job.from);
-      console.log(`[CONFIRMACAO_IA] Consulta confirmada com sucesso para contato ${job.from}`);
+      const confirmed = await confirmUpcomingAppointmentForContact(env.DB, tenant.id, job.from);
+      if (confirmed) {
+        console.log(`[CONFIRMACAO_IA] Consulta confirmada com sucesso para contato ${job.from}`);
+      } else {
+        console.warn(`[CONFIRMACAO_IA] Nenhum agendamento pendente encontrado para confirmar (contato=${job.from}, tenant=${tenant.id})`);
+      }
     } catch (e) {
       console.error("Erro ao processar tag <<<CONFIRMAR>>>:", e);
     }

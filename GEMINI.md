@@ -21,7 +21,7 @@ Este projeto é um **SaaS multi-tenant** em **Cloudflare Workers (TypeScript)** 
   - Deduplica por `wa_message_id` (`claimInbound`), respeita pausa humana (`conversation_states.ai_paused`) e exige treinamento mínimo completo (`isCrucialConfigComplete`).
   - Resolve o token via `resolveTenantAccessToken(tenant, env)`: prioriza `tenants.access_token_enc` (suporta `enc:v1:...` em AES-256-GCM ou texto direto) com fallback para `env.WA_LAB_TOKEN`.
   - Monta o prompt em `src/prompt.ts` considerando a grade de agendamentos futuros (`getUpcomingAppointments`) e consulta o Claude em `src/claude.ts`.
-  - Interpreta comandos ocultos retornados pelo modelo: `<<<AGENDAR: {...}>>>` (com prevenção de conflitos em `createAppointment`) e `<<<CONFIRMAR: {...}>>>`.
+  - Interpreta comandos ocultos retornados pelo modelo: `<<<AGENDAR: {...}>>>` (com prevenção de conflitos em `createAppointment` e interceptação da resposta para impedir falso positivo ao paciente em caso de conflito) e `<<<CONFIRMAR: {...}>>>`.
 - **Painel Web (`src/views/inbox.ts`, `src/views/login.ts`, `src/views/landing.ts`, `src/views/admin.ts`)**:
   - Protegido por sessão HMAC (`auth_session` cookie `HttpOnly`).
   - `/inbox` possui Central Multi-Chat WhatsApp (com envio manual e pausa automática da IA), Agenda/Calendário CRM e Treinamento da IA (`tenants.bot_config`).
