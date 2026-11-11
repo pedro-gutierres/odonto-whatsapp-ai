@@ -22,34 +22,23 @@ export function isConfiguredPhoneNumberId(phoneNumberId?: string | null): boolea
   return Boolean(trimmed && !trimmed.startsWith("unconfigured:"));
 }
 
-let conversationStatesPromise: Promise<void> | null = null;
-
-// Garante que a tabela de controle de intervenção humana (Pausar IA) existe (memoizado por isolate)
+// Garante criação idempotente da tabela conversation_states (usado apenas na inicialização manual /api/init-perf)
 export async function ensureConversationStatesTable(db: D1Database): Promise<void> {
-  if (!conversationStatesPromise) {
-    conversationStatesPromise = db
-      .prepare(
-        `CREATE TABLE IF NOT EXISTS conversation_states (
-          tenant_id TEXT NOT NULL,
-          contact_wa_id TEXT NOT NULL,
-          ai_paused INTEGER NOT NULL DEFAULT 0,
-          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-          PRIMARY KEY (tenant_id, contact_wa_id)
-        );`,
-      )
-      .run()
-      .then(() => undefined)
-      .catch((err) => {
-        conversationStatesPromise = null;
-        throw err;
-      });
-  }
-  await conversationStatesPromise;
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS conversation_states (
+        tenant_id TEXT NOT NULL,
+        contact_wa_id TEXT NOT NULL,
+        ai_paused INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (tenant_id, contact_wa_id)
+      );`,
+    )
+    .run();
 }
 export const ensureConversationStateTable = ensureConversationStatesTable;
 
 export async function isAiPaused(db: D1Database, tenantId: string, contact: string): Promise<boolean> {
-  await ensureConversationStatesTable(db);
   const row = await db
     .prepare("SELECT ai_paused FROM conversation_states WHERE tenant_id = ?1 AND contact_wa_id = ?2")
     .bind(tenantId, contact)
@@ -58,7 +47,6 @@ export async function isAiPaused(db: D1Database, tenantId: string, contact: stri
 }
 
 export async function setAiPaused(db: D1Database, tenantId: string, contact: string, paused: boolean): Promise<void> {
-  await ensureConversationStatesTable(db);
   await db
     .prepare(
       `INSERT INTO conversation_states (tenant_id, contact_wa_id, ai_paused, updated_at)
@@ -151,7 +139,6 @@ export async function markAnswered(db: D1Database, waMessageId: string): Promise
 
 // Lista todas as conversas do tenant para a coluna da esquerda da recepcionista
 export async function listConversations(db: D1Database, tenantId: string): Promise<ConversationSummary[]> {
-  await ensureConversationStatesTable(db);
   const { results } = await db
     .prepare(
       `SELECT 
@@ -198,7 +185,6 @@ export async function getSyncState(
   tenantId: string,
   activeContact: string | null = null,
 ): Promise<SyncState> {
-  await ensureConversationStatesTable(db);
   if (activeContact) {
     const row = await db
       .prepare(
@@ -287,90 +273,84 @@ export interface AppointmentRecord {
   created_at: string;
 }
 
-let authAndAppointmentsPromise: Promise<void> | null = null;
-
+// Rotina explícita de inicialização de schema e índices (executada apenas via migrations ou /api/init-perf)
 export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
-  if (!authAndAppointmentsPromise) {
-    authAndAppointmentsPromise = (async () => {
-      await ensureConversationStatesTable(db);
-      await db
-        .prepare(
-          `CREATE TABLE IF NOT EXISTS users (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            tenant_id     TEXT NOT NULL,
-            email         TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            name          TEXT NOT NULL,
-            role          TEXT NOT NULL DEFAULT 'admin',
-            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-          );`
-        )
-        .run();
+  await ensureConversationStatesTable(db);
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS users (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id     TEXT NOT NULL,
+        email         TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        name          TEXT NOT NULL,
+        role          TEXT NOT NULL DEFAULT 'admin',
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );`
+    )
+    .run();
 
-      await db
-        .prepare(
-          `CREATE TABLE IF NOT EXISTS appointments (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            tenant_id     TEXT NOT NULL,
-            contact_wa_id TEXT NOT NULL,
-            patient_name  TEXT NOT NULL,
-            procedure     TEXT,
-            scheduled_at  TEXT NOT NULL,
-            status        TEXT NOT NULL DEFAULT 'agendado',
-            notes         TEXT,
-            duration      TEXT DEFAULT '30 min',
-            confirmed_at  TEXT,
-            confirmed_by  TEXT,
-            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-          );`
-        )
-        .run();
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS appointments (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id     TEXT NOT NULL,
+        contact_wa_id TEXT NOT NULL,
+        patient_name  TEXT NOT NULL,
+        procedure     TEXT,
+        scheduled_at  TEXT NOT NULL,
+        status        TEXT NOT NULL DEFAULT 'agendado',
+        notes         TEXT,
+        duration      TEXT DEFAULT '30 min',
+        confirmed_at  TEXT,
+        confirmed_by  TEXT,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );`
+    )
+    .run();
 
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_messages_tenant_id ON messages (tenant_id, id);").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_messages_tenant_id ON messages (tenant_id, id);").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_appointments_tenant ON appointments (tenant_id, scheduled_at);").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);").run();
 
-      // Adiciona colunas se a tabela foi criada antes sem elas
-      try {
-        await db.prepare("ALTER TABLE appointments ADD COLUMN duration TEXT DEFAULT '30 min';").run();
-      } catch {}
-      try {
-        await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_at TEXT;").run();
-      } catch {}
-      try {
-        await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_by TEXT;").run();
-      } catch {}
-
-      // Verifica se o usuário padrão inicial existe (apenas em banco recém-criado)
-      const user = await db.prepare("SELECT id FROM users LIMIT 1").first();
-      if (!user) {
-        // Senha padrão inicial para testes: 'admin123'
-        // Hash SHA-256 de "admin123:odonto_salt_2026"
-        const defaultHash = "219f1b54263a28a320ddb777b89011a54d75d32bc5d0e6b20b9fdbdc02d61876";
-        await db
-          .prepare(
-            `INSERT OR IGNORE INTO users (tenant_id, email, password_hash, name, role)
-             VALUES 
-             ('lab', 'pedrogutierres@protonmail.com', ?1, 'Pedro Gutierres', 'admin'),
-             ('lab', 'admin@clinica.com', ?1, 'Dra. Fernanda (Admin)', 'admin');`
-          )
-          .bind(defaultHash)
-          .run();
-
-        // Cria agendamentos iniciais de exemplo para a clínica
-        await db
-          .prepare(
-            `INSERT OR IGNORE INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
-             VALUES 
-             ('lab', '5511988881234', 'Mariana Silveira', 'Botox / Toxina Botulínica', '2026-11-14 10:00', 'confirmado', 'Agendado automaticamente pela Secretária IA Claude 24h'),
-             ('lab', '5521973401655', 'Pedro (Paciente Teste)', 'Avaliação Geral & Clareamento', '2026-11-11 15:30', 'agendado', 'Paciente aguardando confirmação de véspera');`
-          )
-          .run();
-      }
-    })().catch((err) => {
-      authAndAppointmentsPromise = null;
-      throw err;
-    });
+  // Verifica colunas via PRAGMA antes de alterar (sem gerar erros propositais no D1)
+  const cols = await db.prepare("PRAGMA table_info(appointments)").all<{ name: string }>();
+  const existingCols = new Set((cols.results || []).map((c) => c.name));
+  if (!existingCols.has("duration")) {
+    await db.prepare("ALTER TABLE appointments ADD COLUMN duration TEXT DEFAULT '30 min';").run();
   }
-  await authAndAppointmentsPromise;
+  if (!existingCols.has("confirmed_at")) {
+    await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_at TEXT;").run();
+  }
+  if (!existingCols.has("confirmed_by")) {
+    await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_by TEXT;").run();
+  }
+
+  // Semeia usuários iniciais apenas se a tabela users estiver vazia
+  const user = await db.prepare("SELECT id FROM users LIMIT 1").first();
+  if (!user) {
+    // Senha padrão inicial para testes: 'admin123'
+    // Hash SHA-256 de "admin123:odonto_salt_2026"
+    const defaultHash = "219f1b54263a28a320ddb777b89011a54d75d32bc5d0e6b20b9fdbdc02d61876";
+    await db
+      .prepare(
+        `INSERT OR IGNORE INTO users (tenant_id, email, password_hash, name, role)
+         VALUES 
+         ('lab', 'pedrogutierres@protonmail.com', ?1, 'Pedro Gutierres', 'admin'),
+         ('lab', 'admin@clinica.com', ?1, 'Dra. Fernanda (Admin)', 'admin');`
+      )
+      .bind(defaultHash)
+      .run();
+
+    await db
+      .prepare(
+        `INSERT OR IGNORE INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
+         VALUES 
+         ('lab', '5511988881234', 'Mariana Silveira', 'Botox / Toxina Botulínica', '2026-11-14 10:00', 'confirmado', 'Agendado automaticamente pela Secretária IA Claude 24h'),
+         ('lab', '5521973401655', 'Pedro (Paciente Teste)', 'Avaliação Geral & Clareamento', '2026-11-11 15:30', 'agendado', 'Paciente aguardando confirmação de véspera');`
+      )
+      .run();
+  }
 }
 
 export async function getUserByEmail(db: D1Database, email: string): Promise<UserRecord | null> {
@@ -378,7 +358,6 @@ export async function getUserByEmail(db: D1Database, email: string): Promise<Use
 }
 
 export async function listAppointments(db: D1Database, tenantId: string): Promise<AppointmentRecord[]> {
-  await ensureAuthAndAppointments(db);
   const { results } = await db
     .prepare(
       `SELECT * FROM appointments 
@@ -432,7 +411,6 @@ export async function checkAppointmentConflict(
   durationStr?: string | null,
   excludeId?: number
 ): Promise<{ conflict: boolean; conflictWith?: AppointmentRecord }> {
-  await ensureAuthAndAppointments(db);
   const targetInterval = parseAppointmentTimeInterval(scheduledAt, durationStr);
   if (!targetInterval) {
     return { conflict: false };
@@ -484,8 +462,6 @@ export async function createAppointment(
   notes: string = "",
   duration: string = "30 min"
 ): Promise<CreateAppointmentResult> {
-  await ensureAuthAndAppointments(db);
-
   // Verificação centralizada de conflitos na grade
   const conflictCheck = await checkAppointmentConflict(db, tenantId, scheduledAt, duration);
   if (conflictCheck.conflict && conflictCheck.conflictWith) {
@@ -513,7 +489,6 @@ export async function updateAppointmentDetails(
   id: number,
   updates: { status?: string; notes?: string; procedure?: string; scheduledAt?: string; duration?: string }
 ): Promise<void> {
-  await ensureAuthAndAppointments(db);
   const sets: string[] = [];
   const bindings: (string | number)[] = [];
   let paramIdx = 1;
@@ -558,7 +533,6 @@ export async function updateAppointmentStatus(
   status: string,
   confirmedBy?: "human" | "ai"
 ): Promise<void> {
-  await ensureAuthAndAppointments(db);
   if (status === "confirmado") {
     await db
       .prepare(
@@ -579,7 +553,6 @@ export async function confirmUpcomingAppointmentForContact(
   tenantId: string,
   contactWaId: string
 ): Promise<boolean> {
-  await ensureAuthAndAppointments(db);
   const row = await db
     .prepare(
       `SELECT id FROM appointments 
@@ -600,7 +573,6 @@ export async function getUpcomingAppointments(
   tenantId: string,
   days: number = 14
 ): Promise<AppointmentRecord[]> {
-  await ensureAuthAndAppointments(db);
   const { results } = await db
     .prepare(
       `SELECT * FROM appointments 
@@ -617,7 +589,6 @@ export async function deleteAppointment(
   tenantId: string,
   id: number
 ): Promise<void> {
-  await ensureAuthAndAppointments(db);
   await db
     .prepare("DELETE FROM appointments WHERE id = ?1 AND tenant_id = ?2")
     .bind(id, tenantId)

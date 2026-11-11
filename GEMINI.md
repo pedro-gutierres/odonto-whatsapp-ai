@@ -40,7 +40,7 @@ Este projeto é um **SaaS multi-tenant** em **Cloudflare Workers (TypeScript)** 
 2. **Segredos e Criptografia**:
    - `src/auth.ts` usa PBKDF2 (`pbkdf2_v1:...`) para novos hashes de senha (mantendo verificação retrocompatível para hashes legados SHA-256), HMAC-SHA256 em tempo constante para cookies de sessão (`AUTH_SECRET`) e AES-256-GCM (`enc:v1:...`) para tokens por clínica (`TOKEN_ENCRYPTION_KEY` ou `AUTH_SECRET`).
 3. **Performance D1**:
-   - Inicializações defensivas de schema em `src/db.ts` (`ensureConversationStatesTable` e `ensureAuthAndAppointments`) são memoizadas por isolate para não repetir queries DDL em polling (`/api/sync-check`).
+   - Rotas de leitura, escrita e polling (`/api/sync-check`, agenda, atendimento e cron) **nunca** executam `CREATE TABLE` ou `ALTER TABLE`. A estrutura do banco fica exclusivamente em `migrations/` (`0001` a `0004`) e na rota autenticada de inicialização manual `/api/init-perf`.
 4. **Arquivos-Chave**:
    - `src/index.ts` | `src/db.ts` | `src/auth.ts` | `src/prompt.ts` | `src/claude.ts` | `src/whatsapp.ts` | `src/types.ts`
    - Views inline: `src/views/landing.ts` | `src/views/login.ts` | `src/views/inbox.ts`

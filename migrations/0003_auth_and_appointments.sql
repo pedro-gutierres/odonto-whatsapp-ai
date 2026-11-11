@@ -17,8 +17,11 @@ CREATE TABLE IF NOT EXISTS appointments (
   patient_name  TEXT NOT NULL,
   procedure     TEXT,
   scheduled_at  TEXT NOT NULL,
-  status        TEXT NOT NULL DEFAULT 'pre_agendado', -- 'pre_agendado', 'confirmado', 'concluido', 'cancelado'
+  status        TEXT NOT NULL DEFAULT 'pre_agendado', -- 'agendado', 'pre_agendado', 'confirmado', 'concluido', 'cancelado'
   notes         TEXT,
+  duration      TEXT DEFAULT '30 min',
+  confirmed_at  TEXT,
+  confirmed_by  TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

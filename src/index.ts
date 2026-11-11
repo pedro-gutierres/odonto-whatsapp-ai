@@ -162,8 +162,6 @@ export default {
           return jsonResponse({ error: "E-mail e senha são obrigatórios." }, 400);
         }
 
-        await ensureAuthAndAppointments(env.DB);
-
         const user = await getUserByEmail(env.DB, email);
         if (!user) {
           return jsonResponse({ error: "Credenciais inválidas. Verifique seu e-mail e senha." }, 401);
@@ -220,7 +218,6 @@ export default {
       const tenantId = auth.session.tenantId;
 
       if (request.method === "GET") {
-        await ensureAuthAndAppointments(env.DB);
         const appointments = await listAppointments(env.DB, tenantId);
         return jsonResponse({ appointments });
       }
@@ -250,7 +247,6 @@ export default {
           const pNotes = body.notes || "";
           const pDuration = body.duration || "30 min";
 
-          await ensureAuthAndAppointments(env.DB);
           const res = await createAppointment(env.DB, tenantId, pPhone, pName, pProc, pSched, pStatus, pNotes, pDuration);
 
           if (!res.success && res.conflict) {
@@ -277,7 +273,6 @@ export default {
           if (!body.id) {
             return jsonResponse({ error: "id obrigatório" }, 400);
           }
-          await ensureAuthAndAppointments(env.DB);
           await updateAppointmentDetails(env.DB, tenantId, body.id, body);
           return jsonResponse({ success: true });
         } catch (err) {
@@ -293,7 +288,6 @@ export default {
           if (!id) {
             return jsonResponse({ error: "id obrigatório" }, 400);
           }
-          await ensureAuthAndAppointments(env.DB);
           await deleteAppointment(env.DB, tenantId, id);
           return jsonResponse({ success: true });
         } catch (err) {
@@ -440,6 +434,20 @@ export default {
           200,
           { "cache-control": "no-cache" }
         );
+      }
+    }
+
+    // Inicialização manual de tabelas e índices (protegida por sessão; uso exclusivo de setup)
+    if (url.pathname === "/api/init-perf") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
+      try {
+        await ensureAuthAndAppointments(env.DB);
+        return jsonResponse({ status: "indexes and tables ensured" });
+      } catch (err) {
+        console.error("Erro em /api/init-perf:", String(err));
+        return jsonResponse({ error: "Erro ao garantir estrutura do banco." }, 500);
       }
     }
 
@@ -600,8 +608,6 @@ export async function runDayBeforeConfirmations(
   env: Env,
   targetTenantId?: string
 ): Promise<{ total: number; sent: number; skipped: number; failed: number }> {
-  await ensureAuthAndAppointments(env.DB);
-
   // Data de amanhã no fuso de Brasília (YYYY-MM-DD)
   const now = new Date();
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);

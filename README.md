@@ -40,7 +40,7 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 |---|---|
 | `src/index.ts` | Entrypoint do Worker (`fetch`, `queue`, `scheduled`), rotas públicas/autenticadas, `/webhook`, `processJob` e `runDayBeforeConfirmations`. |
 | `src/auth.ts` | Sessão HMAC-SHA256 em cookie `HttpOnly` (`auth_session`), hash de senha PBKDF2 (`pbkdf2_v1:...`, com suporte legado SHA-256), criptografia AES-256-GCM (`enc:v1:...`) e `resolveTenantAccessToken`. |
-| `src/db.ts` | Camada de acesso ao Cloudflare D1 filtrada por `tenant_id`, memoização de setup por isolate, controle de conflitos de horário (`checkAppointmentConflict`) e config `bot_config`. |
+| `src/db.ts` | Camada de acesso ao Cloudflare D1 filtrada por `tenant_id`, controle de conflitos de horário (`checkAppointmentConflict`), configuração `bot_config` e queries operacionais sem DDL em runtime. |
 | `src/prompt.ts` | Monta o system prompt dinâmico da Secretária IA a partir do `BotConfig` da clínica, grade de horários ocupados e regras clínicas/comerciais. |
 | `src/claude.ts` | Integração com a API Messages da Anthropic (`askClaude`). |
 | `src/whatsapp.ts` | Verificação de assinatura HMAC da Meta (`verifySignature`), extração de mensagens de texto (`extractJobs`) e disparo via Graph API (`sendText`). |
@@ -48,7 +48,7 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 | `src/views/landing.ts` | Landing page institucional (`/`). |
 | `src/views/login.ts` | Tela de autenticação (`/login`). |
 | `src/views/inbox.ts` | Painel principal (`/inbox` e `/painel`) com 3 módulos: **Atendimento WhatsApp Multi-Chat**, **Agenda / CRM com Calendário** e **Treinamento da IA**. |
-| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`) e `0003_auth_and_appointments.sql` (`users`, `appointments`). |
+| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`) e `0004_perf_indexes.sql` (`idx_messages_tenant_id`). |
 | `seeds/lab.sql` | Seed inicial da clínica de testes (`lab`). |
 | `wrangler.jsonc` | Bindings D1 (`DB`), Queue (`INBOX`), Cron (`0 23 * * *`) e variáveis não secretas (`GRAPH_VERSION`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`). |
 
@@ -80,6 +80,7 @@ Todas exigem sessão válida (`401` se não autenticado) e utilizam **exclusivam
 - `GET | POST | PATCH | DELETE /api/appointments` — CRUD de agendamentos com bloqueio de sobreposição de horários (`409 Conflict`)
 - `POST /api/appointments/run-confirmations` — Disparo manual das confirmações de véspera restrito à clínica logada
 - `GET | POST /api/config` — Leitura e salvamento do `BotConfig` da clínica (`tenants.bot_config`)
+- `GET | POST /api/init-perf` — Setup manual/idempotente de tabelas e índices no D1 (restrito a usuário autenticado)
 - `GET /api/time` — Horário atual do servidor (`America/Sao_Paulo`)
 
 ---
@@ -155,6 +156,6 @@ Para ativar uma nova clínica em produção no D1:
 ---
 
 ## Observações Importantes
-- **Banco de desenvolvimento inicial**: caso a tabela `users` esteja completamente vazia na primeira execução, `ensureAuthAndAppointments` em `src/db.ts` cria usuários iniciais de teste para o tenant `'lab'`. Em produção, altere/remova essas credenciais após criar os usuários reais.
+- **Banco de desenvolvimento inicial**: a criação das tabelas e índices deve ser feita via migrations (`npm run db:migrate:local` / `npm run db:migrate:remote`) ou, em último caso, via rota autenticada `/api/init-perf` (que também semeia usuários iniciais para o tenant `'lab'` se a tabela `users` estiver vazia). Em produção, altere/remova credenciais de demonstração após criar os usuários reais.
 - **Janela de 24h da Meta (Lembretes de Véspera)**: o Cron das 20h envia mensagens de texto via Graph API. Para pacientes fora da janela de 24 horas da Meta, será necessário evoluir o disparo para Message Templates aprovados na Meta.
 - **LGPD**: dados de pacientes e conversas são dados sensíveis de saúde; garanta contrato, termo de consentimento e política de retenção adequados antes da operação comercial.
