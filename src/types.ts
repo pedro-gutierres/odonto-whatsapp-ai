@@ -6,6 +6,7 @@ export interface Env {
   INBOX: Queue<InboundJob>;
   MEDIA_BUCKET?: R2Bucket;
   AI?: Ai;
+  ASSETS?: Fetcher;
 
   // Segredos (guardados na Cloudflare, nunca no código)
   META_APP_SECRETS: string; // um ou mais "app secrets" da Meta, separados por vírgula

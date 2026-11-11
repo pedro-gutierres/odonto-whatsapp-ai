@@ -5,6 +5,12 @@
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
 
+  // Assets estáticos públicos (JS modular do painel /inbox)
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+
   // Valores que NÃO são secretos (pode ficar no GitHub)
   "vars": {
     "GRAPH_VERSION": "v26.0",

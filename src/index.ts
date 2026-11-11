@@ -1080,8 +1080,12 @@ export default {
     }
 
     // -------------------------------------------------------------------------
-    // WEBHOOK OFICIAL DA META (WHATSAPP CLOUD API)
+    // FALLBACK EXPLÍCITO PARA ASSETS ESTÁTICOS (/js/*) E WEBHOOK DA META
     // -------------------------------------------------------------------------
+    if (env.ASSETS && (request.method === "GET" || request.method === "HEAD") && url.pathname.startsWith("/js/")) {
+      return env.ASSETS.fetch(request);
+    }
+
     if (url.pathname !== "/webhook") {
       return new Response("not found", { status: 404, headers: SECURITY_HEADERS });
     }

@@ -1,0 +1,428 @@
+    // ESTADO GLOBAL
+    let conversations = [];
+    let activePhone = null;
+    let activeAiPaused = false;
+    let appointments = [];
+    let professionals = [];
+    let selectedAgendaProfId = 'all';
+    let currentConfig = null;
+
+    // Otimização de polling
+    let highestKnownMsgId = 0;
+    let highestActiveMsgId = 0;
+    let isPollingBusy = false;
+    let pollingInterval = null;
+
+    // PROCEDIMENTOS PRÉ-CONFIGURADOS (ODONTO & ESTÉTICA)
+    const DEFAULT_ODONTO_SERVICES = [
+      { name: "Limpeza & Profilaxia", duration: "30 min", note: "Remoção de tártaro e jato de bicarbonato" },
+      { name: "Clareamento Dental a Laser", duration: "45 min", note: "Resultados nítidos na primeira sessão" },
+      { name: "Clareamento Caseiro com Moldeira", duration: "30 min", note: "Moldeira personalizada para uso noturno" },
+      { name: "Alinhadores Invisíveis / Ortodontia", duration: "45 min", note: "Escaneamento 3D inicial e planejamento digital" },
+      { name: "Aparelho Fixo Estético / Metálico", duration: "45 min", note: "Manutenção mensal" },
+      { name: "Lentes de Resina / Facetas", duration: "2h", note: "Transformação estética sem desgaste dental" },
+      { name: "Lentes de Contato de Porcelana", duration: "1h30", note: "Lentes ultrafinas de alta durabilidade" },
+      { name: "Implantes Dentários & Próteses", duration: "1h", note: "Cirurgia guiada com anestesia sem dor" },
+      { name: "Tratamento de Canal (Endodontia)", duration: "1h", note: "Tecnologia mecanizada em sessão única" },
+      { name: "Extração do Siso", duration: "45 min", note: "Avaliação radiográfica prévia obrigatória" },
+      { name: "Restaurações Estéticas", duration: "40 min", note: "Resinas com a cor exata do dente" },
+      { name: "Tratamento de Gengiva (Periodontia)", duration: "45 min", note: "Controle de sangramentos e inflamações" }
+    ];
+
+    const DEFAULT_ESTETICA_SERVICES = [
+      { name: "Toxina Botulínica (Botox Facial)", duration: "30 min", note: "Prevenção e suavização de rugas dinâmicas" },
+      { name: "Preenchimento Labial com Ácido Hialurônico", duration: "45 min", note: "Definição, contorno e volume natural" },
+      { name: "Preenchimento de Malar / Olheiras", duration: "45 min", note: "Efeito lifting e rejuvenescimento do olhar" },
+      { name: "Bioestimulador de Colágeno (Sculptra / Radiesse)", duration: "45 min", note: "Firmeza progressiva e combate à flacidez" },
+      { name: "Fios de PDO de Sustentação", duration: "1h", note: "Tração tecidual imediata e estímulo de colágeno" },
+      { name: "Fios de PDO de Estímulo de Colágeno", duration: "40 min", note: "Melhora da textura e linhas finas" },
+      { name: "Lipoaspiração Enzimática de Papada", duration: "30 min", note: "Redução de gordura localizada submentoniana" },
+      { name: "Rinomodelação sem Cirurgia", duration: "45 min", note: "Harmonização do dorso e ponta nasal" },
+      { name: "Skinbooster / Hidratação Injetável", duration: "30 min", note: "Luminosidade e hidratação profunda da pele" },
+      { name: "Microagulhamento com Drug Delivery", duration: "45 min", note: "Tratamento de manchas, poros e cicatrizes" },
+      { name: "Peeling Químico Renovador", duration: "30 min", note: "Renovação celular e uniformização do tom" },
+      { name: "Drenagem Linfática Facial Pós-Procedimento", duration: "40 min", note: "Redução de edema e recuperação acelerada" }
+    ];
+
+    // 1. TEMA (DARK / LIGHT)
+    function initTheme() {
+      const savedTheme = localStorage.getItem('aura_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('themeIcon').className = 'fa-solid fa-sun';
+      } else {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIcon').className = 'fa-solid fa-moon';
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('aura_theme', isDark ? 'dark' : 'light');
+      document.getElementById('themeIcon').className = isDark ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+    }
+
+    // 2. SELETOR DE MÓDULOS (MENU VERTICAL)
+    function toggleVerticalMenu(e) {
+      if (e) e.stopPropagation();
+      const dropdown = document.getElementById('verticalMenuDropdown');
+      const chevron = document.getElementById('verticalMenuChevron');
+      const isClosed = dropdown.classList.contains('hidden');
+
+      if (isClosed) {
+        dropdown.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+      } else {
+        dropdown.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+      }
+    }
+
+    function closeVerticalMenu() {
+      const dropdown = document.getElementById('verticalMenuDropdown');
+      const chevron = document.getElementById('verticalMenuChevron');
+      if (dropdown) dropdown.classList.add('hidden');
+      if (chevron) chevron.classList.remove('rotate-180');
+    }
+
+    document.addEventListener('click', (e) => {
+      const container = document.getElementById('verticalMenuContainer');
+      if (container && !container.contains(e.target)) {
+        closeVerticalMenu();
+      }
+    });
+
+    function selectNavigationTab(tabId, labelText, iconClass, colorTheme) {
+      closeVerticalMenu();
+
+      // Atualiza botão seletor superior
+      const label = document.getElementById('selectedMenuLabel');
+      const iconContainer = document.getElementById('selectedMenuIcon');
+      if (label) label.innerText = labelText;
+      if (iconContainer) {
+        iconContainer.innerHTML = `<i class="${iconClass}"></i>`;
+        if (colorTheme === 'sky') {
+          iconContainer.className = "w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-xs";
+        } else if (colorTheme === 'purple') {
+          iconContainer.className = "w-6 h-6 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xs";
+        } else {
+          iconContainer.className = "w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs";
+        }
+      }
+
+      // Alterna Views
+      const viewChat = document.getElementById('viewChat');
+      const viewAgenda = document.getElementById('viewAgenda');
+      const viewConfig = document.getElementById('viewConfig');
+
+      viewChat.classList.add('hidden');
+      viewAgenda.classList.add('hidden');
+      viewConfig.classList.add('hidden');
+
+      if (tabId === 'agenda') {
+        viewAgenda.classList.remove('hidden');
+        loadProfessionals();
+        loadAppointments();
+      } else if (tabId === 'config') {
+        viewConfig.classList.remove('hidden');
+        loadClinicConfig().then(() => updateTrainingValidationHighlights());
+      } else {
+        viewChat.classList.remove('hidden');
+      }
+    }
+
+    // 3. INICIALIZAÇÃO GERAL
+    async function loadCurrentUser() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.status === 401) {
+          window.location.href = '/login';
+          return false;
+        }
+        const data = await res.json();
+        if (data && data.user) {
+          const nameEl = document.getElementById('topUserName');
+          const emailEl = document.getElementById('topUserEmail');
+          const adminBtn = document.getElementById('superAdminNavBtn');
+          if (nameEl) nameEl.innerText = data.user.name || 'Recepção';
+          if (emailEl) emailEl.innerText = data.user.email || '';
+          if (adminBtn && data.user.isSuperAdmin) {
+            adminBtn.classList.remove('hidden');
+            adminBtn.classList.add('flex');
+          }
+        }
+        return true;
+      } catch (err) {
+        console.error("Erro ao carregar usuário logado:", err);
+        return true;
+      }
+    }
+
+    async function init() {
+      initTheme();
+      const ok = await loadCurrentUser();
+      if (!ok) return;
+      startLiveBrasiliaSync();
+      await loadConversations(false);
+      await loadProfessionals();
+      await loadAppointments();
+      await loadClinicConfig();
+      updateCrucialTrainingLockUI();
+      startPolling();
+    }
+
+    // 7. LOGOUT
+    async function handleLogout() {
+      if (confirm("Deseja sair do painel da clínica?")) {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+        } finally {
+          window.location.href = '/login';
+        }
+      }
+    }
+
+    // 9. POLLING DE SINCRONIZAÇÃO EM SEGUNDO PLANO (1 ROW READ)
+    function startPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(checkSync, 3500);
+    }
+
+    async function checkSync() {
+      if (isPollingBusy || document.hidden) return;
+      isPollingBusy = true;
+      try {
+        const p = activePhone || '';
+        const url = `/api/sync-check?last_id=${highestKnownMsgId}&active_phone=${encodeURIComponent(p)}&active_msg_id=${highestActiveMsgId}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.server_time) syncServerTime(data.server_time);
+
+        if (activePhone && typeof data.active_ai_paused === 'boolean') {
+          if (activeAiPaused !== data.active_ai_paused) {
+            activeAiPaused = data.active_ai_paused;
+            const target = conversations.find(c => c.contact_wa_id === activePhone);
+            if (target) target.ai_paused = data.active_ai_paused ? 1 : 0;
+            updateAiStatusUI();
+            renderConversationList();
+          }
+        }
+
+        if (data.has_new_global) {
+          highestKnownMsgId = data.latest_id;
+          await loadConversations(true);
+        }
+
+        if (data.has_new_active && activePhone) {
+          highestActiveMsgId = data.active_latest_id;
+          await loadActiveMessages();
+        }
+      } catch (err) {
+        // Silêncio em polling
+      } finally {
+        isPollingBusy = false;
+      }
+    }
+
+    // 10. UTILITÁRIOS
+    function showToast(msg, color = "emerald") {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      if (!toast || !toastMsg) return;
+
+      toastMsg.innerText = msg;
+      if (color === "purple") {
+        toastIcon.className = "fa-solid fa-wand-magic-sparkles text-purple-400";
+      } else if (color === "amber") {
+        toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. SINCRONIZAÇÃO E FORMATAÇÃO DE DATA E HORA (ESTILO WHATSAPP 24H BRASÍLIA)
+    // -------------------------------------------------------------------------
+    let serverClockDelta = 0;
+    let liveClockInterval = null;
+
+    function syncServerTime(serverIsoString) {
+      if (!serverIsoString) return;
+      const srv = new Date(serverIsoString).getTime();
+      if (!isNaN(srv)) {
+        serverClockDelta = srv - Date.now();
+        updateLiveBrasiliaClock();
+      }
+    }
+
+    function getNowBrasilia() {
+      return new Date(Date.now() + serverClockDelta);
+    }
+
+    function parseIsoDate(isoString) {
+      if (!isoString) return null;
+      let s = String(isoString).trim();
+      if (!s) return null;
+      if (s.includes(' ') && !s.includes('T')) s = s.replace(' ', 'T');
+      if (!s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function getBrasiliaDateParts(d) {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      const ymd = formatter.format(d);
+      const [year, month, day] = ymd.split('-').map(Number);
+      return { key: ymd, dateObj: new Date(year, month - 1, day) };
+    }
+
+    function getBrasiliaDateKey(d) {
+      return getBrasiliaDateParts(d).key;
+    }
+
+    function capitalizeFirst(str) {
+      if (!str) return '';
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function formatMessageTime(isoString) {
+      const d = parseIsoDate(isoString);
+      if (!d) return '';
+      return d.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+    }
+
+    function formatConversationItemTime(isoString) {
+      const d = parseIsoDate(isoString);
+      if (!d) return '';
+      const now = getNowBrasilia();
+      const bMsgDate = getBrasiliaDateParts(d);
+      const bNowDate = getBrasiliaDateParts(now);
+
+      const diffDays = Math.round((bNowDate.dateObj.getTime() - bMsgDate.dateObj.getTime()) / 86400000);
+
+      if (diffDays <= 0) {
+        return d.toLocaleTimeString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+      } else if (diffDays === 1) {
+        return 'Ontem';
+      } else if (diffDays > 1 && diffDays < 7) {
+        const weekday = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short' });
+        return capitalizeFirst(weekday.replace('.', ''));
+      } else {
+        return d.toLocaleDateString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          day: '2-digit',
+          month: '2-digit',
+          year: '2-digit',
+        });
+      }
+    }
+
+    function getWhatsAppDateDividerLabel(d) {
+      if (!d || isNaN(d.getTime())) return '';
+      const now = getNowBrasilia();
+      const bMsgDate = getBrasiliaDateParts(d);
+      const bNowDate = getBrasiliaDateParts(now);
+
+      const diffDays = Math.round((bNowDate.dateObj.getTime() - bMsgDate.dateObj.getTime()) / 86400000);
+
+      if (diffDays <= 0) {
+        return 'Hoje';
+      } else if (diffDays === 1) {
+        return 'Ontem';
+      } else if (diffDays > 1 && diffDays < 7) {
+        const weekday = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long' });
+        return capitalizeFirst(weekday);
+      } else {
+        return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: 'numeric', month: 'long', year: 'numeric' });
+      }
+    }
+
+    function updateLiveBrasiliaClock() {
+      const now = getNowBrasilia();
+
+      const timeStr = now.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+
+      const shortTimeStr = now.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      const weekday = now.toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        weekday: 'short',
+      }).replace('.', '');
+      const dayMonth = now.toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: '2-digit',
+      });
+      const fullDateStr = `${capitalizeFirst(weekday)}, ${dayMonth}`;
+
+      const elClock = document.getElementById('liveBrasiliaClock');
+      if (elClock) elClock.innerText = timeStr;
+
+      const elDate = document.getElementById('liveBrasiliaDate');
+      if (elDate) elDate.innerText = fullDateStr;
+    }
+
+    function startLiveBrasiliaSync() {
+      updateLiveBrasiliaClock();
+      if (!liveClockInterval) {
+        liveClockInterval = setInterval(updateLiveBrasiliaClock, 1000);
+      }
+      fetchServerTime();
+    }
+
+    async function fetchServerTime() {
+      try {
+        const res = await fetch('/api/time');
+        const data = await res.json();
+        if (data.server_time) {
+          syncServerTime(data.server_time);
+        }
+      } catch (e) {
+        // Fallback para relógio local com timezone America/Sao_Paulo
+      }
+    }
+
+    const formatTime = formatMessageTime;
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
