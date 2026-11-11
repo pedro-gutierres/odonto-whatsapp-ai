@@ -17,6 +17,7 @@ export interface Env {
   GRAPH_VERSION: string;
   CLAUDE_MODEL: string;
   CLAUDE_EFFORT: string;
+  SUPERADMIN_EMAILS?: string; // lista separada por vírgula de e-mails autorizados no /admin
 }
 
 // Uma mensagem recebida do paciente, já "limpa", que viaja pela fila.

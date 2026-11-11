@@ -260,6 +260,23 @@ export async function decryptTenantToken(stored: string, masterSecret: string): 
   }
 }
 
+export async function encryptTenantTokenForEnv(plaintext: string, env: Env): Promise<string> {
+  const masterSecret = env.TOKEN_ENCRYPTION_KEY?.trim() || getEffectiveAuthSecret(env.AUTH_SECRET);
+  return encryptTenantToken(plaintext, masterSecret);
+}
+
+export function isSuperAdminAuthorized(email: string, role: string, env: Env): boolean {
+  if (role !== "superadmin") return false;
+  const allowlistRaw = env.SUPERADMIN_EMAILS?.trim();
+  if (!allowlistRaw) return true;
+  const allowed = allowlistRaw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (allowed.length === 0) return true;
+  return allowed.includes(email.trim().toLowerCase());
+}
+
 export async function resolveTenantAccessToken(
   tenant: Pick<Tenant, "access_token_enc"> | null | undefined,
   env: Env

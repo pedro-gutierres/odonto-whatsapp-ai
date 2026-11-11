@@ -24,6 +24,7 @@ import {
   getSyncState,
   ensureAuthAndAppointments,
   getUserByEmail,
+  getUserById,
   listAppointments,
   createAppointment,
   updateAppointmentDetails,
@@ -33,20 +34,29 @@ import {
   getTenantConfig,
   updateTenantConfig,
   isCrucialConfigComplete,
+  listAdminOverview,
+  createTenantWithOptionalUser,
+  updateTenantAdminSettings,
+  createClinicUser,
+  resetUserPassword,
   type AppointmentRecord,
 } from "./db";
 import {
   getSessionFromRequest,
   createSessionToken,
+  hashPassword,
   verifyPassword,
   makeSessionCookie,
   makeLogoutCookie,
   resolveTenantAccessToken,
+  encryptTenantTokenForEnv,
+  isSuperAdminAuthorized,
   type SessionUser,
 } from "./auth";
 import { LANDING_HTML } from "./views/landing";
 import { LOGIN_HTML } from "./views/login";
 import { INBOX_HTML } from "./views/inbox";
+import { ADMIN_HTML } from "./views/admin";
 
 const MSG_SO_TEXTO = "Por enquanto consigo ler apenas mensagens de texto. Pode escrever sua dúvida? 😊";
 const MSG_FALHA_IA = "Vou encaminhar sua mensagem para a nossa equipe, que responde assim que possível. Obrigada pela paciência!";
@@ -117,6 +127,37 @@ async function requireSession(request: Request, env: Env): Promise<{ session: Se
   return { session };
 }
 
+async function requireSuperAdmin(
+  request: Request,
+  env: Env,
+  isHtml = false
+): Promise<{ session: SessionUser } | { response: Response }> {
+  const url = new URL(request.url);
+  const session = await getSessionFromRequest(request, env.AUTH_SECRET);
+  if (!session) {
+    return {
+      response: isHtml
+        ? Response.redirect(`${url.origin}/login`, 302)
+        : jsonResponse({ error: "Não autenticado" }, 401),
+    };
+  }
+
+  const dbUser = await getUserById(env.DB, session.userId);
+  if (!dbUser || !isSuperAdminAuthorized(dbUser.email, dbUser.role, env)) {
+    if (isHtml) {
+      return {
+        response: htmlResponse(
+          `<!DOCTYPE html><html lang="pt-BR"><body style="font-family:sans-serif;background:#0b0f17;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center"><div><h2>Acesso restrito ao Super Admin</h2><p style="color:#94a3b8">Sua conta não possui permissão administrativa global.</p><a href="/inbox" style="color:#34d399">Voltar ao Painel</a></div></body></html>`,
+          403
+        ),
+      };
+    }
+    return { response: jsonResponse({ error: "Acesso restrito ao Super Admin." }, 403) };
+  }
+
+  return { session: { ...session, email: dbUser.email, role: dbUser.role, name: dbUser.name } };
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -147,6 +188,13 @@ export default {
         return Response.redirect(`${url.origin}/login`, 302);
       }
       return htmlResponse(INBOX_HTML);
+    }
+
+    // 4) PAINEL GLOBAL SUPER ADMIN - PROTEGIDO POR SESSÃO + ROLE SUPERADMIN + ALLOWLIST
+    if (url.pathname === "/admin") {
+      const auth = await requireSuperAdmin(request, env, true);
+      if ("response" in auth) return auth.response;
+      return htmlResponse(ADMIN_HTML);
     }
 
     // -------------------------------------------------------------------------
@@ -206,7 +254,210 @@ export default {
       if (!session) {
         return jsonResponse({ authenticated: false }, 401);
       }
-      return jsonResponse({ authenticated: true, user: session });
+      const dbUser = await getUserById(env.DB, session.userId);
+      const isSuperAdmin = dbUser ? isSuperAdminAuthorized(dbUser.email, dbUser.role, env) : false;
+      return jsonResponse({
+        authenticated: true,
+        user: {
+          ...session,
+          name: dbUser?.name ?? session.name,
+          email: dbUser?.email ?? session.email,
+          role: dbUser?.role ?? session.role,
+          isSuperAdmin,
+        },
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // APIS DO SUPER ADMIN (VISÃO GLOBAL DO SAAS & GESTÃO DE TENANTS/USUÁRIOS)
+    // -------------------------------------------------------------------------
+    if (url.pathname === "/api/admin/overview" && request.method === "GET") {
+      const auth = await requireSuperAdmin(request, env);
+      if ("response" in auth) return auth.response;
+
+      try {
+        const overview = await listAdminOverview(env.DB);
+        return jsonResponse(overview);
+      } catch (err) {
+        console.error("Erro em /api/admin/overview:", String(err));
+        return jsonResponse({ error: "Erro ao carregar visão global." }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/admin/tenants") {
+      const auth = await requireSuperAdmin(request, env);
+      if ("response" in auth) return auth.response;
+
+      if (request.method === "POST") {
+        try {
+          const body = (await request.json()) as {
+            tenantId?: string;
+            name?: string;
+            phoneNumberId?: string | null;
+            wabaId?: string | null;
+            accessToken?: string | null;
+            adminName?: string;
+            adminEmail?: string;
+            adminPassword?: string;
+          };
+
+          const tenantId = body.tenantId?.trim().toLowerCase() || "";
+          const name = body.name?.trim() || "";
+          if (!/^[a-z0-9][a-z0-9-]{1,48}$/.test(tenantId)) {
+            return jsonResponse({ error: "ID da clínica inválido (use apenas letras minúsculas, números e hífen)." }, 400);
+          }
+          if (!name) {
+            return jsonResponse({ error: "Nome da clínica é obrigatório." }, 400);
+          }
+
+          const hasAnyUserField = Boolean(body.adminName?.trim() || body.adminEmail?.trim() || body.adminPassword);
+          let adminUser: { name: string; email: string; passwordHash: string } | undefined;
+          if (hasAnyUserField) {
+            if (!body.adminName?.trim() || !body.adminEmail?.trim() || !body.adminPassword || body.adminPassword.length < 6) {
+              return jsonResponse({ error: "Para criar o usuário inicial, informe nome, e-mail e senha (mín. 6 caracteres)." }, 400);
+            }
+            adminUser = {
+              name: body.adminName.trim(),
+              email: body.adminEmail.trim().toLowerCase(),
+              passwordHash: await hashPassword(body.adminPassword),
+            };
+          }
+
+          const encryptedToken = body.accessToken?.trim()
+            ? await encryptTenantTokenForEnv(body.accessToken.trim(), env)
+            : null;
+
+          await createTenantWithOptionalUser(env.DB, {
+            tenantId,
+            name,
+            phoneNumberId: body.phoneNumberId?.trim() || null,
+            wabaId: body.wabaId?.trim() || null,
+            accessTokenEnc: encryptedToken,
+            adminUser,
+          });
+
+          return jsonResponse({ success: true, tenantId });
+        } catch (err) {
+          const msg = String(err);
+          if (msg.includes("UNIQUE")) {
+            return jsonResponse({ error: "ID da clínica, Phone Number ID ou E-mail já cadastrado." }, 409);
+          }
+          console.error("Erro em POST /api/admin/tenants:", msg);
+          return jsonResponse({ error: "Erro ao criar clínica." }, 500);
+        }
+      }
+
+      if (request.method === "PATCH") {
+        try {
+          const body = (await request.json()) as {
+            tenantId?: string;
+            name?: string;
+            active?: boolean;
+            phoneNumberId?: string;
+            wabaId?: string;
+            accessToken?: string;
+            clearToken?: boolean;
+          };
+
+          const tenantId = body.tenantId?.trim();
+          if (!tenantId) {
+            return jsonResponse({ error: "tenantId obrigatório" }, 400);
+          }
+
+          const encryptedToken = body.accessToken?.trim()
+            ? await encryptTenantTokenForEnv(body.accessToken.trim(), env)
+            : undefined;
+
+          const updated = await updateTenantAdminSettings(env.DB, tenantId, {
+            name: body.name,
+            active: body.active,
+            phoneNumberId: typeof body.phoneNumberId === "string" ? body.phoneNumberId : undefined,
+            wabaId: typeof body.wabaId === "string" ? body.wabaId : undefined,
+            accessTokenEnc: encryptedToken,
+            clearToken: body.clearToken,
+          });
+
+          if (!updated) {
+            return jsonResponse({ error: "Clínica não encontrada ou sem alterações." }, 404);
+          }
+          return jsonResponse({ success: true });
+        } catch (err) {
+          const msg = String(err);
+          if (msg.includes("UNIQUE")) {
+            return jsonResponse({ error: "Este Phone Number ID já está vinculado a outra clínica." }, 409);
+          }
+          console.error("Erro em PATCH /api/admin/tenants:", msg);
+          return jsonResponse({ error: "Erro ao atualizar clínica." }, 500);
+        }
+      }
+
+      return jsonResponse({ error: "Método não permitido" }, 405);
+    }
+
+    if (url.pathname === "/api/admin/users" && request.method === "POST") {
+      const auth = await requireSuperAdmin(request, env);
+      if ("response" in auth) return auth.response;
+
+      try {
+        const body = (await request.json()) as {
+          tenantId?: string;
+          name?: string;
+          email?: string;
+          password?: string;
+          role?: "admin" | "staff";
+        };
+
+        const tenantId = body.tenantId?.trim();
+        const name = body.name?.trim();
+        const email = body.email?.trim().toLowerCase();
+        const password = body.password || "";
+
+        if (!tenantId || !name || !email || password.length < 6) {
+          return jsonResponse({ error: "Clínica, nome, e-mail e senha (mín. 6 caracteres) são obrigatórios." }, 400);
+        }
+
+        const tenant = await getTenantById(env.DB, tenantId);
+        if (!tenant) {
+          return jsonResponse({ error: "Clínica não encontrada." }, 404);
+        }
+
+        const id = await createClinicUser(env.DB, {
+          tenantId,
+          name,
+          email,
+          passwordHash: await hashPassword(password),
+          role: body.role === "staff" ? "staff" : "admin",
+        });
+
+        return jsonResponse({ success: true, id });
+      } catch (err) {
+        const msg = String(err);
+        if (msg.includes("UNIQUE")) {
+          return jsonResponse({ error: "Já existe um usuário com este e-mail." }, 409);
+        }
+        console.error("Erro em POST /api/admin/users:", msg);
+        return jsonResponse({ error: "Erro ao criar usuário." }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/admin/users/password" && request.method === "PATCH") {
+      const auth = await requireSuperAdmin(request, env);
+      if ("response" in auth) return auth.response;
+
+      try {
+        const body = (await request.json()) as { userId?: number; newPassword?: string };
+        if (!body.userId || !body.newPassword || body.newPassword.length < 6) {
+          return jsonResponse({ error: "userId e nova senha (mín. 6 caracteres) são obrigatórios." }, 400);
+        }
+        const ok = await resetUserPassword(env.DB, body.userId, await hashPassword(body.newPassword));
+        if (!ok) {
+          return jsonResponse({ error: "Usuário não encontrado." }, 404);
+        }
+        return jsonResponse({ success: true });
+      } catch (err) {
+        console.error("Erro em PATCH /api/admin/users/password:", String(err));
+        return jsonResponse({ error: "Erro ao redefinir senha." }, 500);
+      }
     }
 
     // -------------------------------------------------------------------------

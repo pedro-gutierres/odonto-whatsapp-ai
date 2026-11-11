@@ -48,9 +48,10 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 | `src/views/landing.ts` | Landing page institucional (`/`). |
 | `src/views/login.ts` | Tela de autenticação (`/login`). |
 | `src/views/inbox.ts` | Painel principal (`/inbox` e `/painel`) com 3 módulos: **Atendimento WhatsApp Multi-Chat**, **Agenda / CRM com Calendário** e **Treinamento da IA**. |
-| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`) e `0004_perf_indexes.sql` (`idx_messages_tenant_id`). |
+| `src/views/admin.ts` | Painel global **Super Admin** (`/admin`) para visão consolidada do SaaS, gestão de clínicas (`tenants`), credenciais WhatsApp e usuários (`users`). |
+| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`), `0004_perf_indexes.sql` (`idx_messages_tenant_id`) e `0005_superadmin_role.sql` (`superadmin`). |
 | `seeds/lab.sql` | Seed inicial da clínica de testes (`lab`). |
-| `wrangler.jsonc` | Bindings D1 (`DB`), Queue (`INBOX`), Cron (`0 23 * * *`) e variáveis não secretas (`GRAPH_VERSION`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`). |
+| `wrangler.jsonc` | Bindings D1 (`DB`), Queue (`INBOX`), Cron (`0 23 * * *`) e variáveis não secretas (`GRAPH_VERSION`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, `SUPERADMIN_EMAILS`). |
 
 ---
 
@@ -82,6 +83,15 @@ Todas exigem sessão válida (`401` se não autenticado) e utilizam **exclusivam
 - `GET | POST /api/config` — Leitura e salvamento do `BotConfig` da clínica (`tenants.bot_config`)
 - `GET | POST /api/init-perf` — Setup manual/idempotente de tabelas e índices no D1 (restrito a usuário autenticado)
 - `GET /api/time` — Horário atual do servidor (`America/Sao_Paulo`)
+
+### Rotas Exclusivas do Super Admin (`403` para clínicas comuns)
+Exigem sessão válida + `role === 'superadmin'` validado no banco + e-mail autorizado em `SUPERADMIN_EMAILS`:
+- `GET /admin` — Painel global de visão do SaaS (KPIs, clínicas, status WhatsApp e usuários)
+- `GET /api/admin/overview` — Estatísticas globais e listagem consolidada de clínicas/usuários (sem expor tokens nem hashes)
+- `POST /api/admin/tenants` — Cria nova clínica (e opcionalmente seu usuário administrador)
+- `PATCH /api/admin/tenants` — Ativa/pausa clínica e atualiza `phone_number_id`, `waba_id` ou token criptografado
+- `POST /api/admin/users` — Cria usuário adicional para uma clínica
+- `PATCH /api/admin/users/password` — Redefine senha de suporte de um usuário (hash PBKDF2)
 
 ---
 

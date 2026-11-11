@@ -134,6 +134,13 @@ export const INBOX_HTML = `<!DOCTYPE html>
     <!-- LADO DIREITO: DARK MODE E USUÁRIO LOGADO -->
     <div class="flex items-center gap-2.5">
       
+      <!-- BOTÃO DISCRETO SUPER ADMIN (EXIBIDO APENAS PARA SUPERADMIN) -->
+      <a id="superAdminNavBtn" href="/admin" title="Painel Global Super Admin"
+        class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30 text-xs font-bold transition">
+        <i class="fa-solid fa-crown text-[11px]"></i>
+        <span class="hidden md:inline">Super Admin</span>
+      </a>
+
       <!-- BOTÃO TOGGLE DARK/LIGHT MODE -->
       <button onclick="toggleTheme()" title="Alternar Modo Escuro/Claro"
         class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center text-xs transition">
@@ -1276,8 +1283,13 @@ export const INBOX_HTML = `<!DOCTYPE html>
         if (data && data.user) {
           const nameEl = document.getElementById('topUserName');
           const emailEl = document.getElementById('topUserEmail');
+          const adminBtn = document.getElementById('superAdminNavBtn');
           if (nameEl) nameEl.innerText = data.user.name || 'Recepção';
           if (emailEl) emailEl.innerText = data.user.email || '';
+          if (adminBtn && data.user.isSuperAdmin) {
+            adminBtn.classList.remove('hidden');
+            adminBtn.classList.add('flex');
+          }
         }
         return true;
       } catch (err) {
@@ -3220,6 +3232,8 @@ export const INBOX_HTML = `<!DOCTYPE html>
       toastMsg.innerText = msg;
       if (color === "purple") {
         toastIcon.className = "fa-solid fa-wand-magic-sparkles text-purple-400";
+      } else if (color === "amber") {
+        toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400";
       } else {
         toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
       }

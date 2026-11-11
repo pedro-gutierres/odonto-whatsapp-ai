@@ -336,7 +336,7 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
       .prepare(
         `INSERT OR IGNORE INTO users (tenant_id, email, password_hash, name, role)
          VALUES 
-         ('lab', 'pedrogutierres@protonmail.com', ?1, 'Pedro Gutierres', 'admin'),
+         ('lab', 'pedrogutierres@protonmail.com', ?1, 'Pedro Gutierres', 'superadmin'),
          ('lab', 'admin@clinica.com', ?1, 'Dra. Fernanda (Admin)', 'admin');`
       )
       .bind(defaultHash)
@@ -355,6 +355,10 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
 
 export async function getUserByEmail(db: D1Database, email: string): Promise<UserRecord | null> {
   return db.prepare("SELECT * FROM users WHERE email = ?1").bind(email.toLowerCase().trim()).first<UserRecord>();
+}
+
+export async function getUserById(db: D1Database, id: number): Promise<UserRecord | null> {
+  return db.prepare("SELECT * FROM users WHERE id = ?1").bind(id).first<UserRecord>();
 }
 
 export async function listAppointments(db: D1Database, tenantId: string): Promise<AppointmentRecord[]> {
@@ -648,4 +652,304 @@ export function isCrucialConfigComplete(cfg: BotConfig | null | undefined): bool
   const hasInvalidActive = activeItems.some((p) => !p.name?.trim() || !p.duration?.trim());
   if (hasInvalidActive) return false;
   return true;
+}
+
+// -----------------------------------------------------------------------------
+// SUPER ADMIN (VISÃO GLOBAL DO SAAS E GESTÃO DE CLÍNICAS/USUÁRIOS)
+// -----------------------------------------------------------------------------
+export interface AdminTenantSummary {
+  id: string;
+  name: string;
+  phone_number_id: string;
+  whatsapp_configured: boolean;
+  waba_id: string | null;
+  has_custom_token: boolean;
+  training_complete: boolean;
+  active: boolean;
+  created_at: string;
+  messages_count: number;
+  contacts_count: number;
+  appointments_count: number;
+  users_count: number;
+  last_message_at: string | null;
+}
+
+export interface AdminUserSummary {
+  id: number;
+  tenant_id: string;
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
+}
+
+export interface AdminOverviewData {
+  stats: {
+    tenants_total: number;
+    tenants_active: number;
+    tenants_whatsapp_connected: number;
+    users_total: number;
+    messages_total: number;
+    appointments_total: number;
+  };
+  tenants: AdminTenantSummary[];
+  users: AdminUserSummary[];
+}
+
+export async function listAdminOverview(db: D1Database): Promise<AdminOverviewData> {
+  const [tenantsRes, msgStatsRes, appStatsRes, usersRes] = await db.batch([
+    db.prepare(
+      `SELECT id, name, phone_number_id, waba_id,
+              CASE WHEN access_token_enc IS NOT NULL AND TRIM(access_token_enc) != '' THEN 1 ELSE 0 END AS has_custom_token,
+              bot_config, active, created_at
+       FROM tenants
+       ORDER BY created_at DESC, id ASC`
+    ),
+    db.prepare(
+      `SELECT tenant_id,
+              COUNT(*) AS messages_count,
+              COUNT(DISTINCT contact_wa_id) AS contacts_count,
+              MAX(created_at) AS last_message_at
+       FROM messages
+       GROUP BY tenant_id`
+    ),
+    db.prepare(
+      `SELECT tenant_id, COUNT(*) AS appointments_count
+       FROM appointments
+       GROUP BY tenant_id`
+    ),
+    db.prepare(
+      `SELECT id, tenant_id, email, name, role, created_at
+       FROM users
+       ORDER BY id ASC`
+    ),
+  ]);
+
+  const rawTenants = (tenantsRes.results || []) as Array<{
+    id: string;
+    name: string;
+    phone_number_id: string;
+    waba_id: string | null;
+    has_custom_token: number;
+    bot_config: string;
+    active: number;
+    created_at: string;
+  }>;
+
+  const msgMap = new Map<string, { messages_count: number; contacts_count: number; last_message_at: string | null }>();
+  for (const r of (msgStatsRes.results || []) as Array<{
+    tenant_id: string;
+    messages_count: number;
+    contacts_count: number;
+    last_message_at: string | null;
+  }>) {
+    msgMap.set(r.tenant_id, r);
+  }
+
+  const appMap = new Map<string, number>();
+  for (const r of (appStatsRes.results || []) as Array<{ tenant_id: string; appointments_count: number }>) {
+    appMap.set(r.tenant_id, r.appointments_count);
+  }
+
+  const users = (usersRes.results || []) as AdminUserSummary[];
+  const userCountMap = new Map<string, number>();
+  for (const u of users) {
+    userCountMap.set(u.tenant_id, (userCountMap.get(u.tenant_id) || 0) + 1);
+  }
+
+  let messagesTotal = 0;
+  let appointmentsTotal = 0;
+  let tenantsActive = 0;
+  let tenantsWhatsappConnected = 0;
+
+  const tenants: AdminTenantSummary[] = rawTenants.map((t) => {
+    let parsedCfg: BotConfig | null = null;
+    try {
+      parsedCfg = JSON.parse(t.bot_config) as BotConfig;
+    } catch {
+      parsedCfg = null;
+    }
+
+    const msgInfo = msgMap.get(t.id);
+    const msgCount = msgInfo?.messages_count || 0;
+    const appCount = appMap.get(t.id) || 0;
+    const isActive = t.active === 1;
+    const whatsappOk = isConfiguredPhoneNumberId(t.phone_number_id);
+
+    messagesTotal += msgCount;
+    appointmentsTotal += appCount;
+    if (isActive) tenantsActive++;
+    if (whatsappOk) tenantsWhatsappConnected++;
+
+    return {
+      id: t.id,
+      name: t.name,
+      phone_number_id: t.phone_number_id,
+      whatsapp_configured: whatsappOk,
+      waba_id: t.waba_id,
+      has_custom_token: t.has_custom_token === 1,
+      training_complete: isCrucialConfigComplete(parsedCfg),
+      active: isActive,
+      created_at: t.created_at,
+      messages_count: msgCount,
+      contacts_count: msgInfo?.contacts_count || 0,
+      appointments_count: appCount,
+      users_count: userCountMap.get(t.id) || 0,
+      last_message_at: msgInfo?.last_message_at || null,
+    };
+  });
+
+  // Inclui também contagens órfãs caso haja registros de tenant ainda não criados em tenants
+  for (const [tid, info] of msgMap.entries()) {
+    if (!tenants.some((t) => t.id === tid)) messagesTotal += info.messages_count || 0;
+  }
+  for (const [tid, count] of appMap.entries()) {
+    if (!tenants.some((t) => t.id === tid)) appointmentsTotal += count || 0;
+  }
+
+  return {
+    stats: {
+      tenants_total: tenants.length,
+      tenants_active: tenantsActive,
+      tenants_whatsapp_connected: tenantsWhatsappConnected,
+      users_total: users.length,
+      messages_total: messagesTotal,
+      appointments_total: appointmentsTotal,
+    },
+    tenants,
+    users,
+  };
+}
+
+export async function createTenantWithOptionalUser(
+  db: D1Database,
+  input: {
+    tenantId: string;
+    name: string;
+    phoneNumberId?: string | null;
+    wabaId?: string | null;
+    accessTokenEnc?: string | null;
+    active?: boolean;
+    adminUser?: {
+      name: string;
+      email: string;
+      passwordHash: string;
+    };
+  }
+): Promise<void> {
+  const effectivePhoneId = input.phoneNumberId?.trim() || `unconfigured:${input.tenantId}`;
+  const initialConfig = JSON.stringify({ clinic_name: input.name });
+  const statements: D1PreparedStatement[] = [
+    db
+      .prepare(
+        `INSERT INTO tenants (id, name, phone_number_id, waba_id, access_token_enc, bot_config, active)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+      )
+      .bind(
+        input.tenantId,
+        input.name,
+        effectivePhoneId,
+        input.wabaId?.trim() || null,
+        input.accessTokenEnc || null,
+        initialConfig,
+        input.active === false ? 0 : 1
+      ),
+  ];
+
+  if (input.adminUser) {
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO users (tenant_id, email, password_hash, name, role)
+           VALUES (?1, ?2, ?3, ?4, 'admin')`
+        )
+        .bind(
+          input.tenantId,
+          input.adminUser.email.toLowerCase().trim(),
+          input.adminUser.passwordHash,
+          input.adminUser.name.trim()
+        )
+    );
+  }
+
+  await db.batch(statements);
+}
+
+export async function updateTenantAdminSettings(
+  db: D1Database,
+  tenantId: string,
+  updates: {
+    name?: string;
+    active?: boolean;
+    phoneNumberId?: string | null;
+    wabaId?: string | null;
+    accessTokenEnc?: string | null;
+    clearToken?: boolean;
+  }
+): Promise<boolean> {
+  const sets: string[] = [];
+  const bindings: (string | number | null)[] = [];
+  let idx = 1;
+
+  if (typeof updates.name === "string" && updates.name.trim()) {
+    sets.push(`name = ?${idx++}`);
+    bindings.push(updates.name.trim());
+  }
+  if (typeof updates.active === "boolean") {
+    sets.push(`active = ?${idx++}`);
+    bindings.push(updates.active ? 1 : 0);
+  }
+  if (typeof updates.phoneNumberId !== "undefined") {
+    const cleanPhoneId = updates.phoneNumberId?.trim();
+    sets.push(`phone_number_id = ?${idx++}`);
+    bindings.push(cleanPhoneId || `unconfigured:${tenantId}`);
+  }
+  if (typeof updates.wabaId !== "undefined") {
+    sets.push(`waba_id = ?${idx++}`);
+    bindings.push(updates.wabaId?.trim() || null);
+  }
+  if (updates.clearToken) {
+    sets.push(`access_token_enc = NULL`);
+  } else if (typeof updates.accessTokenEnc === "string" && updates.accessTokenEnc.trim()) {
+    sets.push(`access_token_enc = ?${idx++}`);
+    bindings.push(updates.accessTokenEnc.trim());
+  }
+
+  if (sets.length === 0) return false;
+
+  bindings.push(tenantId);
+  const res = await db
+    .prepare(`UPDATE tenants SET ${sets.join(", ")} WHERE id = ?${idx}`)
+    .bind(...bindings)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function createClinicUser(
+  db: D1Database,
+  input: {
+    tenantId: string;
+    name: string;
+    email: string;
+    passwordHash: string;
+    role?: "admin" | "staff";
+  }
+): Promise<number> {
+  const role = input.role === "staff" ? "staff" : "admin";
+  const res = await db
+    .prepare(
+      `INSERT INTO users (tenant_id, email, password_hash, name, role)
+       VALUES (?1, ?2, ?3, ?4, ?5)`
+    )
+    .bind(input.tenantId, input.email.toLowerCase().trim(), input.passwordHash, input.name.trim(), role)
+    .run();
+  return res.meta?.last_row_id ?? 0;
+}
+
+export async function resetUserPassword(db: D1Database, userId: number, passwordHash: string): Promise<boolean> {
+  const res = await db
+    .prepare("UPDATE users SET password_hash = ?1 WHERE id = ?2")
+    .bind(passwordHash, userId)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
 }

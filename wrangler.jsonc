@@ -9,7 +9,8 @@
   "vars": {
     "GRAPH_VERSION": "v26.0",
     "CLAUDE_MODEL": "claude-haiku-5-5",
-    "CLAUDE_EFFORT": "low"
+    "CLAUDE_EFFORT": "low",
+    "SUPERADMIN_EMAILS": "pedrogutierres@protonmail.com"
   },
 
   // Banco de dados. Cole o ID que o comando "wrangler d1 create" mostrar.
