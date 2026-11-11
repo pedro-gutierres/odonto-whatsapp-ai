@@ -1,6 +1,6 @@
 # Aura AI — Secretária WhatsApp com IA & CRM Multi-Tenant para Clínicas
 
-Plataforma SaaS para clínicas odontológicas e de estética avançada no Brasil, executada 100% na edge da Cloudflare (**Workers + D1 + Queues + Cron Triggers**), conectada à **API Oficial do WhatsApp Cloud (Meta)** e à **Anthropic Claude API**.
+Plataforma SaaS para clínicas odontológicas e de estética avançada no Brasil, executada 100% na edge da Cloudflare (**Workers + D1 + Queues + R2 + Workers AI + Cron Triggers**), conectada à **API Oficial do WhatsApp Cloud (Meta)** e à **Anthropic Claude API** (com Prompt Caching e Visão).
 
 Cada clínica cliente opera isolada por `tenant_id` (conversas, agendamentos, configurações da IA, `phone_number_id` e token de acesso da Meta).
 
@@ -20,11 +20,13 @@ Meta Cloud API ──POST /webhook──► Worker fetch()
                                     Worker queue() -> processJob()
                                     ├─ Busca clínica por phone_number_id (tenants)
                                     ├─ Deduplica wa_message_id e salva em messages
+                                    ├─ Se áudio/foto: baixa da Meta, salva no R2 (expira em 30 dias)
+                                    │  e transcreve áudio via Workers AI (@cf/openai/whisper-large-v3-turbo)
                                     ├─ Checa pausa humana (conversation_states.ai_paused)
                                     ├─ Valida treinamento mínimo (isCrucialConfigComplete)
                                     ├─ Carrega histórico + grade futura (appointments)
-                                    ├─ Monta prompt clínico (src/prompt.ts) e chama Claude
-                                    ├─ Processa tags <<<AGENDAR: {...}>>> e <<<CONFIRMAR: {...}>>>
+                                    ├─ Monta prompt em 2 blocos (Prompt Caching) + imagem (Vision) e chama Claude
+                                    ├─ Processa tags <<<AGENDAR: {...}>>> (interceptando conflitos) e <<<CONFIRMAR: {...}>>>
                                     └─ Envia via Meta Graph API (token da clínica ou fallback)
 
 Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirmations()
@@ -41,17 +43,17 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 | `src/index.ts` | Entrypoint do Worker (`fetch`, `queue`, `scheduled`), rotas públicas/autenticadas, `/webhook`, `processJob` e `runDayBeforeConfirmations`. |
 | `src/auth.ts` | Sessão HMAC-SHA256 em cookie `HttpOnly` (`auth_session`), hash de senha PBKDF2 (`pbkdf2_v1:...`, com suporte legado SHA-256), criptografia AES-256-GCM (`enc:v1:...`) e `resolveTenantAccessToken`. |
 | `src/db.ts` | Camada de acesso ao Cloudflare D1 filtrada por `tenant_id`, controle de conflitos de horário (`checkAppointmentConflict`), configuração `bot_config` e queries operacionais sem DDL em runtime. |
-| `src/prompt.ts` | Monta o system prompt dinâmico da Secretária IA a partir do `BotConfig` da clínica, grade de horários ocupados e regras clínicas/comerciais. |
-| `src/claude.ts` | Integração com a API Messages da Anthropic (`askClaude`). |
-| `src/whatsapp.ts` | Verificação de assinatura HMAC da Meta (`verifySignature`), extração de mensagens de texto (`extractJobs`) e disparo via Graph API (`sendText`). |
+| `src/prompt.ts` | Monta o system prompt dividido em bloco estável (em cache) e contexto dinâmico (hora + agenda ocupada) a partir do `BotConfig`. |
+| `src/claude.ts` | Integração com a API Messages da Anthropic (`askClaude`) com Prompt Caching (`ephemeral`) e suporte multimodal a imagens (`Vision`). |
+| `src/whatsapp.ts` | Verificação HMAC da Meta (`verifySignature`), extração de texto/áudio/imagem (`extractJobs`), download de mídia (`downloadWhatsAppMedia`) e envio (`sendText`). |
 | `src/types.ts` | Tipagem compartilhada (`Env`, `InboundJob`, `Tenant`, `BotConfig`, `ConversationSummary`, `ConversationMessage`). |
 | `src/views/landing.ts` | Landing page institucional (`/`). |
 | `src/views/login.ts` | Tela de autenticação (`/login`). |
 | `src/views/inbox.ts` | Painel principal (`/inbox` e `/painel`) com 3 módulos: **Atendimento WhatsApp Multi-Chat**, **Agenda / CRM com Calendário** e **Treinamento da IA**. |
 | `src/views/admin.ts` | Painel global **Super Admin** (`/admin`) para visão consolidada do SaaS, gestão de clínicas (`tenants`), credenciais WhatsApp e usuários (`users`). |
-| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`), `0004_perf_indexes.sql` (`idx_messages_tenant_id`) e `0005_superadmin_role.sql` (`superadmin`). |
+| `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`), `0004_perf_indexes.sql` (`idx_messages_tenant_id`), `0005_superadmin_role.sql` (`superadmin`) e `0006_media_messages.sql` (`media_key`, `media_mime`, `media_type`). |
 | `seeds/lab.sql` | Seed inicial da clínica de testes (`lab`). |
-| `wrangler.jsonc` | Bindings D1 (`DB`), Queue (`INBOX`), Cron (`0 23 * * *`) e variáveis não secretas (`GRAPH_VERSION`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, `SUPERADMIN_EMAILS`). |
+| `wrangler.jsonc` | Bindings D1 (`DB`), Queue (`INBOX`), R2 (`MEDIA_BUCKET` -> `odonto-media`), Workers AI (`AI`), Cron (`0 23 * * *`) e variáveis não secretas. |
 
 ---
 
@@ -73,7 +75,8 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 Todas exigem sessão válida (`401` se não autenticado) e utilizam **exclusivamente** `session.tenantId` para isolar os dados:
 - `GET /inbox` / `GET /painel` — Interface web do painel (redireciona para `/login` sem sessão)
 - `GET /api/conversations` — Lista de conversas da clínica
-- `GET /api/messages?phone=...` — Histórico do paciente + estado `ai_paused`
+- `GET /api/messages?phone=...` — Histórico do paciente (com metadados de mídia) + estado `ai_paused`
+- `GET /api/media?msg_id=...` — Streaming/Range (áudio) e visualização/download (`&download=1`) de mídias do R2 restritas ao `tenant_id` da sessão
 - `GET /api/sync-check` — Polling leve de 1 leitura no D1 para detectar novas mensagens
 - `POST /api/send` — Envio manual pela recepcionista usando `phone_number_id` e token da clínica logada (pausa a IA automaticamente)
 - `POST /api/toggle-ai` — Pausa ou retoma a IA para um contato específico

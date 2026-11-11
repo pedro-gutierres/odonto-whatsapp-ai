@@ -4,11 +4,14 @@
 //   queue     -> Processa cada mensagem recebida (busca clínica, checa pausa da IA, chama Claude, responde no WhatsApp)
 //   scheduled -> Cron diário (23:00 UTC / 20h Brasília) para confirmações de véspera multi-tenant
 import type { BotConfig, Env, InboundJob } from "./types";
-import { extractJobs, sendText, verifySignature } from "./whatsapp";
-import { askClaude } from "./claude";
-import { buildSystemPrompt } from "./prompt";
+import { arrayBufferToBase64, downloadWhatsAppMedia, extractJobs, sendText, verifySignature } from "./whatsapp";
+import { askClaude, type ImageAttachment } from "./claude";
+import { buildSystemPromptParts } from "./prompt";
 import {
   claimInbound,
+  getInboundMessageByWaId,
+  updateInboundMessageMediaAndBody,
+  getMessageMediaForTenant,
   getTenantById,
   getTenantByPhoneNumberId,
   isConfiguredPhoneNumberId,
@@ -58,7 +61,7 @@ import { LOGIN_HTML } from "./views/login";
 import { INBOX_HTML } from "./views/inbox";
 import { ADMIN_HTML } from "./views/admin";
 
-const MSG_SO_TEXTO = "Por enquanto consigo ler apenas mensagens de texto. Pode escrever sua dúvida? 😊";
+const MSG_MIDIA_NAO_SUPORTADA = "Por enquanto consigo atender por texto, áudio ou foto. Pode escrever ou enviar um áudio com sua dúvida? 😊";
 const MSG_FALHA_IA = "Vou encaminhar sua mensagem para a nossa equipe, que responde assim que possível. Obrigada pela paciência!";
 
 const DEFAULT_CONFIG_TEMPLATE: BotConfig = {
@@ -781,12 +784,68 @@ export default {
         if (!body.phone) {
           return jsonResponse({ error: "phone obrigatório" }, 400);
         }
-        await clearConversation(env.DB, auth.session.tenantId, body.phone);
+        const mediaKeys = await clearConversation(env.DB, auth.session.tenantId, body.phone);
+        if (env.MEDIA_BUCKET && mediaKeys.length > 0) {
+          await Promise.allSettled(mediaKeys.map((k) => env.MEDIA_BUCKET!.delete(k)));
+        }
         return jsonResponse({ status: "cleared" });
       } catch (err) {
         console.error("Erro em /api/clear-chat:", String(err));
         return jsonResponse({ error: "Erro ao limpar conversa." }, 500);
       }
+    }
+
+    // Entrega segura e isolada por clínica de fotos/áudios armazenados no R2 (com suporte a Range e download)
+    if (url.pathname === "/api/media" && request.method === "GET") {
+      const auth = await requireSession(request, env);
+      if ("response" in auth) return auth.response;
+
+      const msgId = parseInt(url.searchParams.get("msg_id") || "0", 10);
+      if (!msgId) {
+        return jsonResponse({ error: "msg_id obrigatório" }, 400);
+      }
+
+      const record = await getMessageMediaForTenant(env.DB, auth.session.tenantId, msgId);
+      if (!record || !record.media_key) {
+        return jsonResponse({ error: "Mídia não encontrada." }, 404);
+      }
+      if (!env.MEDIA_BUCKET) {
+        return jsonResponse({ error: "Armazenamento de mídia (R2) indisponível." }, 503);
+      }
+
+      const rangeHeader = request.headers.get("range");
+      const obj = await env.MEDIA_BUCKET.get(
+        record.media_key,
+        rangeHeader ? { range: request.headers } : undefined
+      );
+      if (!obj) {
+        return jsonResponse({ error: "Mídia expirada (retenção de 30 dias)." }, 410);
+      }
+
+      const contentType = record.media_mime || obj.httpMetadata?.contentType || "application/octet-stream";
+      const ext = mimeToExtension(contentType);
+      const isDownload = url.searchParams.get("download") === "1";
+
+      const headers = new Headers();
+      headers.set("Content-Type", contentType);
+      headers.set("Accept-Ranges", "bytes");
+      headers.set("Cache-Control", "private, max-age=3600");
+      headers.set("X-Content-Type-Options", "nosniff");
+      if (isDownload) {
+        headers.set("Content-Disposition", `attachment; filename="aura-midia-${msgId}.${ext}"`);
+      }
+
+      const rangeInfo = obj.range as { offset?: number; length?: number } | undefined;
+      if (rangeHeader && rangeInfo && typeof rangeInfo.offset === "number" && typeof rangeInfo.length === "number") {
+        const start = rangeInfo.offset;
+        const end = start + rangeInfo.length - 1;
+        headers.set("Content-Range", `bytes ${start}-${end}/${obj.size}`);
+        headers.set("Content-Length", String(rangeInfo.length));
+        return new Response(obj.body, { status: 206, headers });
+      }
+
+      headers.set("Content-Length", String(obj.size));
+      return new Response(obj.body, { status: 200, headers });
     }
 
     // -------------------------------------------------------------------------
@@ -929,6 +988,25 @@ export async function runDayBeforeConfirmations(
   return { total: list.length, sent, skipped, failed };
 }
 
+function mimeToExtension(mimeType: string): string {
+  const base = mimeType.split(";")[0].trim().toLowerCase();
+  const map: Record<string, string> = {
+    "audio/ogg": "ogg",
+    "audio/opus": "ogg",
+    "audio/mpeg": "mp3",
+    "audio/mp4": "m4a",
+    "audio/aac": "aac",
+    "audio/amr": "amr",
+    "audio/wav": "wav",
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+  return map[base] || "bin";
+}
+
 async function processJob(job: InboundJob, env: Env): Promise<void> {
   const tenant = await getTenantByPhoneNumberId(env.DB, job.phoneNumberId);
   if (!tenant || !tenant.active || !isConfiguredPhoneNumberId(tenant.phone_number_id)) {
@@ -939,9 +1017,84 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   const state = await claimInbound(env.DB, tenant.id, job);
   if (state === "done") return;
 
+  const token = await resolveTenantAccessToken(tenant, env);
+
+  const isAudioJob = job.type === "audio" || job.type === "voice";
+  const isImageJob = job.type === "image";
+
+  let imageAttachment: ImageAttachment | null = null;
+  let audioTranscriptReady = false;
+
+  if ((isAudioJob || isImageJob) && job.mediaId) {
+    const existing = state === "retry" ? await getInboundMessageByWaId(env.DB, job.waMessageId) : null;
+
+    if (existing?.media_key) {
+      // Retry: reaproveita mídia já salva no R2 e transcrição já gravada no D1
+      if (isAudioJob) {
+        audioTranscriptReady = Boolean(existing.body && existing.body.startsWith("[Áudio transcrito]:"));
+      } else if (isImageJob && env.MEDIA_BUCKET) {
+        try {
+          const obj = await env.MEDIA_BUCKET.get(existing.media_key);
+          if (obj) {
+            const bytes = await obj.arrayBuffer();
+            imageAttachment = {
+              mimeType: existing.media_mime || job.mimeType || "image/jpeg",
+              base64Data: arrayBufferToBase64(bytes),
+            };
+          }
+        } catch (err) {
+          console.warn("Aviso ao reler imagem do R2 em retry:", String(err));
+        }
+      }
+    } else if (token) {
+      try {
+        const maxBytes = isImageJob ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+        const media = await downloadWhatsAppMedia(env, token, job.mediaId, maxBytes);
+        const ext = mimeToExtension(media.mimeType);
+        const yyyyMm = new Date().toISOString().slice(0, 7);
+        const r2Key = `tenants/${tenant.id}/${yyyyMm}/${crypto.randomUUID()}.${ext}`;
+
+        let savedMediaKey: string | null = null;
+        if (env.MEDIA_BUCKET) {
+          await env.MEDIA_BUCKET.put(r2Key, media.bytes, {
+            httpMetadata: { contentType: media.mimeType },
+          });
+          savedMediaKey = r2Key;
+        }
+
+        if (isAudioJob) {
+          let transcript = "";
+          if (env.AI) {
+            try {
+              const aiRes = (await env.AI.run("@cf/openai/whisper-large-v3-turbo", {
+                audio: arrayBufferToBase64(media.bytes),
+                language: "pt",
+                vad_filter: true,
+              })) as { text?: string };
+              transcript = aiRes?.text?.trim() || "";
+            } catch (aiErr) {
+              console.warn(`[WHISPER_ERR] Falha ao transcrever áudio (tenant=${tenant.id}):`, String(aiErr));
+            }
+          }
+          audioTranscriptReady = Boolean(transcript);
+          const storedBody = transcript ? `[Áudio transcrito]: ${transcript}` : "[Mensagem de áudio recebida]";
+          await updateInboundMessageMediaAndBody(env.DB, job.waMessageId, storedBody, savedMediaKey, media.mimeType, "audio");
+        } else if (isImageJob) {
+          imageAttachment = {
+            mimeType: media.mimeType,
+            base64Data: arrayBufferToBase64(media.bytes),
+          };
+          const storedBody = job.text?.trim() ? job.text.trim() : "[Imagem enviada pelo paciente]";
+          await updateInboundMessageMediaAndBody(env.DB, job.waMessageId, storedBody, savedMediaKey, media.mimeType, "image");
+        }
+      } catch (mediaErr) {
+        console.warn(`[MEDIA_ERR] Erro ao processar mídia (${job.type}, tenant=${tenant.id}):`, String(mediaErr));
+      }
+    }
+  }
+
   // VERIFICAÇÃO DE INTERVENÇÃO HUMANA:
-  // Se a recepcionista pausou a IA para este paciente, gravamos a mensagem dele no histórico,
-  // mas NÃO chamamos o Claude nem disparamos resposta automática.
+  // Áudios já foram transcritos e fotos já foram salvas no R2 acima para que a recepcionista veja no painel.
   const paused = await isAiPaused(env.DB, tenant.id, job.from);
   if (paused) {
     console.log(`[HUMAN_TAKEOVER] IA pausada para o contato ${job.from} (tenant=${tenant.id}).`);
@@ -962,15 +1115,19 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
     return;
   }
 
-  const token = await resolveTenantAccessToken(tenant, env);
   if (!token) {
     throw new Error(`Token WhatsApp não configurado para a clínica ${tenant.id}`);
   }
 
   let reply: string;
   let freshHistory: { role: "user" | "assistant"; content: string }[] = [];
-  if (!job.text) {
-    reply = MSG_SO_TEXTO;
+  const hasUsableContent =
+    (job.type === "text" && Boolean(job.text?.trim())) ||
+    (isAudioJob && audioTranscriptReady) ||
+    (isImageJob && Boolean(imageAttachment));
+
+  if (!hasUsableContent) {
+    reply = MSG_MIDIA_NAO_SUPORTADA;
   } else {
     const cfg = parsedCfg as BotConfig;
     freshHistory = await loadHistory(env.DB, tenant.id, job.from);
@@ -990,12 +1147,12 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
       duration: a.duration || "30 min",
     }));
 
-    const systemPrompt = buildSystemPrompt(cfg, {
+    const systemParts = buildSystemPromptParts(cfg, {
       nowBrasiliaStr,
       existingAppointments,
     });
 
-    reply = (await askClaude(env, systemPrompt, freshHistory)) ?? MSG_FALHA_IA;
+    reply = (await askClaude(env, systemParts, freshHistory, imageAttachment)) ?? MSG_FALHA_IA;
   }
 
   // 1. Processa comando de agendamento automático feito pela IA durante a conversa
@@ -1038,7 +1195,7 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
       const fallbackConflictMsg = `Desculpe! O horário de ${scheduledAt} para ${procedure} acabou de ser preenchido na nossa agenda. 😕\n\nQual outro dia ou horário ficaria melhor para você?`;
       let correctedReply: string | null = null;
 
-      if (job.text && parsedCfg && freshHistory.length > 0) {
+      if (hasUsableContent && parsedCfg && freshHistory.length > 0) {
         try {
           const latestUpcoming = await getUpcomingAppointments(env.DB, tenant.id);
           const nowBrasiliaStr = new Intl.DateTimeFormat("pt-BR", {
@@ -1047,22 +1204,22 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
             timeStyle: "short",
           }).format(new Date());
 
-          const retrySystemPrompt =
-            buildSystemPrompt(parsedCfg, {
-              nowBrasiliaStr,
-              existingAppointments: latestUpcoming.map((a) => ({
-                scheduled_at: a.scheduled_at,
-                procedure: a.procedure || "Consulta",
-                duration: a.duration || "30 min",
-              })),
-            }) +
+          const retryParts = buildSystemPromptParts(parsedCfg, {
+            nowBrasiliaStr,
+            existingAppointments: latestUpcoming.map((a) => ({
+              scheduled_at: a.scheduled_at,
+              procedure: a.procedure || "Consulta",
+              duration: a.duration || "30 min",
+            })),
+          });
+          retryParts.dynamicContext +=
             `\n\nATENÇÃO CRÍTICA DO SISTEMA:\n` +
             `- A tentativa de registrar o agendamento em "${scheduledAt}" (${procedure}) FALHOU por conflito na grade (${conflictReason}).\n` +
             `- NÃO diga que o horário foi agendado ou reservado.\n` +
             `- NÃO inclua a tag <<<AGENDAR>>> nem <<<CONFIRMAR>>> nesta resposta.\n` +
             `- Peça desculpas com naturalidade, avise que esse horário acabou de ser preenchido e sugira opções livres respeitando a grade atualizada acima.`;
 
-          correctedReply = await askClaude(env, retrySystemPrompt, freshHistory);
+          correctedReply = await askClaude(env, retryParts, freshHistory);
           if (correctedReply) {
             correctedReply = correctedReply
               .replace(agendarRegex, "")

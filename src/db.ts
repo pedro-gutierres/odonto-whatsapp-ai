@@ -80,6 +80,49 @@ export async function claimInbound(db: D1Database, tenantId: string, job: Inboun
   return row?.status === "answered" ? "done" : "retry";
 }
 
+export async function getInboundMessageByWaId(
+  db: D1Database,
+  waMessageId: string,
+): Promise<{ body: string | null; media_key: string | null; media_mime: string | null; media_type: string | null } | null> {
+  return db
+    .prepare("SELECT body, media_key, media_mime, media_type FROM messages WHERE wa_message_id = ?1")
+    .bind(waMessageId)
+    .first<{ body: string | null; media_key: string | null; media_mime: string | null; media_type: string | null }>();
+}
+
+export async function updateInboundMessageMediaAndBody(
+  db: D1Database,
+  waMessageId: string,
+  body: string | null,
+  mediaKey: string | null,
+  mediaMime: string | null,
+  mediaType: string | null,
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE messages
+       SET body = ?2, media_key = ?3, media_mime = ?4, media_type = ?5
+       WHERE wa_message_id = ?1`,
+    )
+    .bind(waMessageId, body, mediaKey, mediaMime, mediaType)
+    .run();
+}
+
+export async function getMessageMediaForTenant(
+  db: D1Database,
+  tenantId: string,
+  msgId: number,
+): Promise<{ id: number; media_key: string | null; media_mime: string | null; media_type: string | null; created_at: string } | null> {
+  return db
+    .prepare(
+      `SELECT id, media_key, media_mime, media_type, created_at
+       FROM messages
+       WHERE id = ?1 AND tenant_id = ?2`,
+    )
+    .bind(msgId, tenantId)
+    .first<{ id: number; media_key: string | null; media_mime: string | null; media_type: string | null; created_at: string }>();
+}
+
 // Últimas mensagens da conversa, no formato que o Claude espera.
 export async function loadHistory(db: D1Database, tenantId: string, contact: string, limit = 20): Promise<ChatTurn[]> {
   const { results } = await db
@@ -226,7 +269,7 @@ export async function getConversationMessages(
 ): Promise<ConversationMessage[]> {
   const { results } = await db
     .prepare(
-      `SELECT id, tenant_id, contact_wa_id, contact_name, direction, body, status, created_at
+      `SELECT id, tenant_id, contact_wa_id, contact_name, direction, body, status, media_key, media_mime, media_type, created_at
        FROM messages
        WHERE tenant_id = ?1 AND contact_wa_id = ?2
        ORDER BY id ASC
@@ -238,11 +281,18 @@ export async function getConversationMessages(
   return results;
 }
 
-export async function clearConversation(db: D1Database, tenantId: string, contact: string): Promise<void> {
+export async function clearConversation(db: D1Database, tenantId: string, contact: string): Promise<string[]> {
+  const { results } = await db
+    .prepare("SELECT media_key FROM messages WHERE tenant_id = ?1 AND contact_wa_id = ?2 AND media_key IS NOT NULL")
+    .bind(tenantId, contact)
+    .all<{ media_key: string }>();
+
   await db
     .prepare("DELETE FROM messages WHERE tenant_id = ?1 AND contact_wa_id = ?2")
     .bind(tenantId, contact)
     .run();
+
+  return (results || []).map((r) => r.media_key).filter(Boolean);
 }
 
 // -----------------------------------------------------------------------------
@@ -324,6 +374,18 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
   }
   if (!existingCols.has("confirmed_by")) {
     await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_by TEXT;").run();
+  }
+
+  const msgCols = await db.prepare("PRAGMA table_info(messages)").all<{ name: string }>();
+  const existingMsgCols = new Set((msgCols.results || []).map((c) => c.name));
+  if (!existingMsgCols.has("media_key")) {
+    await db.prepare("ALTER TABLE messages ADD COLUMN media_key TEXT;").run();
+  }
+  if (!existingMsgCols.has("media_mime")) {
+    await db.prepare("ALTER TABLE messages ADD COLUMN media_mime TEXT;").run();
+  }
+  if (!existingMsgCols.has("media_type")) {
+    await db.prepare("ALTER TABLE messages ADD COLUMN media_type TEXT;").run();
   }
 
   // Semeia usuários iniciais apenas se a tabela users estiver vazia

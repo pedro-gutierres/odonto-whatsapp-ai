@@ -4,6 +4,8 @@ export interface Env {
   // Recursos da Cloudflare (ligados em wrangler.jsonc)
   DB: D1Database;
   INBOX: Queue<InboundJob>;
+  MEDIA_BUCKET?: R2Bucket;
+  AI?: Ai;
 
   // Segredos (guardados na Cloudflare, nunca no código)
   META_APP_SECRETS: string; // um ou mais "app secrets" da Meta, separados por vírgula
@@ -26,8 +28,10 @@ export interface InboundJob {
   from: string;          // número do paciente
   contactName?: string;
   waMessageId: string;
-  type: string;          // "text", "image", "audio"...
-  text: string | null;   // só preenchido quando type === "text"
+  type: string;          // "text", "image", "audio", "voice"...
+  text: string | null;   // texto ou legenda da imagem
+  mediaId?: string;      // ID da mídia na Meta Cloud API (para baixar áudio/imagem)
+  mimeType?: string;     // mime type informado no webhook
 }
 
 export interface Tenant {
@@ -109,5 +113,8 @@ export interface ConversationMessage {
   direction: "in" | "out";
   body: string | null;
   status: string;
+  media_key?: string | null;
+  media_mime?: string | null;
+  media_type?: string | null;
   created_at: string;
 }

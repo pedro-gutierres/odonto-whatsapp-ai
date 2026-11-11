@@ -939,6 +939,26 @@ export const INBOX_HTML = `<!DOCTYPE html>
   </main>
 
   <!-- ======================================================================= -->
+  <!-- MODAL: LIGHTBOX DE VISUALIZAÇÃO & DOWNLOAD DE FOTO                      -->
+  <!-- ======================================================================= -->
+  <div id="imageLightboxModal" onclick="if (event.target === this) closeImageLightbox()" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4 hidden">
+    <div class="relative max-w-4xl w-full flex flex-col items-center gap-3">
+      <div class="w-full flex items-center justify-between text-white text-xs px-1">
+        <span class="font-semibold flex items-center gap-2"><i class="fa-regular fa-image text-emerald-400"></i> Foto do paciente</span>
+        <div class="flex items-center gap-2">
+          <a id="lightboxDownloadBtn" href="#" download class="px-3 py-1.5 rounded-lg bg-[#008069] hover:bg-[#006a57] text-white font-semibold flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-download text-[11px]"></i> Baixar foto
+          </a>
+          <button onclick="closeImageLightbox()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <img id="lightboxImg" src="" alt="Foto ampliada" class="max-h-[80vh] max-w-full rounded-xl shadow-2xl object-contain bg-slate-950">
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
   <!-- MODAL: NOVO AGENDAMENTO DE CONSULTA                                     -->
   <!-- ======================================================================= -->
   <div id="appointmentModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
@@ -1392,7 +1412,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
                 <span class="text-[10px] text-slate-400 font-medium">\${timeStr}</span>
               </div>
               <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                \${c.last_direction === 'out' ? '<span class="text-slate-400">Você: </span>' : ''}\${c.last_body || 'Sem mensagens'}
+                \${c.last_direction === 'out' ? '<span class="text-slate-400">Você: </span>' : ''}\${escapeHtml((c.last_body || 'Sem mensagens').replace(/^\\[Áudio transcrito\\]:\\s*/i, '🎙️ '))}
               </p>
               <div class="flex items-center gap-1.5 mt-1">
                 <span class="text-[9px] font-bold px-1.5 py-0.2 rounded \${statusBadgeClass}">
@@ -1466,6 +1486,200 @@ export const INBOX_HTML = `<!DOCTYPE html>
       }
     }
 
+    let currentlyPlayingAudioId = null;
+
+    function formatAudioSeconds(sec) {
+      if (!isFinite(sec) || sec < 0) return '0:00';
+      const total = Math.floor(sec);
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+      return mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+
+    function toggleAudioPlayback(msgId) {
+      const audio = document.getElementById('audioEl_' + msgId);
+      const icon = document.getElementById('audioIcon_' + msgId);
+      if (!audio || !icon) return;
+
+      if (currentlyPlayingAudioId && currentlyPlayingAudioId !== msgId) {
+        const prevAudio = document.getElementById('audioEl_' + currentlyPlayingAudioId);
+        const prevIcon = document.getElementById('audioIcon_' + currentlyPlayingAudioId);
+        if (prevAudio) prevAudio.pause();
+        if (prevIcon) prevIcon.className = 'fa-solid fa-play text-[11px] ml-0.5';
+      }
+
+      if (audio.paused) {
+        const playPromise = audio.play();
+        currentlyPlayingAudioId = msgId;
+        icon.className = 'fa-solid fa-pause text-[11px]';
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(() => {
+            icon.className = 'fa-solid fa-play text-[11px] ml-0.5';
+            showToast('Não foi possível reproduzir este formato diretamente; use o ícone de download.', 'amber');
+          });
+        }
+      } else {
+        audio.pause();
+        icon.className = 'fa-solid fa-play text-[11px] ml-0.5';
+      }
+    }
+
+    function toggleAudioTranscript(msgId) {
+      const box = document.getElementById('transcriptBox_' + msgId);
+      const lbl = document.getElementById('btnTranscriptText_' + msgId);
+      if (!box || !lbl) return;
+      const willShow = box.classList.contains('hidden');
+      if (willShow) {
+        box.classList.remove('hidden');
+        lbl.innerText = 'Ocultar transcrição';
+      } else {
+        box.classList.add('hidden');
+        lbl.innerText = 'Exibir transcrição';
+      }
+    }
+
+    function openImageLightbox(msgId) {
+      const modal = document.getElementById('imageLightboxModal');
+      const img = document.getElementById('lightboxImg');
+      const dl = document.getElementById('lightboxDownloadBtn');
+      if (!modal || !img || !dl) return;
+      img.src = '/api/media?msg_id=' + encodeURIComponent(msgId);
+      dl.href = '/api/media?msg_id=' + encodeURIComponent(msgId) + '&download=1';
+      modal.classList.remove('hidden');
+    }
+
+    function closeImageLightbox() {
+      const modal = document.getElementById('imageLightboxModal');
+      const img = document.getElementById('lightboxImg');
+      if (modal) modal.classList.add('hidden');
+      if (img) img.src = '';
+    }
+
+    function bindAudioPlayers() {
+      const audios = document.querySelectorAll('audio[data-msg-id]');
+      audios.forEach(audio => {
+        const msgId = audio.getAttribute('data-msg-id');
+        const range = document.getElementById('audioRange_' + msgId);
+        const timeLbl = document.getElementById('audioTime_' + msgId);
+        const icon = document.getElementById('audioIcon_' + msgId);
+        const controls = document.getElementById('audioControls_' + msgId);
+        const expiredBadge = document.getElementById('audioExpired_' + msgId);
+
+        audio.addEventListener('loadedmetadata', () => {
+          if (timeLbl && isFinite(audio.duration)) {
+            timeLbl.innerText = formatAudioSeconds(audio.duration);
+          }
+        });
+
+        audio.addEventListener('timeupdate', () => {
+          if (range && isFinite(audio.duration) && audio.duration > 0) {
+            range.value = String(Math.round((audio.currentTime / audio.duration) * 100));
+          }
+          if (timeLbl) {
+            const totalStr = isFinite(audio.duration) ? ' / ' + formatAudioSeconds(audio.duration) : '';
+            timeLbl.innerText = formatAudioSeconds(audio.currentTime) + totalStr;
+          }
+        });
+
+        audio.addEventListener('ended', () => {
+          if (icon) icon.className = 'fa-solid fa-play text-[11px] ml-0.5';
+          if (range) range.value = '0';
+          if (timeLbl && isFinite(audio.duration)) {
+            timeLbl.innerText = formatAudioSeconds(audio.duration);
+          }
+          if (currentlyPlayingAudioId === Number(msgId)) currentlyPlayingAudioId = null;
+        });
+
+        audio.addEventListener('error', () => {
+          if (controls) controls.classList.add('hidden');
+          if (expiredBadge) expiredBadge.classList.remove('hidden');
+        });
+
+        if (range) {
+          range.addEventListener('input', () => {
+            if (isFinite(audio.duration) && audio.duration > 0) {
+              audio.currentTime = (Number(range.value) / 100) * audio.duration;
+            }
+          });
+        }
+      });
+    }
+
+    function renderMessageBodyHtml(m) {
+      if (m.media_type === 'audio') {
+        const rawBody = String(m.body || '');
+        const transcript = rawBody.replace(/^\\[Áudio transcrito\\]:\\s*/i, '').trim();
+        const hasTranscript = rawBody.toLowerCase().startsWith('[áudio transcrito]:') && transcript.length > 0;
+        const hasMedia = !!m.media_key;
+
+        let html = '<div class="w-60 sm:w-72 max-w-full space-y-2">';
+        if (hasMedia) {
+          html += '<div id="audioControls_' + m.id + '" class="flex items-center gap-2.5 py-1">' +
+            '<button type="button" onclick="toggleAudioPlayback(' + m.id + ')" class="w-9 h-9 rounded-full bg-[#00a884] hover:bg-[#008f70] text-white flex items-center justify-center shrink-0 shadow-sm transition active:scale-95" title="Reproduzir áudio">' +
+              '<i id="audioIcon_' + m.id + '" class="fa-solid fa-play text-[11px] ml-0.5"></i>' +
+            '</button>' +
+            '<div class="flex-1 min-w-0">' +
+              '<input id="audioRange_' + m.id + '" type="range" min="0" max="100" value="0" class="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-[#00a884]">' +
+              '<div class="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-300 mt-1">' +
+                '<span id="audioTime_' + m.id + '" class="font-mono">0:00</span>' +
+                '<span class="flex items-center gap-1.5">' +
+                  '<i class="fa-solid fa-microphone text-[#00a884]"></i>' +
+                  '<a href="/api/media?msg_id=' + m.id + '&download=1" download title="Baixar áudio" class="hover:text-[#00a884] transition"><i class="fa-solid fa-download"></i></a>' +
+                '</span>' +
+              '</div>' +
+            '</div>' +
+            '<audio id="audioEl_' + m.id + '" data-msg-id="' + m.id + '" preload="metadata" src="/api/media?msg_id=' + m.id + '"></audio>' +
+          '</div>' +
+          '<div id="audioExpired_' + m.id + '" class="hidden text-[11px] text-slate-400 italic py-1"><i class="fa-regular fa-clock mr-1"></i>Áudio expirado (retenção de 30 dias)</div>';
+        } else {
+          html += '<div class="text-[11px] text-slate-400 italic py-1"><i class="fa-solid fa-microphone-slash mr-1"></i>Áudio indisponível</div>';
+        }
+
+        if (hasTranscript) {
+          html += '<button type="button" onclick="toggleAudioTranscript(' + m.id + ')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition">' +
+            '<i class="fa-regular fa-file-lines text-[10px] text-[#00a884]"></i>' +
+            '<span id="btnTranscriptText_' + m.id + '">Exibir transcrição</span>' +
+          '</button>' +
+          '<div id="transcriptBox_' + m.id + '" class="hidden p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap break-words">' +
+            escapeHtml(transcript) +
+          '</div>';
+        }
+        html += '</div>';
+        return html;
+      }
+
+      if (m.media_type === 'image') {
+        const caption = String(m.body || '').trim();
+        const showCaption = caption && caption !== '[Imagem enviada pelo paciente]';
+        let html = '<div class="space-y-2 max-w-[260px] sm:max-w-[300px]">';
+        if (m.media_key) {
+          html += '<div class="relative group">' +
+            '<img src="/api/media?msg_id=' + m.id + '" alt="Foto enviada pelo paciente" onclick="openImageLightbox(' + m.id + ')" ' +
+              'onerror="this.classList.add(\\'hidden\\'); this.nextElementSibling.classList.remove(\\'hidden\\');" ' +
+              'class="w-full max-h-64 object-cover rounded-xl cursor-zoom-in border border-slate-200/60 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-900">' +
+            '<div class="hidden px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/70 text-[11px] text-slate-400 italic"><i class="fa-regular fa-clock mr-1"></i>Foto expirada (retenção de 30 dias)</div>' +
+          '</div>' +
+          '<div class="flex items-center justify-between gap-2 text-[11px]">' +
+            '<button type="button" onclick="openImageLightbox(' + m.id + ')" class="inline-flex items-center gap-1 text-slate-500 dark:text-slate-300 hover:text-[#008069] dark:hover:text-emerald-400 font-semibold transition">' +
+              '<i class="fa-solid fa-magnifying-glass-plus text-[10px]"></i><span>Ampliar</span>' +
+            '</button>' +
+            '<a href="/api/media?msg_id=' + m.id + '&download=1" download class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition">' +
+              '<i class="fa-solid fa-download text-[10px] text-[#00a884]"></i><span>Baixar foto</span>' +
+            '</a>' +
+          '</div>';
+        } else {
+          html += '<div class="text-[11px] text-slate-400 italic">[Imagem indisponível]</div>';
+        }
+        if (showCaption) {
+          html += '<div class="whitespace-pre-wrap break-words">' + escapeHtml(caption) + '</div>';
+        }
+        html += '</div>';
+        return html;
+      }
+
+      return '<div class="whitespace-pre-wrap break-words">' + escapeHtml(m.body) + '</div>';
+    }
+
     function renderMessages(msgs) {
       const area = document.getElementById('messagesArea');
       if (msgs.length === 0) {
@@ -1495,12 +1709,13 @@ export const INBOX_HTML = `<!DOCTYPE html>
         const isPatient = m.direction === 'in';
         const isHumanAgent = m.status === 'human';
         const timeStr = formatMessageTime(m.created_at);
+        const bodyHtml = renderMessageBodyHtml(m);
 
         if (isPatient) {
           htmlParts.push(\`
             <div class="flex flex-col items-start max-w-[85%] md:max-w-[70%]">
               <div class="bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 p-3 rounded-2xl rounded-tl-sm shadow-sm border border-slate-200/50 dark:border-slate-700/30 text-xs leading-relaxed">
-                \${escapeHtml(m.body)}
+                \${bodyHtml}
                 <div class="text-[9px] text-slate-400 dark:text-slate-400 text-right mt-1 font-mono">\${timeStr}</div>
               </div>
             </div>
@@ -1518,7 +1733,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
                 }">
                   \${isHumanAgent ? 'Você' : 'Atendente IA'}
                 </div>
-                \${escapeHtml(m.body)}
+                \${bodyHtml}
                 <div class="text-[9px] opacity-75 text-right mt-1 font-mono flex items-center justify-end gap-1">
                   <span>\${timeStr}</span>
                   <i class="fa-solid fa-check-double text-[9px] text-[#53bdeb]" title="Entregue e sincronizado"></i>
@@ -1530,6 +1745,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
       });
 
       area.innerHTML = htmlParts.join('');
+      bindAudioPlayers();
       area.scrollTop = area.scrollHeight;
     }
 

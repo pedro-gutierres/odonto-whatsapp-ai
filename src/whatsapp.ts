@@ -1,4 +1,4 @@
-// Tudo que fala com o WhatsApp (Meta): validar quem mandou, ler o que chegou, enviar resposta.
+// Tudo que fala com o WhatsApp (Meta): validar quem mandou, ler o que chegou, baixar mídias e enviar resposta.
 import type { Env, InboundJob } from "./types";
 
 // A Meta assina cada mensagem com o "app secret". Se a assinatura não bater,
@@ -27,7 +27,7 @@ export async function verifySignature(
   return false;
 }
 
-// Transforma o JSON complicado da Meta numa lista simples de mensagens.
+// Transforma o JSON da Meta numa lista simples de mensagens (texto, áudio ou imagem).
 // Avisos de "entregue/lido" (statuses) são ignorados aqui de propósito.
 export function extractJobs(payload: any): InboundJob[] {
   const jobs: InboundJob[] = [];
@@ -42,18 +42,92 @@ export function extractJobs(payload: any): InboundJob[] {
 
       for (const m of value.messages ?? []) {
         const contact = (value.contacts ?? []).find((c: any) => c.wa_id === m.from);
+        let text: string | null = null;
+        let mediaId: string | undefined;
+        let mimeType: string | undefined;
+
+        if (m.type === "text") {
+          text = m.text?.body ?? null;
+        } else if (m.type === "audio" || m.type === "voice") {
+          const audioObj = m.audio ?? m.voice;
+          mediaId = audioObj?.id;
+          mimeType = audioObj?.mime_type;
+        } else if (m.type === "image") {
+          mediaId = m.image?.id;
+          mimeType = m.image?.mime_type;
+          text = m.image?.caption ?? null;
+        }
+
         jobs.push({
           phoneNumberId,
           from: m.from,
           contactName: contact?.profile?.name,
           waMessageId: m.id,
           type: m.type,
-          text: m.type === "text" ? (m.text?.body ?? null) : null,
+          text,
+          ...(mediaId ? { mediaId } : {}),
+          ...(mimeType ? { mimeType } : {}),
         });
       }
     }
   }
   return jobs;
+}
+
+export interface DownloadedWhatsAppMedia {
+  bytes: ArrayBuffer;
+  mimeType: string;
+}
+
+// Baixa mídia recebida via WhatsApp Cloud API (1: consulta URL temporária, 2: baixa bytes com Bearer token).
+export async function downloadWhatsAppMedia(
+  env: Env,
+  token: string,
+  mediaId: string,
+  maxBytes = 10 * 1024 * 1024,
+): Promise<DownloadedWhatsAppMedia> {
+  const metaRes = await fetch(`https://graph.facebook.com/${env.GRAPH_VERSION}/${encodeURIComponent(mediaId)}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!metaRes.ok) {
+    throw new Error(`Meta media lookup ${metaRes.status}: ${(await metaRes.text()).slice(0, 300)}`);
+  }
+
+  const meta = (await metaRes.json()) as { url?: string; mime_type?: string; file_size?: number };
+  if (!meta.url) {
+    throw new Error("Meta media lookup não retornou URL temporária.");
+  }
+  if (typeof meta.file_size === "number" && meta.file_size > maxBytes) {
+    throw new Error(`Arquivo de mídia excede o limite (${meta.file_size} bytes).`);
+  }
+
+  const binRes = await fetch(meta.url, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!binRes.ok) {
+    throw new Error(`Meta media download ${binRes.status}`);
+  }
+
+  const bytes = await binRes.arrayBuffer();
+  if (bytes.byteLength > maxBytes) {
+    throw new Error(`Arquivo de mídia excede o limite (${bytes.byteLength} bytes).`);
+  }
+
+  return {
+    bytes,
+    mimeType: meta.mime_type || binRes.headers.get("content-type") || "application/octet-stream",
+  };
+}
+
+// Converte ArrayBuffer para Base64 em blocos para evitar estouro de pilha em arquivos grandes.
+export function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    parts.push(String.fromCharCode(...bytes.subarray(i, i + chunkSize)));
+  }
+  return btoa(parts.join(""));
 }
 
 // Envia uma mensagem de texto pelo número da clínica.

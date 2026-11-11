@@ -7,7 +7,17 @@ export interface PromptContext {
   existingAppointments?: { scheduled_at: string; procedure: string; duration?: string }[];
 }
 
+export interface SystemPromptParts {
+  staticPrompt: string;
+  dynamicContext: string;
+}
+
 export function buildSystemPrompt(cfg: BotConfig, context?: PromptContext): string {
+  const parts = buildSystemPromptParts(cfg, context);
+  return parts.dynamicContext ? `${parts.staticPrompt}\n\n${parts.dynamicContext}` : parts.staticPrompt;
+}
+
+export function buildSystemPromptParts(cfg: BotConfig, context?: PromptContext): SystemPromptParts {
   const clinicName = cfg.clinic_name || "nossa clínica";
   const doctorInfo = cfg.doctor_name
     ? ` sob responsabilidade de ${cfg.doctor_name}${cfg.doctor_cro ? ` (${cfg.doctor_cro})` : ""}`
@@ -120,7 +130,12 @@ export function buildSystemPrompt(cfg: BotConfig, context?: PromptContext): stri
   linhas.push(
     "",
     "URGÊNCIAS E EMERGÊNCIAS",
-    "- Se o paciente relatar dor aguda, dente fraturado por queda/impacto, sangramento contínuo ou inchaço facial expressivo, trate com máxima prioridade: oriente a buscar atendimento urgente e informe o contato de emergência."
+    "- Se o paciente relatar dor aguda, dente fraturado por queda/impacto, sangramento contínuo ou inchaço facial expressivo, trate com máxima prioridade: oriente a buscar atendimento urgente e informe o contato de emergência.",
+    "",
+    "CONDUTA PARA ÁUDIOS TRANSCRITOS E IMAGENS ENVIADAS",
+    "- Áudios: quando o histórico trouxer uma mensagem marcada como '[Áudio transcrito]: ...', responda naturalmente ao conteúdo falado pelo paciente como se tivesse ouvido o áudio, sem comentar sobre processos técnicos de transcrição.",
+    "- Imagens de documentos (guias de convênio, encaminhamentos, receitas antigas, prints de horários): leia os dados úteis com atenção para agilizar o atendimento ou agendamento.",
+    "- Fotos clínicas (dentes, boca, gengiva, rosto, lesões, inchaços ou resultados estéticos): NUNCA faça diagnóstico clínico, indicação de tratamento definitivo ou orçamento fechado olhando a foto. Agradeça o envio com empatia, explique que a avaliação presencial com o especialista é indispensável para segurança clínica e convide para agendar (ou oriente atendimento urgente caso haja sinal aparente de dor intensa, sangramento ou inchaço expressivo)."
   );
 
   linhas.push(
@@ -197,24 +212,11 @@ export function buildSystemPrompt(cfg: BotConfig, context?: PromptContext): stri
     }
   }
 
-  // Sincronização de Grade e Agendamento Automático pela IA
+  // Regras estáveis de agendamento (mantidas no bloco em cache)
   linhas.push(
     "",
-    "SISTEMA DE AGENDAMENTO AUTOMÁTICO & CONTROLE DE HORÁRIOS"
-  );
-  if (context?.nowBrasiliaStr) {
-    linhas.push(`- Data e Hora Atual de Brasília: ${context.nowBrasiliaStr}`);
-  }
-  if (context?.existingAppointments && context.existingAppointments.length > 0) {
-    linhas.push("- HORÁRIOS JÁ OCUPADOS NA GRADE (NÃO AGENDE NESTES HORÁRIOS PARA EVITAR CONFLITOS):");
-    for (const a of context.existingAppointments) {
-      linhas.push(`  * ${a.scheduled_at} (${a.procedure || "Consulta"} - Duração: ${a.duration || "30 min"})`);
-    }
-  } else {
-    linhas.push("- Grade atual livre para novos agendamentos nos próximos dias.");
-  }
-  linhas.push(
-    "- REGRA DE CONFLITO: Sempre consulte os horários ocupados acima antes de sugerir ou aceitar um horário. Cada procedimento ocupa o horário de início mais sua duração.",
+    "SISTEMA DE AGENDAMENTO AUTOMÁTICO & CONTROLE DE HORÁRIOS",
+    "- REGRA DE CONFLITO: Sempre consulte os horários ocupados informados no contexto dinâmico antes de sugerir ou aceitar um horário. Cada procedimento ocupa o horário de início mais sua duração.",
     "- Se o horário solicitado pelo paciente já estiver ocupado ou fora do expediente, avise com gentileza que aquele horário está preenchido e ofereça as alternativas livres mais próximas.",
     "- Quando você e o paciente alinharem e confirmarem dia, horário e procedimento, confirme amigavelmente no texto e inclua OBRIGATORIAMENTE no final da mensagem a tag oculta de agendamento:",
     '  <<<AGENDAR: {"patient_name": "Nome", "procedure": "Procedimento", "scheduled_at": "YYYY-MM-DD HH:MM", "duration": "30 min", "notes": "Detalhes"}>>>',
@@ -226,5 +228,22 @@ export function buildSystemPrompt(cfg: BotConfig, context?: PromptContext): stri
     linhas.push("", "INFORMAÇÕES E REGRAS EXTRAS:", cfg.extra);
   }
 
-  return linhas.join("\n");
+  // Contexto dinâmico (separado do bloco cacheado para não invalidar o cache a cada minuto ou agendamento)
+  const dynamicLines: string[] = ["CONTEXTO TEMPORAL E GRADE DE HORÁRIOS ATUALIZADA"];
+  if (context?.nowBrasiliaStr) {
+    dynamicLines.push(`- Data e Hora Atual de Brasília: ${context.nowBrasiliaStr}`);
+  }
+  if (context?.existingAppointments && context.existingAppointments.length > 0) {
+    dynamicLines.push("- HORÁRIOS JÁ OCUPADOS NA GRADE (NÃO AGENDE NESTES HORÁRIOS PARA EVITAR CONFLITOS):");
+    for (const a of context.existingAppointments) {
+      dynamicLines.push(`  * ${a.scheduled_at} (${a.procedure || "Consulta"} - Duração: ${a.duration || "30 min"})`);
+    }
+  } else {
+    dynamicLines.push("- Grade atual livre para novos agendamentos nos próximos dias.");
+  }
+
+  return {
+    staticPrompt: linhas.join("\n"),
+    dynamicContext: dynamicLines.join("\n"),
+  };
 }

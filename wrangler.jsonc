@@ -22,6 +22,19 @@
     }
   ],
 
+  // Armazenamento de mídias (áudios e fotos por 30 dias)
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "odonto-media"
+    }
+  ],
+
+  // Workers AI (transcrição de áudio com Whisper na borda)
+  "ai": {
+    "binding": "AI"
+  },
+
   // Fila: o webhook coloca mensagens aqui; o mesmo Worker as processa depois.
   "queues": {
     "producers": [{ "binding": "INBOX", "queue": "odonto-inbox" }],
