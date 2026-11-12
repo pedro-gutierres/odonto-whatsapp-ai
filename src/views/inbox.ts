@@ -39,7 +39,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/aura.css?v=19">
+  <link rel="stylesheet" href="/css/aura.css?v=20">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .wa-bg-light {
