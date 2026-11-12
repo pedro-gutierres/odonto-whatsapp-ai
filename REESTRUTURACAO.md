@@ -195,3 +195,13 @@ Migration 0016 adiciona business_sectors e faz backfill, sem reconstruir tenants
 Após resposta 201, o quiz desfoca e apresenta três mensagens durante quatro segundos. Um marcador de sessionStorage inicia a revelação horizontal do dashboard após init, em 850 ms, com limpeza do marcador e fallback de 12 segundos. Movimento reduzido desativa o deslocamento e a animação. Não há pré-carga de mensagens nem acesso automático ao WhatsApp.
 
 Validação: suíte automatizada de cadastro, escolhas, confirmação de senha, temporização e revelação; prévias do quiz conferidas em navegador desktop e 390 px. A fluidez de 60 fps não foi medida em dispositivos reais.
+
+## Treinamento estruturado — Etapa 3
+
+Treinar IA carrega formato e áreas do perfil do quiz, permite ajustá-los e sincroniza as três colunas de perfil da operação autenticada ao salvar. Ambas as áreas seguem a convenção dentistry na coluna legada e both em business_sectors. O nome da operação é editável no card de Identidade e sincronizado com os dados cadastrais.
+
+Horários usam sete linhas com habilitação por dia, seletores de 24 horas e minutos a cada dez minutos. schedule_days persiste o estado; o servidor valida a estrutura e gera hours para o prompt. Texto inicial padrão recebe segunda a sexta 08h–18h. Outros textos históricos ficam preservados, com aviso, até editar a grade; não são reinterpretados silenciosamente. Esses horários descrevem o atendimento no treinamento; os expedientes operacionais dos profissionais continuam na Agenda.
+
+Durações, conselho/UF, atrasos, pagamento/parcelas, convênios e acesso recebem opções estruturadas. Valores antigos fora das opções são mantidos visíveis como opção ou marcação adicional; registro profissional antigo não reconhecido permanece preservado até editar seus seletores. O prompt continua recebendo os campos textuais anteriores. Nenhuma migration ou integração externa é necessária nesta etapa.
+
+Validação cobre grade, perfil, durações personalizadas, valores legados, opções rápidas e persistência isolada; prévia de navegador em desktop e 390 px com dados fictícios. Testes de API não comprovam atendimento real em Meta/Paddle.

@@ -516,3 +516,16 @@ test('Lean quiz registration supports both areas and preserves legacy sector con
  }
  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM tenants').first<any>()).n,before);
 });
+
+
+test('Training persists quiz profile and canonical schedule within the authenticated operation',async()=>{
+ const {db,env}=setup();const a=await account(env),b=await account(env);
+ const schedule_days=[1,2,3,4,5,6,0].map(day=>({day,enabled:day>0&&day<6,startHour:'08',startMinute:'00',endHour:'18',endMinute:'00'}));
+ const payload={...config,business_kind:'clinic',business_sector:'both',schedule_days};
+ assert.equal((await api(env,'/api/config',a.cookie,{config:payload,tenantId:b.id})).status,200);
+ const tenant=(await getTenantById(env.DB,a.id))!;assert.equal(tenant.business_kind,'clinic');assert.equal(tenant.business_sector,'dentistry');assert.equal(tenant.business_sectors,'both');assert.ok(tenant.training_reviewed_at);
+ const saved=JSON.parse(tenant.bot_config);assert.ok(saved.hours.includes('Segunda-feira: 08:00 às 18:00'));assert.deepEqual(saved.schedule_days,schedule_days);
+ assert.equal((await getTenantById(env.DB,b.id))!.business_kind,'solo');
+ for(const change of [{business_kind:'invalid'},{business_sector:'invalid'},{schedule_days:[{day:1}]},{schedule_days:schedule_days.map(d=>({...d,endHour:'07'}))}])assert.equal((await api(env,'/api/config',a.cookie,{config:{...payload,...change}})).status,400);
+ assert.deepEqual(JSON.parse((await getTenantById(env.DB,a.id))!.bot_config),saved);
+});

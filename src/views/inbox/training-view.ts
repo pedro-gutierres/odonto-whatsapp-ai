@@ -109,7 +109,7 @@ export const INBOX_TRAINING_VIEW_HTML = `
         <details class="aura-training-section" open><summary>Identidade e tom da conversa</summary><div class="aura-training-body">
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <input type="hidden" id="cfgClinicName">
+            <div class="aura-training-profile"><fieldset><legend>Formato de atuação</legend><label><input type="radio" name="trainingKind" value="solo" onchange="changeTrainingProfile()"> Profissional Autônomo</label><label><input type="radio" name="trainingKind" value="clinic" onchange="changeTrainingProfile()"> Clínica</label></fieldset><fieldset><legend>Área de atuação</legend><label><input type="checkbox" name="trainingSector" value="dentistry" onchange="changeTrainingProfile(this)"> Odontologia</label><label><input type="checkbox" name="trainingSector" value="aesthetics" onchange="changeTrainingProfile(this)"> Estética</label></fieldset></div><label class="aura-field" for="cfgClinicName">Nome do consultório ou clínica<input type="text" id="cfgClinicName" maxlength="120" oninput="document.getElementById('spClinicName').value=this.value"></label>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Doutor(a) Responsável Técnico</label>
               <input type="text" id="cfgDoctorName" placeholder="Ex: Dra. Fernanda Alves"
@@ -117,8 +117,7 @@ export const INBOX_TRAINING_VIEW_HTML = `
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Registro Profissional (CRO / CRM)</label>
-              <input type="text" id="cfgDoctorCro" placeholder="Ex: CRO-SP 102.450 / Harmonização Orofacial"
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069]">
+              <input type="hidden" id="cfgDoctorCro"><div id="trainingCouncil"></div>
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Tom de Voz da Secretária IA</label>
@@ -158,8 +157,7 @@ export const INBOX_TRAINING_VIEW_HTML = `
                   <span>Tempo de Duração da Avaliação Inicial</span>
                   <span id="badgeCfgInitEvalDuration" class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400">* Obrigatório</span>
                 </label>
-                <input type="text" id="cfgInitEvalDuration" placeholder="Ex: 30 min"
-                  class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#008069] transition">
+                <select id="cfgInitEvalDuration" aria-label="Duração da avaliação inicial"></select>
                 <p id="errCfgInitEvalDuration" class="hidden text-[11px] font-bold text-rose-600 dark:text-rose-400 mt-1"></p>
               </div>
               <div>
@@ -269,14 +267,12 @@ export const INBOX_TRAINING_VIEW_HTML = `
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Condições de Pagamento & Parcelamento</label>
               <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">Descontos no Pix/à vista, parcelas no cartão, boleto ou financiamento.</p>
-              <textarea id="cfgPaymentMethods" rows="4" placeholder="Informe formas de pagamento e condições que você oferece."
-                class="w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed font-mono text-[11px]"></textarea>
+              <input type="hidden" id="cfgPaymentMethods"><div id="trainingPayments"></div>
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Política de Convênios & Reembolso</label>
               <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">Particular exclusivo com recibo para reembolso ou convênios atendidos.</p>
-              <textarea id="cfgInsurance" rows="4" placeholder="Informe os convênios aceitos ou como funciona o reembolso, se houver."
-                class="w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed font-mono text-[11px]"></textarea>
+              <input type="hidden" id="cfgInsurance"><div id="trainingInsurance"></div>
             </div>
           </div>
         </div></details>
@@ -285,7 +281,7 @@ export const INBOX_TRAINING_VIEW_HTML = `
         <details class="aura-training-section" open><summary>Horários e localização</summary><div class="aura-training-body">
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div>
+            <div class="aura-training-hours-column">
               <div class="flex items-center justify-between mb-1">
                 <label id="lblCfgHours" class="block font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                   <span>Horários e Dias de Atendimento</span>
@@ -296,14 +292,12 @@ export const INBOX_TRAINING_VIEW_HTML = `
                   <span>Atende em Feriados</span>
                 </label>
               </div>
-              <textarea id="cfgHours" rows="3" placeholder="Ex.: segunda a sexta, das 8h às 18h."
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed transition"></textarea>
+              <input type="hidden" id="cfgHours"><div id="trainingSchedule"></div><p id="trainingScheduleError" class="aura-field-hint" role="status"></p>
               <p id="errCfgHours" class="hidden text-[11px] font-bold text-rose-600 dark:text-rose-400 mt-1"></p>
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Tolerância para Atrasos & Políticas de Comparecimento</label>
-              <textarea id="cfgDelayTolerance" rows="3" placeholder="Informe sua política de atrasos e remarcações."
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
+              <select id="cfgDelayTolerance" aria-label="Tolerância para atrasos"></select>
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Endereço Completo & Pontos de Referência</label>
@@ -312,8 +306,7 @@ export const INBOX_TRAINING_VIEW_HTML = `
             </div>
             <div>
               <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Estacionamento, Valet & Logística de Chegada</label>
-              <textarea id="cfgParking" rows="3" placeholder="Informe estacionamento e condições de acesso."
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#008069] leading-relaxed"></textarea>
+              <input type="hidden" id="cfgParking"><div id="trainingParking"></div>
             </div>
           </div>
         </div></details>
@@ -366,7 +359,7 @@ export const INBOX_TRAINING_VIEW_HTML = `
         <div class="aura-save-bar flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-200 dark:border-slate-800">
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Depois de salvar, confirme a revisão em Início.</span>
+            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Ao salvar os campos essenciais completos, a revisão é automática.</span>
           </div>
           <div class="flex items-center gap-3">
             <button type="button" onclick="selectNavigationTab('simulator', 'Test Drive da IA', 'fa-solid fa-flask-vial', 'purple')"

@@ -685,6 +685,21 @@ export default {
           if (!body.config) {
             return jsonResponse({ error: "config é obrigatório" }, 400);
           }
+          if ((body.config.business_kind !== undefined && !['solo','clinic'].includes(body.config.business_kind))
+            || (body.config.business_sector !== undefined && !['dentistry','aesthetics','both'].includes(body.config.business_sector)))
+            return jsonResponse({error:'Perfil ou área de atuação inválidos.'},400);
+          if (body.config.schedule_days !== undefined) {
+            const days=body.config.schedule_days;
+            if (!Array.isArray(days)||days.length!==7||new Set(days.map(d=>d?.day)).size!==7
+              ||days.some(d=>!d||!Number.isInteger(d.day)||d.day<0||d.day>6||typeof d.enabled!=='boolean'
+                ||![d.startHour,d.endHour].every(h=>typeof h==='string'&&/^([01]\d|2[0-3])$/.test(h))
+                ||![d.startMinute,d.endMinute].every(m=>['00','10','20','30','40','50'].includes(m))
+                ||(d.enabled&&(d.startHour+':'+d.startMinute)>=(d.endHour+':'+d.endMinute))))
+              return jsonResponse({error:'Dias ou horários de atendimento inválidos.'},400);
+            const labels=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+            body.config.hours=[...days].sort((a,b)=>(a.day||7)-(b.day||7)).filter(d=>d.enabled)
+              .map(d=>labels[d.day]+': '+d.startHour+':'+d.startMinute+' às '+d.endHour+':'+d.endMinute).join(' | ');
+          }
           const complete = isCrucialConfigComplete(body.config);
           await updateTenantConfig(env.DB, tenantId, body.config);
           await env.DB.prepare("UPDATE tenants SET training_reviewed_at=?2 WHERE id=?1").bind(tenantId, complete ? new Date().toISOString() : null).run();

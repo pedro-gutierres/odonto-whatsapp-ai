@@ -149,6 +149,9 @@ export interface InitialConsultationConfig {
 
 // O que cada clínica configura (fica em tenants.bot_config)
 export interface BotConfig {
+  business_kind?: 'solo' | 'clinic';
+  business_sector?: 'dentistry' | 'aesthetics' | 'both';
+  schedule_days?: Array<{day:number;enabled:boolean;startHour:string;startMinute:string;endHour:string;endMinute:string}>;
   clinic_name: string;
   doctor_name?: string;
   doctor_cro?: string;

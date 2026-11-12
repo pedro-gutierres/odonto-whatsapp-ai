@@ -240,3 +240,36 @@ test('Dashboard entry reveal consumes its one-shot marker and respects reduced m
  assert.ok(!window.document.documentElement.classList.contains('aura-entry-pending'));window.revealAccountEntry();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),null);
  }finally{await window.happyDOM.close();}
 });
+
+
+test('Structured training loads quiz profile, weekly hours, fixed durations and quick choices',async()=>{
+ const window=await dom(INBOX_HTML,[]);try{
+ window.eval(fs.readFileSync('public/js/inbox/core.js','utf8')+'\n'+fs.readFileSync('public/js/inbox/training.js','utf8'));
+ window.updateTrainingValidationHighlights=()=>{};window.showToast=()=>{};
+ window.eval("currentAccess={profile:{kind:'clinic',sector:'both'}};currentConfig={clinic_name:'Clínica Quiz',hours:'Segunda a Sexta, das 08:00 às 18:00',initial_consultation:{duration:'35 min'},procedure_items:[{name:'Avaliação',duration:'35 min',category:'odonto',checked:true}]};");
+ window.renderProceduresLists([{name:'Avaliação',duration:'35 min',category:'odonto',checked:true}]);
+ window.loadStructuredTraining({hours:'Segunda a Sexta, das 08:00 às 18:00',initial_consultation:{duration:'35 min'},doctor_cro:'CRO-SP 102450'});
+ const el=(id:string)=>window.document.getElementById(id) as any;
+ assert.equal(window.trainingProfile().kind,'clinic');assert.equal(window.trainingProfile().sector,'both');
+ assert.equal(window.document.querySelectorAll('[data-training-day]').length,7);
+ const monday=window.document.querySelector('[data-training-day="1"]')!;
+ const saturday=window.document.querySelector('[data-training-day="6"]')!;
+ assert.equal(monday.querySelectorAll('select')[0].options.length,24);assert.equal(monday.querySelectorAll('select')[1].options.length,6);
+ assert.ok(saturday.classList.contains('is-disabled'));assert.equal((saturday.querySelector('.aura-day-times') as any).hidden,true);
+ assert.ok(el('cfgHours').value.includes('Segunda-feira: 08:00 às 18:00'),JSON.stringify({hours:el('cfgHours').value,days:window.trainingScheduleDays()}));
+ (saturday.querySelector('input') as any).checked=true;window.syncTrainingSchedule();assert.ok(el('cfgHours').value.includes('Sábado'));assert.ok(!saturday.classList.contains('is-disabled'));
+ (monday.querySelector('[data-part="endHour"]') as any).value='07';window.syncTrainingSchedule();assert.equal(el('cfgHours').value,'');
+ (monday.querySelector('[data-part="endHour"]') as any).value='18';window.syncTrainingSchedule();
+ const saved=window.trainingScheduleDays();window.renderTrainingSchedule({schedule_days:saved});assert.equal((window.document.querySelector('[data-training-day="6"] input') as any).checked,true);
+ assert.equal(el('cfgInitEvalDuration').tagName,'SELECT');assert.equal(el('cfgInitEvalDuration').value,'35 min');
+ assert.equal(window.document.querySelector('.proc-duration')!.tagName,'SELECT');assert.equal((window.document.querySelector('.proc-duration') as any).value,'35 min');
+ assert.ok([...el('cfgInitEvalDuration').options].some((o:any)=>o.value==='1h 15min'));
+ const areas=[...window.document.querySelectorAll('[name="trainingSector"]')] as any[];areas[0].checked=false;window.changeTrainingProfile(areas[0]);assert.ok(el('odontoList').parentElement.classList.contains('hidden'));
+ areas[1].checked=false;window.changeTrainingProfile(areas[1]);assert.equal(areas[1].checked,true);
+ areas[0].checked=true;window.changeTrainingProfile(areas[0]);assert.ok(!el('odontoList').parentElement.classList.contains('hidden'));assert.ok(el('esteticaList').children.length>0);
+ assert.equal(el('cfgDoctorCro').value,'CRO-SP 102450');
+ const pix=window.document.querySelector('#trainingPayments input') as any;pix.checked=true;el('trainingPayments').onchange();assert.ok(el('cfgPaymentMethods').value.includes('Pix'));
+ el('trainingInsuranceMode').value='Atendemos planos e convênios';el('trainingInsuranceNames').value='Plano Exemplo';el('trainingInsurance').onchange();assert.equal(el('cfgInsurance').value,'Atendemos planos e convênios: Plano Exemplo');
+ window.loadStructuredTraining({hours:'Terças das 09:15 às 17:45',payment_methods:'Condição antiga',parking:'Entrada lateral',initial_consultation:{duration:'35 min'}});assert.equal(el('cfgHours').value,'Terças das 09:15 às 17:45');assert.equal(el('cfgPaymentMethods').value,'Condição antiga');assert.equal(el('cfgParking').value,'Entrada lateral');
+ }finally{await window.happyDOM.close();}
+});

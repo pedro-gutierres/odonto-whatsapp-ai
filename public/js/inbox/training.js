@@ -31,7 +31,7 @@
     }
 
     function scrollToMissingField(elementId) {
-      if(elementId==='cfgClinicName')elementId='spClinicName';
+      if(elementId==='cfgHours')elementId='trainingSchedule';
       const el = document.getElementById(elementId);
       if (!el) return;
       for(let parent=el.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
@@ -175,7 +175,7 @@
         const durEl = row.querySelector('.proc-duration');
         const nameErrEl = row.querySelector('.proc-name-err');
         const durErrEl = row.querySelector('.proc-duration-err');
-        const isChecked = !!(cb && cb.checked);
+        const isChecked = !!(cb && cb.checked) && trainingCategoryEnabled(row.dataset.category);
 
         if (isChecked) {
           checkedProcCount++;
@@ -294,7 +294,7 @@
       } else if (!savedComplete) {
         statusBanner.innerHTML='<div class="flex flex-wrap justify-between items-center gap-3"><span>Informações prontas. Salve o treinamento para continuar.</span><button type="button" onclick="saveClinicConfig()" class="aura-text-button">Salvar treinamento</button></div>';
       } else {
-        statusBanner.innerHTML='<span>Informações essenciais preenchidas. Depois de editar, salve e confirme a revisão em Início.</span>';
+        statusBanner.innerHTML='<span>Informações essenciais preenchidas. Salve as alterações para atualizar sua IA.</span>';
       }
     }
 
@@ -381,7 +381,7 @@
           <!-- Duração e Preço -->
           <div class="md:w-3/12 flex flex-col gap-1.5 md:pt-0.5">
             <div>
-              <input type="text" class="proc-duration w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Duração (ex: 45 min)" value="${escapeHtml(duration)}">
+              <select class="proc-duration" data-duration="${escapeHtml(duration)}" aria-label="Duração do procedimento">${trainingOptions(TRAINING_DURATIONS,duration,'Selecione a duração')}</select>
               <span class="proc-duration-err hidden text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 block">Informe a duração.</span>
             </div>
             <input type="text" class="proc-price w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Preço (ex: R$ 250 ou A partir de...)" value="${escapeHtml(price)}">
@@ -405,6 +405,7 @@
 
       const newRowHtml = createProcedureRowHtml({ name: '', checked: true, duration: '', price: '', note: '' }, category);
       container.insertAdjacentHTML('beforeend', newRowHtml);
+      syncTrainingDurations();
 
       updateTrainingValidationHighlights();
 
@@ -440,6 +441,7 @@
         esteticaContainer.innerHTML = DEFAULT_ESTETICA_SERVICES.map(p => createProcedureRowHtml({ ...p, checked: false }, 'estetica')).join('');
       }
 
+      syncTrainingDurations();
       const sector = currentAccess && currentAccess.profile.sector;
       const odontoSection = odontoContainer.parentElement;
       const esteticaSection = esteticaContainer.parentElement;
@@ -517,6 +519,7 @@
 
         // Renderiza listas verticais detalhadas de procedimentos e atualiza destaques
         renderProceduresLists(currentConfig.procedure_items);
+        loadStructuredTraining(currentConfig);
         updateCrucialTrainingLockUI();
         updateTrainingValidationHighlights();
 
@@ -526,6 +529,9 @@
     }
 
     async function saveClinicConfig() {
+      const profile=trainingProfile();
+      if(!profile.kind||!profile.sector)return showToast('Escolha o formato e pelo menos uma área de atuação.','amber');
+      if(!trainingScheduleLegacy && trainingScheduleDays().some(d=>d.enabled&&(d.startHour+':'+d.startMinute)>=(d.endHour+':'+d.endMinute)))return showToast('Revise os horários: o término deve ser depois do início.','amber');
       const btn = document.getElementById('btnSaveConfig');
       const btnText = document.getElementById('btnSaveConfigText');
 
@@ -536,7 +542,7 @@
       const procedureItems = [];
       let hasInvalidCheckedProc = false;
       document.querySelectorAll('.proc-row').forEach(row => {
-        const isChecked = row.querySelector('.proc-checkbox').checked;
+        const isChecked = row.querySelector('.proc-checkbox').checked && trainingCategoryEnabled(row.dataset.category);
         const name = row.querySelector('.proc-name').value.trim();
         const duration = row.querySelector('.proc-duration').value.trim();
         const price = row.querySelector('.proc-price')?.value.trim();
@@ -585,6 +591,9 @@
       const clinicNameVal = document.getElementById('cfgClinicName').value.trim();
 
       const configPayload = {
+        business_kind:profile.kind,
+        business_sector:profile.sector,
+        schedule_days:trainingScheduleLegacy?undefined:trainingScheduleDays(),
         clinic_name: clinicNameVal,
         doctor_name: document.getElementById('cfgDoctorName').value.trim() || undefined,
         doctor_cro: document.getElementById('cfgDoctorCro').value.trim() || undefined,
@@ -626,7 +635,7 @@
           updateTrainingValidationHighlights();
 
           if (isCrucialTrainingComplete() && !hasInvalidCheckedProc) {
-            showToast("✅ Treinamento salvo! Chat (IA) e Agenda liberados!", "emerald");
+            showToast("Treinamento salvo e revisado. Teste as respostas no Simulador.", "emerald");
           } else {
             showToast("Salvo! Preencha os campos em vermelho para liberar o Chat e a Agenda.", "amber");
             const mainConfig = document.getElementById('viewConfig');
@@ -645,3 +654,93 @@
 
     // Inicializa ao carregar DOM
     window.addEventListener('DOMContentLoaded', init);
+// Structured training controls keep the textual BotConfig contract used by prompt.ts.
+const TRAINING_DURATIONS=['15 min','20 min','30 min','40 min','45 min','50 min','1h','1h 15min','1h 30min','2h','2h 30min','3h','4h'];
+const TRAINING_DAYS=[[1,'Segunda-feira'],[2,'Terça-feira'],[3,'Quarta-feira'],[4,'Quinta-feira'],[5,'Sexta-feira'],[6,'Sábado'],[0,'Domingo']];
+let trainingScheduleLegacy=null;
+function trainingOptions(values,current,empty='Não especificar') {
+  return '<option value="">'+empty+'</option>'+[...new Set([...values,...(current&&!values.includes(current)?[current]:[])])].map(v=>'<option value="'+escapeHtml(v)+'"'+(v===current?' selected':'')+'>'+escapeHtml(v)+'</option>').join('');
+}
+function trainingProfile(){const kind=[...document.querySelectorAll('[name="trainingKind"]')].find(e=>e.checked)?.value;const areas=[...document.querySelectorAll('[name="trainingSector"]')].filter(e=>e.checked).map(e=>e.value);return {kind,sector:areas.length===2?'both':areas[0]};}
+function changeTrainingProfile(changed){
+  if(!trainingProfile().sector&&changed){changed.checked=true;showToast('Mantenha pelo menos uma área selecionada.','amber');}
+  const sector=trainingProfile().sector;
+  for(const [category,id,defaults,enabled] of [['odonto','odontoList',DEFAULT_ODONTO_SERVICES,sector!=='aesthetics'],['estetica','esteticaList',DEFAULT_ESTETICA_SERVICES,sector!=='dentistry']]){
+    const list=document.getElementById(id);list.parentElement.classList.toggle('hidden',!enabled);
+    if(enabled&&!list.children.length)list.innerHTML=defaults.map(p=>createProcedureRowHtml({...p,checked:false},category)).join('');
+  }
+  syncTrainingDurations();window.auraUI?.refresh();updateTrainingValidationHighlights();
+}
+function trainingScheduleDays(){return [...document.querySelectorAll('[data-training-day]')].map(row=>({day:Number(row.dataset.trainingDay),enabled:row.querySelector('input').checked,...Object.fromEntries([...row.querySelectorAll('select')].map(el=>[el.dataset.part,el.value]))}));}
+function syncTrainingSchedule(){
+  trainingScheduleLegacy=null;const days=trainingScheduleDays();let invalid=false;const text=[];
+  for(const day of days){const row=document.querySelector('[data-training-day="'+day.day+'"]');row.classList.toggle('is-disabled',!day.enabled);row.querySelector('.aura-day-times').hidden=!day.enabled;
+    for(const select of row.querySelectorAll('select'))select.disabled=!day.enabled;
+    if(day.enabled){const start=day.startHour+':'+day.startMinute,end=day.endHour+':'+day.endMinute;if(start>=end)invalid=true;text.push(TRAINING_DAYS.find(d=>d[0]===day.day)[1]+': '+start+' às '+end);}}
+  document.getElementById('cfgHours').value=invalid?'':text.join(' | ');
+  document.getElementById('trainingScheduleError').textContent=invalid?'O horário final deve ser maior que o inicial em todos os dias marcados.':!text.length?'Marque pelo menos um dia de atendimento.':'';
+  updateTrainingValidationHighlights();window.auraUI?.refresh();
+}
+function renderTrainingSchedule(config){
+  const hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0')),minutes=['00','10','20','30','40','50'];
+  const stored=Array.isArray(config.schedule_days)?config.schedule_days:null;
+  document.getElementById('trainingSchedule').innerHTML=TRAINING_DAYS.map(([day,label])=>{
+    const value=stored?.find(d=>d.day===day)||{enabled:day>0&&day<6,startHour:'08',startMinute:'00',endHour:'18',endMinute:'00'};
+    const fields=['startHour','startMinute','endHour','endMinute'].map((part,i)=>'<label><span class="aura-sr-only">'+label+' '+part+'</span><select data-part="'+part+'" aria-label="'+label+' '+part+'" onchange="syncTrainingSchedule()">'+(part.endsWith('Hour')?hours:minutes).map(v=>'<option value="'+v+'"'+(v===value[part]?' selected':'')+'>'+v+'</option>').join('')+'</select></label>');
+    return '<div class="aura-training-day" data-training-day="'+day+'"><label class="aura-day-label"><input type="checkbox" onchange="syncTrainingSchedule()" '+(value.enabled?'checked':'')+'> '+label+'</label><div class="aura-day-times"><span>Das</span>'+fields[0]+':'+fields[1]+'<span>às</span>'+fields[2]+':'+fields[3]+'</div></div>';
+  }).join('');
+  for(const row of document.querySelectorAll('[data-training-day]')){
+    const d=stored?.find(d=>d.day===Number(row.dataset.trainingDay));
+    for(const select of row.querySelectorAll('select'))select.value=d?.[select.dataset.part]||(select.dataset.part==='startHour'?'08':select.dataset.part==='endHour'?'18':'00');
+  }
+  syncTrainingSchedule();
+  if(!stored&&config.hours&&!/^Segunda a Sexta, das 08:00 às 18:00$/i.test(config.hours)){
+    trainingScheduleLegacy=config.hours;document.getElementById('cfgHours').value=config.hours;
+    document.getElementById('trainingScheduleError').textContent='Texto anterior preservado: '+config.hours+'. Revise os dias abaixo para substituir pelos horários estruturados.';
+  }
+}
+function renderTrainingChecks(container,options,current,target){
+  const saved=(current||'').split(' | ');const known=options.filter(v=>saved.includes(v));
+  const extra=saved.filter(v=>v&&!options.includes(v));
+  document.getElementById(container).innerHTML=[...options,...extra].map(v=>'<label class="aura-quick-choice"><input type="checkbox" value="'+escapeHtml(v)+'" '+(known.includes(v)||extra.includes(v)?'checked':'')+'> '+escapeHtml(v)+'</label>').join('');
+  document.getElementById(container).onchange=()=>{document.getElementById(target).value=[...document.getElementById(container).querySelectorAll('input')].filter(e=>e.checked).map(e=>e.value).join(' | ');};
+}
+function loadStructuredTraining(config){
+  document.getElementById('cfgPaymentMethods').value=config.payment_methods||'';
+  document.getElementById('cfgParking').value=config.parking||'';
+  const kind=currentAccess?.profile.kind||config.business_kind,sector=currentAccess?.profile.sector||config.business_sector;
+  for(const el of document.querySelectorAll('[name="trainingKind"]'))el.checked=el.value===kind;
+  for(const el of document.querySelectorAll('[name="trainingSector"]'))el.checked=sector==='both'||el.value===sector;
+  document.getElementById('cfgInitEvalDuration').innerHTML=trainingOptions(TRAINING_DURATIONS,config.initial_consultation?.duration||'','Selecione a duração');
+  document.getElementById('cfgDelayTolerance').innerHTML=trainingOptions(['Tolerância de 10 minutos','Tolerância de 15 minutos','Tolerância de 20 minutos','Tolerância de 30 minutos','Sem tolerância para atrasos (sujeito a reagendamento)'],config.delay_tolerance||'');
+  document.getElementById('cfgInitEvalDuration').value=config.initial_consultation?.duration||'';
+  document.getElementById('cfgDelayTolerance').value=config.delay_tolerance||'';
+  renderTrainingSchedule(config);
+  const cro=config.doctor_cro||'',match=cro.match(/^(CRO|CRM|CRBM|COREN|COFFITO)-([A-Z]{2})\s+(.+)$/);
+  document.getElementById('trainingCouncil').innerHTML='<div class="aura-council-fields"><label>Conselho<select id="trainingCouncilType">'+trainingOptions(['CRO','CRM','CRBM','COREN','COFFITO'],match?.[1]||'','Não informar')+'</select></label><label>UF<select id="trainingCouncilState">'+trainingOptions('AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' '),match?.[2]||'SP')+'</select></label><label>Número<input id="trainingCouncilNumber" maxlength="30" value="'+escapeHtml(match?.[3]||'')+'"></label></div><p id="trainingCouncilLegacy" class="aura-field-hint"></p>';
+  document.getElementById('trainingCouncilType').value=match?.[1]||'';
+  document.getElementById('trainingCouncilState').value=match?.[2]||'SP';
+  document.getElementById('cfgDoctorCro').value=cro;
+  if(cro&&!match)document.getElementById('trainingCouncilLegacy').textContent='Registro anterior preservado: '+cro;
+  const syncCouncil=()=>{const type=document.getElementById('trainingCouncilType').value,uf=document.getElementById('trainingCouncilState').value,num=document.getElementById('trainingCouncilNumber').value.trim();document.getElementById('cfgDoctorCro').value=type&&uf&&num?type+'-'+uf+' '+num:'';document.getElementById('trainingCouncilLegacy').textContent='';document.getElementById('trainingCouncilState').disabled=!type;document.getElementById('trainingCouncilNumber').disabled=!type;document.getElementById('trainingCouncilState').parentElement.hidden=!type;document.getElementById('trainingCouncilNumber').parentElement.hidden=!type;window.auraUI?.refresh();};
+  document.getElementById('trainingCouncil').oninput=syncCouncil;document.getElementById('trainingCouncil').onchange=syncCouncil;
+  document.getElementById('trainingCouncilState').parentElement.hidden=!match;document.getElementById('trainingCouncilNumber').parentElement.hidden=!match;
+  document.getElementById('trainingCouncilState').disabled=!match;document.getElementById('trainingCouncilNumber').disabled=!match;
+  const installments=['Até 2x','Até 3x','Até 6x','Até 10x','Até 12x','Até 18x','Até 24x'];
+  const payment=config.payment_methods||'',install=installments.find(v=>payment.includes('Parcelamento no Cartão ('+v+')'));
+  renderTrainingChecks('trainingPayments',['Pix','Dinheiro','Cartão de Débito','Cartão de Crédito à vista','Parcelamento no Cartão'],payment.replace(/Parcelamento no Cartão \(Até \d+x\)/,'Parcelamento no Cartão'),'cfgPaymentMethods');
+  const paymentContainer=document.getElementById('trainingPayments');const label=document.createElement('label');label.textContent='Parcelas ';const select=document.createElement('select');select.id='trainingInstallments';select.innerHTML=installments.map(v=>'<option'+(v===(install||'Até 3x')?' selected':'')+'>'+v+'</option>').join('');select.value=install||'Até 3x';label.append(select);paymentContainer.append(label);
+  const syncPayment=()=>{select.disabled=![...paymentContainer.querySelectorAll('input')].some(el=>el.checked&&el.value==='Parcelamento no Cartão');document.getElementById('cfgPaymentMethods').value=[...paymentContainer.querySelectorAll('input')].filter(el=>el.checked).map(el=>el.value==='Parcelamento no Cartão'?el.value+' ('+select.value+')':el.value).join(' | ');window.auraUI?.refresh();};paymentContainer.onchange=syncPayment;select.disabled=![...paymentContainer.querySelectorAll('input')].some(el=>el.checked&&el.value==='Parcelamento no Cartão');
+  const insuranceOptions=['Atendimento exclusivamente particular','Particular com emissão de recibo/nota para reembolso','Atendemos planos e convênios'];
+  const insurance=config.insurance||'',mode=insuranceOptions.find(v=>insurance.startsWith(v))||insurance;
+  document.getElementById('trainingInsurance').innerHTML='<label>Modalidade<select id="trainingInsuranceMode">'+trainingOptions(insuranceOptions,mode)+'</select></label><label id="trainingInsuranceNamesLabel">Nomes dos convênios<input id="trainingInsuranceNames" maxlength="500" value="'+escapeHtml(insurance.startsWith(insuranceOptions[2]+': ')?insurance.slice(insuranceOptions[2].length+2):'')+'"></label>';
+  document.getElementById('trainingInsuranceMode').value=mode;
+  const syncInsurance=()=>{const mode=document.getElementById('trainingInsuranceMode').value;document.getElementById('trainingInsuranceNamesLabel').hidden=mode!==insuranceOptions[2];document.getElementById('cfgInsurance').value=mode+(mode===insuranceOptions[2]&&document.getElementById('trainingInsuranceNames').value.trim()?': '+document.getElementById('trainingInsuranceNames').value.trim():'');};document.getElementById('trainingInsurance').onchange=syncInsurance;document.getElementById('trainingInsurance').oninput=syncInsurance;syncInsurance();
+  renderTrainingChecks('trainingParking',['Estacionamento próprio gratuito','Estacionamento conveniado','Serviço de Valet / Manobrista','Fácil estacionamento no local','Próximo a metrô / transporte público','Acessibilidade para mobilidade reduzida'],config.parking,'cfgParking');
+  const name=document.getElementById('cfgClinicName'),profileName=document.getElementById('spClinicName');name.oninput=()=>{profileName.value=name.value;updateTrainingValidationHighlights();};profileName.oninput=()=>{name.value=profileName.value;};
+  changeTrainingProfile();window.auraUI?.refresh();
+}
+
+function trainingCategoryEnabled(category){const sector=trainingProfile().sector;return sector==='both'||!sector||(category==='odonto'?sector==='dentistry':sector==='aesthetics');}
+
+function syncTrainingDurations(){for(const select of document.querySelectorAll('.proc-duration'))if(!select.dataset.initialized){select.value=select.dataset.duration||'';select.dataset.initialized='1';}}

@@ -1083,8 +1083,8 @@ export async function updateTenantConfig(
 
   // Atualiza clínica já cadastrada sem tocar em phone_number_id (evita colisão na constraint UNIQUE)
   const updateResult = await db
-    .prepare("UPDATE tenants SET bot_config = ?1, name = ?2 WHERE id = ?3")
-    .bind(configJson, clinicName, tenantId)
+    .prepare("UPDATE tenants SET bot_config = ?1, name = ?2, business_kind=COALESCE(?4,business_kind), business_sector=COALESCE(?5,business_sector), business_sectors=COALESCE(?6,business_sectors) WHERE id = ?3")
+    .bind(configJson, clinicName, tenantId, config.business_kind ?? null, config.business_sector === 'both' ? 'dentistry' : config.business_sector ?? null, config.business_sector ?? null)
     .run();
 
   if ((updateResult.meta?.changes ?? 0) === 0) {
