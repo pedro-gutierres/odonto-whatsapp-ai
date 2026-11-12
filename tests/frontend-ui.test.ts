@@ -220,8 +220,8 @@ test('Client sidebar separates operation and account controls without an adminis
  const window=await dom(INBOX_HTML,[]);try{
  assert.equal(window.document.getElementById('superAdminNavBtn'),null);assert.equal(window.document.querySelector('.aura-topbar'),null);
  const footer=window.document.querySelector('.aura-sidebar-footer')!;
- for(const id of ['topClinicNameBadge','businessSubtitle','trialStatusWidget','trialDaysBadge','trialMessagesBadge','topUserName','topUserEmail','themeIcon'])assert.ok(footer.querySelector('#'+id),id);
- assert.ok(footer.querySelector('[onclick="handleLogout()"]'));assert.ok(footer.querySelector('[onclick="toggleTheme()"]'));
+ for(const id of ['topClinicNameBadge','businessSubtitle','trialStatusWidget','trialDaysBadge','trialMessagesBadge','topUserName','topUserEmail'])assert.ok(footer.querySelector('#'+id),id);
+ assert.ok(footer.querySelector('[onclick="handleLogout()"]'));assert.ok(window.document.querySelector('#accountQuickMenu #themeIcon'));assert.ok(!footer.querySelector('[onclick*="toggleTheme"]'));
  assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,7);
  }finally{await window.happyDOM.close();}
 });
@@ -325,5 +325,20 @@ test('Quiz transitions follow direction, ignore repeated navigation and focus af
  window.beginAccountPreparation();assert.deepEqual(timers.map(t=>t.delay),[1400,2800,4000]);timers.shift()!.callback();timers.shift()!.callback();timers.shift()!.callback();
  assert.ok(field('accountPreparation').classList.contains('is-leaving'));assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),'1');assert.equal(window.location.hash,'');assert.equal(timers[0].delay,450);timers.shift()!.callback();assert.equal(window.location.hash,'#simulator');
  const css=fs.readFileSync('public/css/aura.css','utf8');assert.ok(!/@keyframes aura-dashboard-reveal/.test(css));assert.ok(!/aura-entry[^{}]*[^}]*clip-path/.test(css));
+ }finally{await window.happyDOM.close();}
+});
+
+
+test('Account popover opens upwards using unscaled height and contains the theme control',async()=>{
+ const window=await dom(INBOX_HTML,[]);try{
+ window.eval(fs.readFileSync('public/js/inbox/core.js','utf8'));
+ const menu=window.document.getElementById('accountQuickMenu') as any,trigger=window.document.getElementById('accountMenuTrigger') as any;
+ Object.defineProperty(menu,'offsetHeight',{value:210});Object.defineProperty(menu,'offsetWidth',{value:210});
+ trigger.getBoundingClientRect=()=>new window.DOMRect(190,700,36,36);
+ menu.getBoundingClientRect=()=>new window.DOMRect(0,0,42,42);
+ window.toggleAccountMenu();assert.equal(menu.style.top,'526px');assert.equal(menu.style.left,'238px');assert.ok(parseFloat(menu.style.top)+menu.offsetHeight<=736);
+ assert.ok(menu.querySelector('[onclick*="toggleTheme"]'));assert.ok(!window.document.querySelector('.aura-sidebar-footer [onclick*="toggleTheme"]'));
+ window.document.documentElement.classList.remove('dark');window.updateAccountThemeLabel();assert.equal(window.document.getElementById('accountThemeLabel')!.textContent,'Modo escuro');
+ window.toggleTheme();window.updateAccountThemeLabel();assert.equal(window.document.getElementById('accountThemeLabel')!.textContent,'Modo claro');
  }finally{await window.happyDOM.close();}
 });

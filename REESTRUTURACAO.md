@@ -235,3 +235,5 @@ No quiz, etapas de escolha recebem foco no título ao entrar; campos de texto co
 Sidebar simplificada: operação e badge comercial deixam de ser visíveis. Rodapé contém ícones de conta e tema. Conta abre popover fixo fora da sidebar com Conta, Plano e Sair; IDs antigos seguem ocultos para compatibilidade. Fechamento por clique externo/Escape, navegação por setas e posicionamento limitado à viewport.
 
 Menu de conta ancorado ao botão na borda direita do rodapé: itens com ícones, conexão visual e abertura por escala/opacidade com origem no próprio botão. Em telas estreitas o posicionamento permanece limitado à viewport e a conexão não é desenhada quando o menu precisa sobrepor a sidebar. Movimento reduzido desativa a animação.
+
+Correção da âncora do menu: dimensões medidas por offsetHeight/offsetWidth, sem a escala da animação que reduzia a altura aparente e deixava a lista escapar da viewport. Menu alinhado acima do botão, com limite de altura e rolagem para telas pequenas. Tema passa a ser uma opção interna (Modo escuro/claro), removido do rodapé lateral.
