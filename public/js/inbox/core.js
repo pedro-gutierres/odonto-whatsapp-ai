@@ -70,7 +70,7 @@
       onboarding: { title:'Início', view:'viewOnboarding' }, chat: { title:'Conversas', view:'viewChat' },
       agenda: { title:'Agenda & Equipe', view:'viewAgenda' }, config: { title:'Treinar IA', view:'viewConfig' },
       settings: { title:'Conectar WhatsApp', view:'viewSettings' }, simulator: { title:'Simulador da IA', view:'viewSimulator' },
-      account: { title:'Dados & Acessos', view:'viewAccount' }
+      account: { title:'Conta', view:'viewAccount' }
     };
     function toggleSidebarCollapse() {
       const collapsed = document.body.classList.toggle('aura-sidebar-collapsed');
@@ -108,6 +108,8 @@
       const page = auraPages[tabId];
       closeAccountMenu();closeVerticalMenu(); window.auraUI?.close();
       document.getElementById('selectedMenuLabel').textContent=page.title;
+      const pageHeader = document.getElementById('dashboardPageHeader');
+      if (pageHeader) pageHeader.textContent = page.title;
       document.title=page.title+' | Aura'; document.body.dataset.view=tabId;
       for (const [id,item] of Object.entries(auraPages)) document.getElementById(item.view).classList.toggle('hidden',id!==tabId);
       for (const item of document.querySelectorAll('[data-nav-tab]')) {
