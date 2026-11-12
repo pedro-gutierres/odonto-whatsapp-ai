@@ -323,14 +323,14 @@
     }
     async function editAccountEmail() {
       const input = document.getElementById('accountEmail'), button = document.getElementById('accountEmailEdit');
-      if (input.readOnly) { input.readOnly = false; button.textContent = 'Salvar'; input.focus(); return; }
+      if (input.disabled) { input.disabled = false; button.textContent = 'Salvar'; input.focus(); return; }
       if (!input.reportValidity()) return;
       button.disabled = true;
       try {
         const res = await fetch('/api/clinic/email', {method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({email:input.value})});
         const data = await res.json();
         if (!res.ok) { showToast(data.error || 'Erro ao atualizar e-mail.', 'rose'); return; }
-        input.value = data.email; input.readOnly = true; button.textContent = 'Editar';
+        input.value = data.email; input.disabled = true; button.textContent = 'Editar';
         if (currentUser) currentUser.email = data.email;
         const label = document.getElementById('topUserEmail'); if (label) label.textContent = data.email;
         showToast('E-mail atualizado.', 'emerald');
