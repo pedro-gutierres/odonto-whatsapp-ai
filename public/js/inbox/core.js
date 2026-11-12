@@ -74,6 +74,7 @@
     };
     function toggleSidebarCollapse() {
       const collapsed = document.body.classList.toggle('aura-sidebar-collapsed');
+      if (!collapsed) document.getElementById('verticalMenuContainer').classList.remove('aura-sidebar-peek');
       const trigger = document.getElementById('sidebarCollapseTrigger');
       const label = collapsed ? 'Expandir menu' : 'Recolher menu';
       trigger.setAttribute('aria-expanded', String(!collapsed));
@@ -81,6 +82,13 @@
       trigger.title = label;
       closeAccountMenu();
     }
+    const sidebar = document.getElementById('verticalMenuContainer');
+    sidebar?.addEventListener('pointerenter', event => {
+      if (event.pointerType === 'mouse' && document.body.classList.contains('aura-sidebar-collapsed')) sidebar.classList.add('aura-sidebar-peek');
+    });
+    sidebar?.addEventListener('pointerleave', event => {
+      if (event.pointerType === 'mouse') sidebar.classList.remove('aura-sidebar-peek');
+    });
     function toggleVerticalMenu(event) {
       event.stopPropagation();
       const open = document.body.classList.toggle('aura-nav-open');
