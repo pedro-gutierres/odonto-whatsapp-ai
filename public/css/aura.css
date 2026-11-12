@@ -190,22 +190,27 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 /* Collapsible desktop navigation. */
 .aura-sidebar-collapse{display:none}
 @media(min-width:861px){
-  .aura-dashboard{transition:padding-left .25s ease,background-color .2s,color .2s}
-  .aura-sidebar{transition:width .25s ease;overflow-x:hidden}
+  .aura-dashboard{transition:padding-left .55s cubic-bezier(.22,1,.36,1),background-color .2s,color .2s}
+  .aura-sidebar{transition:width .55s cubic-bezier(.22,1,.36,1);overflow-x:hidden}
   .aura-sidebar-collapse{display:grid;margin:0 0 8px auto}
+  .aura-sidebar .aura-brand{transition:padding .55s cubic-bezier(.22,1,.36,1)}
   .aura-sidebar .aura-brand-mark{flex-shrink:0}
+  .aura-sidebar .aura-nav-item{overflow:hidden;transition:width .55s cubic-bezier(.22,1,.36,1),padding .55s cubic-bezier(.22,1,.36,1),gap .55s cubic-bezier(.22,1,.36,1),background .15s,color .15s}
+  .aura-sidebar .aura-nav-item span{flex-shrink:0}
+  .aura-sidebar .aura-nav-label{max-height:48px;overflow:hidden;white-space:nowrap;transition:max-height .55s cubic-bezier(.22,1,.36,1),padding .55s cubic-bezier(.22,1,.36,1),opacity .3s ease,visibility 0s linear .3s}
+  .aura-sidebar-collapse,.aura-sidebar-controls #accountMenuTrigger{transition:margin .55s cubic-bezier(.22,1,.36,1),background .15s,color .15s}
   .aura-sidebar-controls #accountMenuTrigger{margin-right:0}
-  .aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item span,.aura-sidebar .aura-nav-label{transition:opacity .18s ease;white-space:nowrap}
+  .aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item span{transition:opacity .3s ease,visibility 0s linear;white-space:nowrap}
   .aura-sidebar-collapsed{padding-left:72px}
   .aura-sidebar-collapsed:has(.aura-sidebar-peek){padding-left:232px}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek){width:72px}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand{padding-left:5px;padding-right:0}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand-name,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item span,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-label,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-business,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) #onboardingRefreshNotice{opacity:0;visibility:hidden}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-label{height:18px;padding:0}
+  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand-name,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item span{transition-delay:0s,.3s}
+  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-label{max-height:18px;padding:0;transition-delay:0s,0s,0s,.3s}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item{width:44px;gap:0;padding:11px 13px;overflow:hidden}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item span{width:0;min-width:0;overflow:hidden}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-controls .aura-topbar-actions{justify-content:center}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-controls #accountMenuTrigger{margin-right:0}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-collapse{margin-left:auto;margin-right:auto}
+  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-controls .aura-topbar-actions{justify-content:flex-start}
+  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-controls #accountMenuTrigger{margin-right:4px}
+  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-collapse{margin-left:auto;margin-right:4px}
 }
-@media(prefers-reduced-motion:reduce){.aura-dashboard,.aura-sidebar,.aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item span,.aura-sidebar .aura-nav-label{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.aura-dashboard,.aura-sidebar,.aura-sidebar .aura-brand,.aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item,.aura-sidebar .aura-nav-item span,.aura-sidebar .aura-nav-label,.aura-sidebar-collapse,.aura-sidebar-controls #accountMenuTrigger{transition:none!important}}
