@@ -186,3 +186,23 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 .aura-account-menu button:last-child{border-top:1px solid var(--aura-line);border-radius:0 0 8px 8px;margin-top:4px}
 @keyframes aura-account-unfold{from{opacity:0;transform:scale(.2);filter:blur(3px)}to{opacity:1;transform:scale(1);filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){.aura-account-menu{animation:none}}
+
+/* Collapsible desktop navigation. */
+.aura-sidebar-collapse{display:none}
+@media(min-width:861px){
+  .aura-dashboard{transition:padding-left .25s ease}
+  .aura-sidebar{transition:width .25s ease;overflow-x:hidden}
+  .aura-sidebar-collapse{display:grid;margin:0 0 8px auto}
+  .aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item span,.aura-sidebar .aura-nav-label{transition:opacity .18s ease;white-space:nowrap}
+  .aura-sidebar-collapsed{padding-left:72px}
+  .aura-sidebar-collapsed .aura-sidebar{width:72px}
+  .aura-sidebar-collapsed .aura-brand{padding-left:5px;padding-right:0}
+  .aura-sidebar-collapsed .aura-brand-name,.aura-sidebar-collapsed .aura-nav-item span,.aura-sidebar-collapsed .aura-nav-label,.aura-sidebar-collapsed .aura-sidebar-business,.aura-sidebar-collapsed #onboardingRefreshNotice{opacity:0;visibility:hidden}
+  .aura-sidebar-collapsed .aura-nav-label{height:18px;padding:0}
+  .aura-sidebar-collapsed .aura-nav-item{width:44px;gap:0;padding:11px 13px;overflow:hidden}
+  .aura-sidebar-collapsed .aura-nav-item span{width:0;min-width:0;overflow:hidden}
+  .aura-sidebar-collapsed .aura-sidebar-controls .aura-topbar-actions{justify-content:center}
+  .aura-sidebar-collapsed .aura-sidebar-controls #accountMenuTrigger{margin-right:0}
+  .aura-sidebar-collapsed .aura-sidebar-collapse{margin-left:auto;margin-right:auto}
+}
+@media(prefers-reduced-motion:reduce){.aura-dashboard,.aura-sidebar,.aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item span,.aura-sidebar .aura-nav-label{transition:none!important}}

@@ -72,6 +72,15 @@
       settings: { title:'Conectar WhatsApp', view:'viewSettings' }, simulator: { title:'Simulador da IA', view:'viewSimulator' },
       account: { title:'Dados & Acessos', view:'viewAccount' }
     };
+    function toggleSidebarCollapse() {
+      const collapsed = document.body.classList.toggle('aura-sidebar-collapsed');
+      const trigger = document.getElementById('sidebarCollapseTrigger');
+      const label = collapsed ? 'Expandir menu' : 'Recolher menu';
+      trigger.setAttribute('aria-expanded', String(!collapsed));
+      trigger.setAttribute('aria-label', label);
+      trigger.title = label;
+      closeAccountMenu();
+    }
     function toggleVerticalMenu(event) {
       event.stopPropagation();
       const open = document.body.classList.toggle('aura-nav-open');
