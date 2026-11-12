@@ -33,6 +33,7 @@ export function commercialAccess(tenant: Tenant, now = Date.now()) {
     can_prepare: tenant.active === 1 && (legacy || ['preparing','trial','active'].includes(status)),
     can_read_history: tenant.active === 1 && (legacy || ['trial','active','ended'].includes(status)),
     readiness: { training: trainingReady, whatsapp: whatsappReady, agenda: agendaReady },
+    schedule_mode: tenant.schedule_mode ?? null,
     profile: { kind: tenant.business_kind ?? null, sector: tenant.business_sector ?? null },
     trial: {
       started_at: tenant.trial_started_at ?? null, ends_at: tenant.trial_ends_at ?? null,

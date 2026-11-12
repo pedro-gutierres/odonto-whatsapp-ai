@@ -34,7 +34,7 @@ async function ready(db:MockD1Database,id:string,status='preparing') {
   await db.prepare(`UPDATE tenants SET commercial_status=?2,bot_config=?3,training_reviewed_at=?4,agenda_ready_at=?4,
     schedule_mode='aura',phone_number_id=?5,access_token_enc='mock',whatsapp_diagnosed_at=?4,operational_enabled=1,
     trial_started_at=?6,trial_ends_at=?7 WHERE id=?1`).bind(id,status,JSON.stringify(config),now,'phone-'+id,status==='trial'?now:null,status==='trial'?end:null).run();
-  await db.prepare("INSERT INTO professionals (tenant_id,name,working_days,start_hour,end_hour,break_start,break_end) VALUES (?1,'Profissional','[0,1,2,3,4,5,6]','08:00','18:00',NULL,NULL)").bind(id).run();
+  await db.prepare("UPDATE professionals SET name='Profissional',working_days='[0,1,2,3,4,5,6]',break_start=NULL,break_end=NULL WHERE tenant_id=?1").bind(id).run();
   await db.prepare('UPDATE tenants SET agenda_ready_at=?2 WHERE id=?1').bind(id,now).run();
 }
 function mockNetwork(reply='Resposta de demonstração',fail=false) {
@@ -53,10 +53,13 @@ async function inbound(env:Env,id:string,messageId=crypto.randomUUID()) {
   return {retried};
 }
 
-test('Cadastro cria acesso gratuito sem prazo, cobrança ou treinamento fictício',async()=>{
+test('Cadastro cria preparação com template válido sem iniciar prazo ou cobrança',async()=>{
   const {db,env}=setup();const user=await account(env);const tenant=(await getTenantById(env.DB,user.id))!;
-  assert.equal(tenant.commercial_status,'free');assert.equal(tenant.trial_started_at,null);assert.equal(tenant.trial_ends_at,null);assert.equal(tenant.billing_cycle,null);
-  assert.equal(tenant.business_kind,'solo');assert.equal(tenant.business_sector,'aesthetics');assert.equal(isCrucialConfigComplete(JSON.parse(tenant.bot_config)),false);
+  assert.equal(tenant.commercial_status,'preparing');assert.equal(tenant.trial_started_at,null);assert.equal(tenant.trial_ends_at,null);assert.equal(tenant.billing_cycle,null);
+  assert.equal(tenant.business_kind,'solo');assert.equal(tenant.business_sector,'aesthetics');assert.equal(isCrucialConfigComplete(JSON.parse(tenant.bot_config)),true);
+  assert.ok(tenant.training_reviewed_at);assert.ok(tenant.agenda_ready_at);assert.equal(tenant.schedule_mode,'aura');
+  assert.equal((await db.prepare('SELECT count(*) AS n FROM professionals WHERE tenant_id=?1 AND active=1').bind(user.id).first<any>()).n,1);
+  assert.equal(commercialAccess(tenant).can_operate,false);
   assert.ok(!tenant.bot_config.includes('CRO'));const row=await db.prepare('SELECT password_hash FROM users WHERE tenant_id=?1').bind(user.id).first<any>();
   assert.equal(await verifyPassword('segredo123',row.password_hash),true);assert.ok(row.password_hash.startsWith('pbkdf2_v1:'));
 });
@@ -71,9 +74,9 @@ test('Cadastro incompleto, JSON inválido e duplicidade não deixam negócios pe
   await account(env,{email:'unico@test.com'});assert.equal((await api(env,'/api/auth/register','',{clinicName:'N',adminName:'R',email:'UNICO@test.com',password:'segredo123',phone:'11999999999',businessKind:'clinic',businessSector:'dentistry',usesExternalSchedule:false})).status,409);
   assert.equal((await db.prepare('SELECT count(*) AS n FROM tenants').first<any>()).n,1);
 });
-test('Conta gratuita recusa operações reais mesmo por chamada direta',async()=>{
+test('Conta em preparação recusa operações reais mesmo por chamada direta',async()=>{
   const {db,env}=setup();const user=await account(env);
-  for(const url of ['/api/send','/api/toggle-ai','/api/clear-chat','/api/appointments','/api/appointments/run-confirmations','/api/professionals','/api/clinic/whatsapp/manual'])
+  for(const url of ['/api/send','/api/toggle-ai','/api/clear-chat','/api/appointments','/api/appointments/run-confirmations'])
     assert.equal((await api(env,url,user.cookie,{phone:'5511999999999',text:'oi'})).status,403,url);
   assert.equal((await db.prepare('SELECT count(*) AS n FROM messages').first<any>()).n,0);
 });
@@ -94,11 +97,11 @@ test('Ativação pode ficar desabilitada sem impedir cadastro e preparação',as
   const {db,env}=setup();env.OPERATIONAL_TRIAL_ENABLED='false';const user=await account(env);await ready(db,user.id);
   assert.equal((await api(env,'/api/onboarding/activate',user.cookie,{})).status,503);assert.equal((await getTenantById(env.DB,user.id))!.trial_started_at,null);
 });
-test('Modo paciente exige treinamento; modo Aura funciona antes da revisão',async()=>{
+test('Cadastro libera ambos os modos do Simulador imediatamente',async()=>{
   const {env}=setup();const user=await account(env);const network=mockNetwork();try{
-    assert.equal((await api(env,'/api/simulator/chat',user.cookie,{mode:'patient',message:'oi',requestId:crypto.randomUUID()})).status,409);
+    assert.equal((await api(env,'/api/simulator/chat',user.cookie,{mode:'patient',message:'oi',requestId:crypto.randomUUID()})).status,200);
     assert.equal((await api(env,'/api/simulator/chat',user.cookie,{mode:'aura',message:'Como funciona?',requestId:crypto.randomUUID()})).status,200);
-    assert.equal(network.calls.length,1);assert.ok(!JSON.stringify(network.calls[0].body).includes('CRO'));
+    assert.equal(network.calls.length,2);assert.ok(!JSON.stringify(network.calls[0].body).includes('CRO'));
   }finally{network.restore();}
 });
 test('Ambos os modos são incapazes de marcar, confirmar, ler agenda ou enviar WhatsApp',async()=>{
@@ -194,9 +197,11 @@ test('Fila e cron não chamam IA nem enviam mensagens após vencimento',async()=
   await db.prepare("INSERT INTO appointments(tenant_id,contact_wa_id,patient_name,scheduled_at,status,professional_id,ends_at) SELECT ?1,'5511999999999','Pessoa',?2,'agendado',id,substr(?2,1,11)||'10:30' FROM professionals WHERE tenant_id=?1").bind(user.id,tomorrow+' 10:00').run();const network=mockNetwork();
   try{await inbound(env,user.id);const cron=await runDayBeforeConfirmations(env,user.id);assert.equal(cron.sent,0);assert.equal(network.calls.length,0);}finally{network.restore();}
 });
-test('Salvar treinamento exige nova revisão e impede operação até confirmar',async()=>{
-  const {db,env}=setup();const user=await account(env);await ready(db,user.id,'trial');assert.equal((await api(env,'/api/config',user.cookie,{config})).status,200);assert.equal(commercialAccess((await getTenantById(env.DB,user.id))!).can_operate,false);
-  assert.equal((await api(env,'/api/onboarding/review-training',user.cookie,{})).status,200);assert.equal(commercialAccess((await getTenantById(env.DB,user.id))!).can_operate,true);
+test('Salvar treinamento completo revisa automaticamente; incompleto bloqueia operação',async()=>{
+  const {db,env}=setup();const user=await account(env);await ready(db,user.id,'trial');assert.equal((await api(env,'/api/config',user.cookie,{config})).status,200);assert.equal(commercialAccess((await getTenantById(env.DB,user.id))!).can_operate,true);
+  assert.equal((await api(env,'/api/config',user.cookie,{config:{...config,hours:''}})).status,200);
+  assert.equal(commercialAccess((await getTenantById(env.DB,user.id))!).can_operate,false);
+  assert.equal((await getTenantById(env.DB,user.id))!.training_reviewed_at,null);
 });
 
 test('CSV exige prévia, confirmação e isolamento; repetir commit não duplica ocupações',async()=>{
@@ -296,7 +301,7 @@ test('Checkout usa preço e vínculo criados no servidor; não libera assinatura
   };
   try{
     const result=await api(env,'/api/billing/checkout',user.cookie,{cycle:'monthly',renewalAccepted:true,tenant_id:'outro',priceId:'barato'});assert.equal(result.status,200);
-    assert.equal(sent.custom_data.tenant_id,user.id);assert.equal(sent.items[0].price_id,'pri_monthly');assert.ok(sent.custom_data.checkout_intent);assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'free');
+    assert.equal(sent.custom_data.tenant_id,user.id);assert.equal(sent.items[0].price_id,'pri_monthly');assert.ok(sent.custom_data.checkout_intent);assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'preparing');
     assert.equal((await api(env,'/api/billing/checkout',user.cookie,{cycle:'monthly',renewalAccepted:true})).status,200);
   }finally{globalThis.fetch=original;}
 });
@@ -330,7 +335,7 @@ test('Assinatura ativa com Pix ainda não capturado não libera período pago; c
   const proof=mockPaddleProof(user.id,intent);const receipt=proof.state.payments[0];proof.state.payments=[];
   try {
     const initial=subscriptionEvent(user.id,intent);assert.equal((await signedEvent(env,initial)).status,200);
-    let tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'free');assert.equal(tenant.subscription_ends_at,null);
+    let tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'preparing');assert.equal(tenant.subscription_ends_at,null);
     assert.equal(tenant.paddle_subscription_id,'sub_test');
     const completed={...completedPayment(user.id,intent),occurred_at:initial.occurred_at};
     assert.equal((await signedEvent(env,completed)).status,502,'An API propagation delay must request webhook redelivery');
@@ -379,14 +384,14 @@ test('Comprovante de outro cliente, contratação, preço ou quantidade não con
   try {
     for(const patch of [{customer_id:'ctm_other'},{custom_data:{tenant_id:user.id,checkout_intent:'other'}},{items:[{price:{id:'pri_other'},quantity:1}]},{items:[{price:{id:'pri_monthly'},quantity:2}]}]){
       proof.state.payments=[{...receipt,...patch}];assert.equal((await signedEvent(env,subscriptionEvent(user.id,intent))).status,200);
-      const tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'free');assert.equal(tenant.subscription_ends_at,null);
+      const tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'preparing');assert.equal(tenant.subscription_ends_at,null);
     }
   } finally { proof.restore(); }
 });
 test('Webhook não aceita trocar negócio nem preço pelo custom_data',async()=>{
   const {db,env}=setup();configureBilling(env);const a=await account(env),b=await account(env);const intent=await billingIntent(db,a.id);
   assert.equal((await signedEvent(env,subscriptionEvent(b.id,intent))).status,409);assert.equal((await signedEvent(env,subscriptionEvent(a.id,intent,{items:[{price:{id:'pri_other'}}]}))).status,409);
-  assert.equal((await getTenantById(env.DB,a.id))!.commercial_status,'free');assert.equal((await getTenantById(env.DB,b.id))!.commercial_status,'free');
+  assert.equal((await getTenantById(env.DB,a.id))!.commercial_status,'preparing');assert.equal((await getTenantById(env.DB,b.id))!.commercial_status,'preparing');
 });
 
 test('Scripts públicos e scripts das páginas são JavaScript válido',()=>{
@@ -420,7 +425,7 @@ test('Vencimento durante a geração impede envio e devolve reserva sem criar co
 });
 test('Sandbox não libera assinatura operacional na produção por padrão',async()=>{
   const {db,env}=setup();configureBilling(env);delete env.PADDLE_SANDBOX_ENTITLEMENTS;const user=await account(env);const intent=await billingIntent(db,user.id);
-  const response=await signedEvent(env,subscriptionEvent(user.id,intent));assert.equal(response.status,200);assert.equal((await response.json() as any).sandbox_access_disabled,true);assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'free');
+  const response=await signedEvent(env,subscriptionEvent(user.id,intent));assert.equal(response.status,200);assert.equal((await response.json() as any).sandbox_access_disabled,true);assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'preparing');
 });
 test('Preço externo divergente impede checkout sem criar transação',async()=>{
   const {env}=setup();configureBilling(env);const user=await account(env);const original=fetch;let posted=false;
@@ -440,4 +445,34 @@ test('Remover profissional com bloqueios preserva a agenda e informa o impedimen
   await api(env,'/api/agenda/blocks',user.cookie,{professionalId:prof.id,startsAt:'2030-01-01T10:00',endsAt:'2030-01-01T11:00'});
   assert.equal((await api(env,'/api/professionals',user.cookie,{id:prof.id},'DELETE')).status,409);
   assert.equal((await db.prepare('SELECT count(*) AS n FROM appointment_blocks').first<any>()).n,1);
+});
+
+
+test('Agenda externa aguarda revisão inicial e edições normais preservam prontidão',async()=>{
+  const {db,env}=setup();const user=await account(env,{usesExternalSchedule:true,existingSystem:'Agenda externa'});
+  let tenant=(await getTenantById(env.DB,user.id))!;
+  assert.equal(tenant.schedule_mode,'external_manual');assert.equal(tenant.agenda_ready_at,null);
+  const professional=await db.prepare('SELECT id FROM professionals WHERE tenant_id=?1').bind(user.id).first<any>();
+  assert.equal((await api(env,'/api/professionals',user.cookie,{id:professional.id,endHour:'17:00'},'PATCH')).status,200);
+  assert.equal((await getTenantById(env.DB,user.id))!.agenda_ready_at,null);
+  assert.equal((await api(env,'/api/onboarding/agenda',user.cookie,{mode:'external_manual',maintenanceAcknowledged:true})).status,200);
+  assert.equal((await api(env,'/api/professionals',user.cookie,{id:professional.id,endHour:'18:00'},'PATCH')).status,200);
+  assert.ok((await getTenantById(env.DB,user.id))!.agenda_ready_at);
+});
+
+test('Equipe válida restaura agenda; expediente inválido ou remoção do último profissional bloqueia',async()=>{
+  const {db,env}=setup();const user=await account(env),other=await account(env);
+  const professional=await db.prepare('SELECT id FROM professionals WHERE tenant_id=?1').bind(user.id).first<any>();
+  assert.equal((await api(env,'/api/professionals',user.cookie,{name:'Equipe adicional'})).status,200);
+  const added=await db.prepare('SELECT id FROM professionals WHERE tenant_id=?1 AND id!=?2').bind(user.id,professional.id).first<any>();
+  assert.ok((await getTenantById(env.DB,user.id))!.agenda_ready_at);
+  assert.equal((await api(env,'/api/professionals',user.cookie,{id:added.id},'DELETE')).status,200);
+  assert.ok((await getTenantById(env.DB,user.id))!.agenda_ready_at);
+  assert.equal((await api(env,'/api/professionals',user.cookie,{id:professional.id,startHour:'19:00'},'PATCH')).status,200);
+  assert.equal((await getTenantById(env.DB,user.id))!.agenda_ready_at,null);
+  assert.ok((await getTenantById(env.DB,other.id))!.agenda_ready_at);
+  assert.equal((await api(env,'/api/professionals',user.cookie,{id:professional.id,startHour:'08:00'},'PATCH')).status,200);
+  assert.ok((await getTenantById(env.DB,user.id))!.agenda_ready_at);
+  assert.equal((await api(env,'/api/professionals',user.cookie,{id:professional.id},'DELETE')).status,200);
+  assert.equal((await getTenantById(env.DB,user.id))!.agenda_ready_at,null);
 });

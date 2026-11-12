@@ -29,3 +29,114 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 @media(max-width:760px){.aura-auth-layout{grid-template-columns:1fr;gap:25px;margin:10px auto 40px;padding:0 20px;max-width:560px}.aura-auth-intro{padding-top:10px}.aura-auth-intro h1{font-size:30px}.aura-auth-steps{display:none}.aura-auth-single{margin-top:10px}}
 @media(max-width:400px){.aura-auth-form-grid{grid-template-columns:1fr}}
 .aura-training-section{background:var(--aura-panel);border:1px solid var(--aura-line);border-radius:13px;overflow:clip}.aura-training-section>summary{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:20px 23px;font-size:14px;font-weight:600;list-style:none}.aura-training-section>summary:after{content:'+';color:var(--aura-muted);font-size:18px;font-weight:400}.aura-training-section[open]>summary:after{content:'−'}.aura-training-section[open]>summary{border-bottom:1px solid var(--aura-line)}.aura-training-section>summary::-webkit-details-marker{display:none}.aura-training-body{padding:23px;display:flex;flex-direction:column;gap:20px}.aura-training-body>div:empty{display:none}.aura-dashboard input.border-rose-500,.aura-dashboard textarea.border-rose-500{border-color:var(--aura-danger)!important;box-shadow:none!important}.aura-missing-fields{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:10px}.aura-missing-fields button{font-size:12px;color:var(--aura-accent);border:0;background:none;padding:0;text-decoration:underline;text-underline-offset:3px}.aura-save-bar{position:sticky;bottom:0;z-index:12;padding:15px 0!important;background:var(--aura-bg);border-top:1px solid var(--aura-line);margin-top:24px}.aura-manual-connection summary{list-style:none}.aura-manual-connection summary:after{content:'+';float:right;color:var(--aura-muted)}.aura-manual-connection[open] summary:after{content:'−'}
+/* Public conversion pages */
+.aura-commercial .aura-public-header,.aura-commercial .aura-public-main,.aura-commercial .aura-public-footer{max-width:1240px}
+.aura-commercial .aura-public-header{flex-wrap:wrap;row-gap:16px}
+.aura-commercial .aura-public-nav{flex-wrap:wrap;gap:14px 24px}
+.aura-commercial .aura-public-nav>a{min-height:40px;display:inline-flex;align-items:center}
+.aura-commercial .aura-public-nav>a:hover{color:var(--aura-accent)}
+.aura-commercial .aura-public-nav>.aura-primary:hover{color:var(--aura-panel)}
+.aura-commercial .aura-hero{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:48px;padding:32px 0 76px}
+.aura-commercial .aura-hero h1{font-size:clamp(36px,4.1vw,56px);line-height:1.13;letter-spacing:-2px}
+.aura-commercial .aura-hero .aura-eyebrow{font-size:11px;line-height:1.6;color:var(--aura-accent);letter-spacing:.05em}
+.aura-commercial .aura-hero-actions{flex-wrap:wrap;gap:12px}
+.aura-commercial .aura-hero-actions>a{min-height:46px;padding:13px 18px}
+.aura-commercial .aura-chat-preview{box-shadow:var(--aura-shadow);max-width:none}
+.aura-commercial .aura-chat-preview-head{display:flex;align-items:center;gap:12px;padding:18px}
+.aura-chat-avatar{display:grid;place-items:center;flex-shrink:0;width:36px;height:36px;border-radius:12px;background:var(--aura-accent);color:var(--aura-panel);font-size:22px;font-weight:700}
+.aura-chat-availability{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:10px;font-weight:400;color:var(--aura-muted);line-height:1.5}
+.aura-chat-availability i{width:5px;height:5px;border-radius:50%;background:var(--aura-accent);flex-shrink:0}
+.aura-chat-time{margin-left:auto;color:var(--aura-muted);font-size:10px;flex-shrink:0}
+.aura-chat-day{align-self:center;color:var(--aura-muted);font-size:10px}
+.aura-commercial .aura-chat-preview-body{padding:18px;gap:12px}
+.aura-commercial .aura-preview-bubble{font-size:12px;line-height:1.7}
+.aura-commercial .aura-preview-caption{font-size:10px;line-height:1.7;padding:0 18px 16px;margin:0;max-width:none}
+.aura-commercial .aura-public-section{scroll-margin-top:24px}
+.aura-commercial .aura-public-section>h2{max-width:780px;font-size:clamp(26px,3vw,36px);letter-spacing:-1px}
+.aura-commercial .aura-feature-grid{gap:24px}
+.aura-commercial .aura-feature-grid>div{min-width:0;padding:24px;border:1px solid var(--aura-line);border-radius:14px;background:var(--aura-panel)}
+.aura-commercial .aura-feature-grid h3{line-height:1.6;font-size:15px}
+.aura-commercial .aura-feature-grid p{margin-bottom:0}
+.aura-section-intro{max-width:780px;font-size:14px;line-height:1.9;color:var(--aura-muted);margin:-10px 0 30px}
+.aura-section-intro strong{color:var(--aura-text);font-weight:600}
+.aura-pricing-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:stretch}
+.aura-pricing-card{display:flex;flex-direction:column;min-width:0;padding:32px;border:1px solid var(--aura-line);border-radius:18px;background:var(--aura-panel);color:var(--aura-text)}
+.aura-pricing-card.is-featured{border-color:var(--aura-accent);box-shadow:0 0 0 1px var(--aura-accent);background:linear-gradient(145deg,var(--aura-accent-soft),var(--aura-panel) 65%)}
+.aura-pricing-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;min-height:30px}
+.aura-pricing-heading h3{font-size:18px;margin:0;font-weight:650;letter-spacing:-.4px}
+.aura-pricing-period{font-size:11px;color:var(--aura-muted)}
+.aura-price-value{font-size:clamp(36px,4vw,48px);line-height:1.2;font-weight:700;letter-spacing:-1.8px;margin:24px 0 10px;font-variant-numeric:tabular-nums}
+.aura-price-value span{font-size:14px;font-weight:500;letter-spacing:0;color:var(--aura-muted);white-space:nowrap}
+.aura-price-badge{display:inline-flex;align-items:center;min-height:28px;padding:5px 11px;border-radius:999px;font-size:10px;font-weight:700;background:var(--aura-accent);color:var(--aura-panel)}
+.aura-pricing-detail{min-height:48px;font-size:12px;line-height:1.9;color:var(--aura-muted);margin:0 0 24px}
+.aura-pricing-detail strong{color:var(--aura-text);font-weight:600}
+.aura-pricing-card>a{width:100%;min-height:46px}
+.aura-pricing-list{list-style:none;padding:24px 0 0;margin:24px 0;border-top:1px solid var(--aura-line);display:flex;flex-direction:column;gap:14px;font-size:13px;line-height:1.65}
+.aura-pricing-list li{position:relative;padding-left:25px}
+.aura-pricing-list li:before{content:'✓';position:absolute;left:0;color:var(--aura-accent);font-weight:700}
+.aura-pricing-card>.aura-small-note{margin-top:auto;padding-top:8px;margin-bottom:0}
+.aura-pricing-transparency{max-width:850px;margin:24px auto 0;text-align:center;font-size:11px;line-height:1.9;color:var(--aura-muted)}
+.aura-commercial .aura-faq{max-width:900px}
+.aura-commercial .aura-faq summary{line-height:1.7;padding-right:12px}
+.aura-final-cta{text-align:center}
+.aura-commercial .aura-final-cta>h2{margin-left:auto;margin-right:auto;max-width:700px;margin-bottom:18px}
+.aura-final-cta>p:not(.aura-eyebrow){color:var(--aura-muted);font-size:14px;line-height:1.8}
+.aura-final-cta>.aura-primary{min-height:46px;margin:12px 0}
+.aura-public-footer>a{color:var(--aura-accent);text-decoration:none}
+@media(max-width:1000px){.aura-commercial .aura-public-nav{gap:12px 16px}.aura-commercial .aura-hero{gap:30px}.aura-commercial .aura-feature-grid>div{padding:20px}}
+@media(max-width:860px){.aura-commercial .aura-hero{grid-template-columns:minmax(0,1fr);gap:30px;padding-top:16px}.aura-commercial .aura-hero h1{max-width:720px}.aura-commercial .aura-hero p{max-width:650px}.aura-commercial .aura-chat-preview{width:100%;max-width:560px;margin:auto}.aura-commercial .aura-public-nav{gap:8px 16px}.aura-commercial .aura-feature-grid{grid-template-columns:1fr;gap:16px}.aura-pricing-grid{grid-template-columns:minmax(0,1fr);gap:24px}.aura-pricing-card{padding:28px}.aura-pricing-detail{min-height:0}.aura-pricing-transparency{text-align:left}}
+@media(max-width:600px){.aura-commercial .aura-public-header{gap:12px}.aura-commercial .aura-public-nav{width:100%;justify-content:space-between;gap:6px 14px}.aura-commercial .aura-public-nav>a:nth-child(-n+4){min-height:32px}.aura-commercial .aura-public-nav>#navLoginBtn{margin-left:auto}.aura-commercial .aura-public-nav>#navRegisterBtn{flex-shrink:0}.aura-commercial .aura-hero h1{font-size:clamp(32px,8.5vw,42px);letter-spacing:-1.3px}.aura-commercial .aura-hero-actions{align-items:stretch;flex-direction:column}.aura-commercial .aura-hero-actions>a{width:100%}.aura-commercial .aura-chat-preview-head{gap:9px;padding:15px}.aura-commercial .aura-chat-time{display:none}.aura-pricing-card{padding:24px}.aura-commercial .aura-public-section>h2{font-size:27px}.aura-final-cta>.aura-primary{width:100%}.aura-final-cta{text-align:left}.aura-price-badge{font-size:10px}}
+/* Guided onboarding and internal plans */
+.aura-sidebar .aura-nav-label{font-size:9px;letter-spacing:.08em;padding-top:18px}
+.aura-sidebar .aura-nav-item{gap:9px;padding:11px 10px;font-size:12px}
+.aura-sidebar .aura-nav-item>i{flex-shrink:0}
+.aura-nav-pill{margin-left:auto;font-size:9px;line-height:1.5;font-weight:650;padding:3px 7px;border-radius:999px;background:var(--aura-accent-soft);color:var(--aura-accent)}
+.aura-nav-simulator{color:var(--aura-accent)}
+.aura-sidebar{overflow-y:auto}
+.aura-onboarding-hub{width:100%;min-width:0}
+.aura-onboarding-hub .aura-welcome{grid-template-columns:minmax(0,1.3fr) minmax(240px,1fr)}
+.aura-welcome-actions{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.aura-welcome-actions .aura-primary{min-height:46px}
+.aura-onboarding-hub>.aura-section-head{align-items:flex-start;flex-wrap:wrap}
+.aura-onboarding-hub>.aura-section-head h3{font-size:14px;font-weight:650}
+.aura-onboarding-hub .aura-setup-grid{align-items:stretch}
+.aura-onboarding-hub .aura-step-card{display:flex;flex-direction:column;min-width:0}
+.aura-step-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.aura-step-heading h3{font-size:14px;line-height:1.5;margin:0}
+.aura-readiness-badge{display:inline-flex;align-items:center;flex-shrink:0;white-space:nowrap;font-size:10px;line-height:1.5;font-weight:600;padding:4px 8px;border-radius:999px}
+.aura-readiness-badge.is-ready{background:var(--aura-accent-soft);color:var(--aura-accent)}
+.aura-readiness-badge.is-pending{background:#fff4d6;color:#875905}
+:root.dark .aura-readiness-badge.is-pending{background:#3e3119;color:#f6d28a}
+.aura-onboarding-hub .aura-step-actions{margin-top:auto;padding-top:20px;gap:12px}
+.aura-onboarding-hub .aura-step-actions>.aura-secondary{width:100%;font-size:11px;padding:10px}
+.aura-onboarding-hub .aura-step-card p{min-height:0;margin-bottom:0}
+.aura-onboarding-hub .aura-agenda-mode{margin-top:24px;padding:0;border:1px solid var(--aura-line);overflow:clip}
+.aura-agenda-mode>summary{padding:20px 24px;min-height:64px;line-height:1.6;flex-wrap:wrap}
+.aura-agenda-mode>summary .aura-field-hint{font-size:11px;font-weight:400}
+.aura-agenda-mode[open]>summary{border-bottom:1px solid var(--aura-line)}
+.aura-agenda-mode .aura-disclosure-content{padding:24px}
+.aura-agenda-mode-fields{display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+.aura-agenda-mode-fields select,.aura-agenda-mode-fields .aura-control{max-width:100%;width:100%}
+.aura-agenda-mode-fields>p{margin:0}
+.aura-agenda-mode-fields>h3{margin:0}
+.aura-activation-card{border-color:var(--aura-accent);background:linear-gradient(135deg,var(--aura-accent-soft),var(--aura-panel) 80%)}
+.aura-activation-card .aura-section-head h3{font-size:18px;line-height:1.5}
+.aura-activation-card .aura-description{max-width:none;color:var(--aura-text)}
+.aura-activation-progress{width:100%;height:5px;border-radius:999px;overflow:hidden;background:var(--aura-line)}
+.aura-activation-progress>span{display:block;width:0;height:100%;background:var(--aura-accent);border-radius:inherit;transition:width .2s}
+.aura-activation-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.aura-hub-billing>h3{font-size:20px;line-height:1.5;margin-bottom:12px}
+.aura-hub-pricing{margin-top:24px;gap:20px}
+.aura-hub-pricing .aura-pricing-card{padding:24px}
+.aura-hub-pricing .aura-price-value{font-size:38px}
+.aura-hub-pricing .aura-price-value span{font-size:11px}
+.aura-hub-pricing .aura-price-badge{font-size:9px}
+.aura-hub-pricing .aura-pricing-detail{min-height:45px}
+.aura-hub-pricing .aura-pricing-list{margin:0 0 24px;padding-top:20px;font-size:12px}
+.aura-hub-pricing .aura-pricing-card>button{margin-top:auto;min-height:44px;width:100%}
+.aura-hub-billing-footer{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-top:24px;padding-top:24px;border-top:1px solid var(--aura-line)}
+.aura-hub-billing-footer>p{margin:0}
+.aura-simulator-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+@media(max-width:1100px){.aura-onboarding-hub .aura-setup-grid{grid-template-columns:1fr}.aura-onboarding-hub .aura-step-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 20px;padding-left:66px;position:relative}.aura-onboarding-hub .aura-step-index{position:absolute;left:22px;top:24px}.aura-onboarding-hub .aura-step-heading{grid-column:1;justify-content:flex-start}.aura-onboarding-hub .aura-step-card>.aura-description{grid-column:1}.aura-onboarding-hub .aura-step-actions{grid-column:2;grid-row:1/span 2;align-self:center;padding-top:0;margin-top:0;flex-direction:column}}
+@media(max-width:860px){.aura-onboarding-hub .aura-welcome{grid-template-columns:minmax(0,1fr);gap:20px}.aura-hub-pricing{grid-template-columns:minmax(0,1fr)}.aura-hub-pricing .aura-pricing-detail{min-height:0}.aura-agenda-mode>summary{padding:18px 20px}.aura-agenda-mode .aura-disclosure-content{padding:20px}.aura-simulator-actions{width:100%}}
+@media(max-width:600px){.aura-onboarding-hub .aura-step-card{display:flex;padding-left:20px}.aura-onboarding-hub .aura-step-index{position:static;margin-bottom:14px}.aura-onboarding-hub .aura-step-actions{align-self:stretch;align-items:stretch;margin-top:0;padding-top:18px}.aura-onboarding-hub .aura-step-actions>.aura-text-button{align-self:flex-start}.aura-step-heading{justify-content:space-between}.aura-welcome-actions{align-items:stretch}.aura-welcome-actions>.aura-primary{width:100%}.aura-activation-actions{align-items:stretch;flex-direction:column}.aura-hub-pricing .aura-pricing-card{padding:20px}.aura-hub-pricing .aura-price-value{font-size:34px}.aura-simulator-actions>button{flex:1 1 140px}.aura-agenda-mode>summary{align-items:flex-start}}

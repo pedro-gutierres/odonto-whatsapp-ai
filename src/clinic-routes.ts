@@ -518,11 +518,13 @@ export async function handleClinicRoutes(
       let phoneNumberId = body.phone_number_id?.trim() || "";
       let displayPhone: string | null = null;
       let verifiedName: string | null = null;
+      let phoneValidated = false;
 
       if (!phoneNumberId) {
         const numbers = await listWabaPhoneNumbers(env, accessToken, wabaId);
         if (numbers.length > 0) {
           phoneNumberId = numbers[0].id;
+          phoneValidated = true;
           displayPhone = numbers[0].display_phone_number || null;
           verifiedName = numbers[0].verified_name || null;
         }
@@ -549,6 +551,7 @@ export async function handleClinicRoutes(
       if (!displayPhone || !verifiedName) {
         try {
           const phoneInfo = await fetchMetaPhoneNumberInfo(env, accessToken, phoneNumberId);
+          phoneValidated = true;
           displayPhone = phoneInfo.display_phone_number || displayPhone;
           verifiedName = phoneInfo.verified_name || verifiedName;
         } catch (infoErr) {
@@ -582,6 +585,9 @@ export async function handleClinicRoutes(
         waVerifiedName: verifiedName,
         markConnected: true,
       });
+
+      if (phoneValidated && subRes.success && (!pin || phoneRegistered)) await env.DB.prepare('UPDATE tenants SET whatsapp_diagnosed_at=?2 WHERE id=?1')
+        .bind(tenantId, new Date().toISOString()).run();
 
       const updatedTenant = await getTenantById(env.DB, tenantId);
       return jsonResponse({
@@ -679,6 +685,9 @@ export async function handleClinicRoutes(
         waVerifiedName: phoneInfo.verified_name || null,
         markConnected: true,
       });
+
+      if (!wabaId || webhookSubscribed) await env.DB.prepare('UPDATE tenants SET whatsapp_diagnosed_at=?2 WHERE id=?1')
+        .bind(tenantId, new Date().toISOString()).run();
 
       const updatedTenant = await getTenantById(env.DB, tenantId);
       return jsonResponse({

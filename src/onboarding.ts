@@ -23,21 +23,34 @@ export async function registerAccount(request: Request, env: Env) {
     if (await getUserByEmail(env.DB, email)) return jsonResponse({ error: 'Este e-mail já está cadastrado. Acesse sua conta.' }, 409);
     const id = `negocio-${crypto.randomUUID()}`;
     const hash = await hashPassword(password);
-    // No fictitious registration, prices, opening hours or professional credentials.
-    const config = JSON.stringify({ clinic_name: clinicName, doctor_name: adminName, procedure_items: [], initial_consultation: {}, hours: '' });
+    const now = new Date().toISOString();
+    const procedures = sector === 'dentistry'
+      ? ['Limpeza e Profilaxia', 'Clareamento Dental', 'Avaliação de Implante']
+      : ['Toxina Botulínica (Botox)', 'Preenchimento Labial', 'Bioestimulador de Colágeno'];
+    const config = JSON.stringify({ clinic_name: clinicName, doctor_name: adminName,
+      hours: 'Segunda a Sexta, das 08:00 às 18:00',
+      initial_consultation: { duration: '30 min', price: 'A confirmar na clínica', details: 'Avaliação inicial completa' },
+      procedures, procedure_items: procedures.map(name => ({ name, checked: true,
+        category: sector === 'dentistry' ? 'odonto' : 'estetica', duration: '45 min' })) });
     await env.DB.batch([
       env.DB.prepare(`INSERT INTO tenants (id,name,phone_number_id,contact_email,admin_phone,responsible_name,
         bot_config,active,commercial_status,business_kind,business_sector,uses_external_schedule,existing_system,
-        trial_ends_at,trial_messages_used,trial_messages_limit,billing_cycle)
-        VALUES (?1,?2,?3,?4,?5,?6,?7,1,'free',?8,?9,?10,?11,NULL,0,100,NULL)`)
-        .bind(id, clinicName, `unconfigured:${id}`, email, phone, adminName, config, kind, sector, external ? 1 : 0, external ? system : null),
+        trial_ends_at,trial_messages_used,trial_messages_limit,billing_cycle,training_reviewed_at,schedule_mode,agenda_ready_at)
+        VALUES (?1,?2,?3,?4,?5,?6,?7,1,'preparing',?8,?9,?10,?11,NULL,0,100,NULL,?12,?13,?14)`)
+        .bind(id, clinicName, `unconfigured:${id}`, email, phone, adminName, config, kind, sector, external ? 1 : 0, external ? system : null,
+          now, external ? 'external_manual' : 'aura', external ? null : now),
       env.DB.prepare("INSERT INTO users (tenant_id,email,password_hash,name,role,active) VALUES (?1,?2,?3,?4,'admin',1)")
         .bind(id, email, hash, adminName),
+      env.DB.prepare(`INSERT INTO professionals (tenant_id,name,specialty,working_days,start_hour,end_hour,break_start,break_end,procedures_json,color,active)
+        VALUES (?1,?2,?3,'[1,2,3,4,5]','08:00','18:00','12:00','13:00','[]','#10b981',1)`)
+        .bind(id, adminName, sector === 'dentistry' ? 'Odontologia Geral' : 'Estética Avançada'),
+      // Restore readiness after the professional_added trigger, only for Aura schedules.
+      ...(!external ? [env.DB.prepare('UPDATE tenants SET agenda_ready_at=?2 WHERE id=?1').bind(id, now)] : []),
     ]);
     const user = await getUserByEmail(env.DB, email);
     if (!user) throw new Error('REGISTER_USER_MISSING');
     const token = await createSessionToken({ userId: user.id, tenantId: id, email, name: adminName, role: 'admin' }, env.AUTH_SECRET);
-    return jsonResponse({ success: true, redirect: '/inbox', tenantId: id, user: { name: adminName, email, role: 'admin', tenantId: id } }, 201,
+    return jsonResponse({ success: true, redirect: '/inbox#simulator', tenantId: id, user: { name: adminName, email, role: 'admin', tenantId: id } }, 201,
       { 'Set-Cookie': makeSessionCookie(token, new URL(request.url).protocol === 'https:') });
   } catch (error) {
     if (error instanceof SyntaxError) return jsonResponse({ error: 'JSON inválido.' }, 400);

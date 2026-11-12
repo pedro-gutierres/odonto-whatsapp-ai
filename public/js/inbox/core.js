@@ -65,10 +65,10 @@
 
     // 2. SELETOR DE MÓDULOS (MENU VERTICAL)
     const auraPages = {
-      onboarding: { title:'Início', view:'viewOnboarding' }, chat: { title:'Conversas', view:'viewChat' },
-      agenda: { title:'Agenda', view:'viewAgenda' }, config: { title:'Meu negócio e IA', view:'viewConfig' },
-      settings: { title:'WhatsApp', view:'viewSettings' }, simulator: { title:'Test Drive', view:'viewSimulator' },
-      account: { title:'Conta e equipe', view:'viewAccount' }
+      onboarding: { title:'Início & Plano', view:'viewOnboarding' }, chat: { title:'Conversas', view:'viewChat' },
+      agenda: { title:'Agenda & Equipe', view:'viewAgenda' }, config: { title:'Treinar IA', view:'viewConfig' },
+      settings: { title:'Conectar WhatsApp', view:'viewSettings' }, simulator: { title:'Simulador da IA', view:'viewSimulator' },
+      account: { title:'Dados & Acessos', view:'viewAccount' }
     };
     function toggleVerticalMenu(event) {
       event.stopPropagation();
@@ -85,7 +85,8 @@
       }
     });
     function selectNavigationTab(tabId) {
-      const page = auraPages[tabId]; if (!page) return;
+      if (!Object.hasOwn(auraPages, tabId)) return;
+      const page = auraPages[tabId];
       closeVerticalMenu(); window.auraUI?.close();
       document.getElementById('selectedMenuLabel').textContent=page.title;
       document.title=page.title+' | Aura'; document.body.dataset.view=tabId;
@@ -157,7 +158,7 @@
       updateCrucialTrainingLockUI();
       if (currentAccess && currentAccess.can_read_history) startPolling();
       const requestedTab=location.hash.slice(1);
-      selectNavigationTab(auraPages[requestedTab] ? requestedTab : currentAccess?.legacy_review_required ? 'chat':'onboarding');
+      selectNavigationTab(Object.hasOwn(auraPages, requestedTab) ? requestedTab : 'chat');
       setInterval(() => { if (!document.hidden) loadOnboarding(); }, 30000);
     }
 

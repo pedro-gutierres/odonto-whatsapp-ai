@@ -101,11 +101,19 @@ test('Block editor keeps day/time values and validates overnight periods',async(
 });
 test('Dashboard has unique field IDs and preserves every view and critical action',async()=>{
   const window=await dom(INBOX_HTML);
-  try{const ids=[...window.document.querySelectorAll('[id]')].map(element=>element.id);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs make actions target the wrong field');for(const id of ['viewChat','viewAgenda','viewConfig','viewSettings','viewSimulator','viewOnboarding','viewAccount','activateTrialBtn','btnSaveClinicProfile','cfgClinicName','btnSaveConfigText','blockStart','blockEnd','appDate','appHourSelect','appMinuteSelect'])assert.ok(window.document.getElementById(id),id);assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,7);
+  try{const ids=[...window.document.querySelectorAll('[id]')].map(element=>element.id);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs make actions target the wrong field');for(const id of ['viewChat','viewAgenda','viewConfig','viewSettings','viewSimulator','viewOnboarding','viewAccount','businessProfileLabel','onboardingStatus','operationalQuota','readyTraining','readyWhatsapp','readyAgenda','scheduleExplanation','maintenanceAcknowledgedLabel','activationSection','activationSummary','trialTerms','activationAcknowledged','activationAcknowledgmentText','activationAvailability','plano','billingAvailability','billingDetails','checkoutMonthly','checkoutYearly','billingPortal','paidRenewalAccepted','chatCount','profCountBadge','prepareTrialBtn','reviewTrainingBtn','saveAgendaReadinessBtn','scheduleMode','maintenanceAcknowledged','activateTrialBtn','btnSaveClinicProfile','cfgClinicName','btnSaveConfigText','blockStart','blockEnd','appDate','appHourSelect','appMinuteSelect'])assert.ok(window.document.getElementById(id),id);assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,7);
   }finally{await window.happyDOM.close();}
 });
 test('Pages no longer publish demo credentials or imply signup starts the trial',()=>{
   assert.ok(!LOGIN_HTML.includes('admin123'));assert.ok(!LOGIN_HTML.includes('admin@clinica.com'));assert.ok(!REGISTER_HTML.includes('Iniciar Teste Grátis'));assert.ok(LANDING_HTML.includes('O cadastro não inicia seu teste'));assert.ok(!INBOX_HTML.includes('type="datetime-local"'));
+  for(const section of ['como-funciona','recursos','planos','duvidas']){
+    assert.ok(LANDING_HTML.includes('id="'+section+'"'));assert.ok(LANDING_HTML.includes('href="#'+section+'"'));
+  }
+  assert.ok(LANDING_HTML.includes('R$ 2.148 cobrados anualmente'));
+  assert.ok(LANDING_HTML.includes('Economia de R$ 240/ano'));
+  assert.ok(LANDING_HTML.includes('href="/register"'));
+  assert.ok(LANDING_HTML.includes('30 mensagens no Simulador'));
+  assert.ok(LANDING_HTML.includes('até 100 respostas da IA'));
 });
 
 test('Registration keeps the business profile and reports server errors without losing the form',async()=>{
@@ -116,9 +124,16 @@ test('Registration keeps the business profile and reports server errors without 
     for(const [id,value] of Object.entries(values))(window.document.getElementById(id) as any).value=value;
     window.updateExternalSystemField();assert.equal((window.document.getElementById('existingSystem') as any).required,true);
     window.fetch=(async(url:any,options:any)=>{assert.equal(url,'/api/auth/register');request=JSON.parse(options.body);return new window.Response(JSON.stringify({error:'E-mail já cadastrado.'}),{status:409});}) as any;
+    assert.equal(typeof window.togglePasswordVisibility,'function');
+    window.togglePasswordVisibility();assert.equal((window.document.getElementById('password') as any).type,'text');
+    window.togglePasswordVisibility();assert.equal((window.document.getElementById('password') as any).type,'password');
     await window.handleRegister({preventDefault(){}});
+    assert.equal(window.document.getElementById('submitBtn')!.textContent,'Criar conta e simular minha IA');
     assert.equal(request.businessKind,'solo');assert.equal(request.businessSector,'aesthetics');assert.equal(request.usesExternalSchedule,true);assert.equal(request.existingSystem,'Agenda em papel');
     assert.equal(window.document.getElementById('errorMessage')!.textContent,'E-mail já cadastrado.');assert.equal((window.document.getElementById('submitBtn') as any).disabled,false);assert.equal((window.document.getElementById('clinicName') as any).value,'Meu negócio');
+    window.fetch=(async()=>new window.Response(JSON.stringify({success:true,redirect:'/inbox#simulator'}),{status:201})) as any;
+    await window.handleRegister({preventDefault(){}});
+    assert.equal(window.location.pathname,'/inbox');assert.equal(window.location.hash,'#simulator');
   }finally{await window.happyDOM.close();}
 });
 
@@ -150,6 +165,7 @@ test('The actual dashboard initializes and navigates all seven pages with offlin
     const scripts=['ui','inbox/billing','inbox/onboarding','inbox/core','inbox/chat','inbox/professionals','inbox/agenda','inbox/training','inbox/settings','inbox/simulator'];
     window.eval(scripts.map(name=>fs.readFileSync('public/js/'+name+'.js','utf8')).join('\n'));
     await window.init();await window.happyDOM.whenAsyncComplete();
+    assert.equal(window.document.getElementById('selectedMenuLabel')!.textContent,'Conversas','Initialization without a hash keeps the default page');
     for(const page of ['onboarding','config','settings','agenda','account','simulator','chat']){
       window.selectNavigationTab(page);await window.happyDOM.whenAsyncComplete();assert.equal(window.document.querySelector('[aria-current=page]')?.getAttribute('data-nav-tab'),page);
     }
@@ -158,6 +174,31 @@ test('The actual dashboard initializes and navigates all seven pages with offlin
     window.toggleVerticalMenu({stopPropagation(){}});assert.equal(window.document.getElementById('verticalMenuTrigger')!.getAttribute('aria-expanded'),'true');
     window.document.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(window.document.getElementById('verticalMenuTrigger')!.getAttribute('aria-expanded'),'false');
     assert.equal((window.document.getElementById('btnLaunchEmbeddedSignup') as any).disabled,true,'Missing Meta configuration must keep guided connection disabled');
+    for(const tab of ['simulator','onboarding','config','settings','agenda','account','chat']){
+      window.history.replaceState(null,'','#'+tab);await window.init();await window.happyDOM.whenAsyncComplete();
+      assert.equal(window.document.querySelector('[aria-current=page]')?.getAttribute('data-nav-tab'),tab);
+    }
+    for(const hash of ['#invalid','#constructor','#toString']){
+      window.history.replaceState(null,'',hash);await window.init();await window.happyDOM.whenAsyncComplete();
+      assert.equal(window.document.getElementById('selectedMenuLabel')!.textContent,'Conversas');
+    }
+    Object.assign(access,{status:'preparing',can_prepare:true,schedule_mode:'aura',readiness:{training:true,agenda:true,whatsapp:false}});
+    await window.loadOnboarding();
+    assert.equal(window.document.getElementById('readyTraining')!.textContent,'Pronto ✓');
+    assert.equal(window.document.getElementById('readyWhatsapp')!.textContent,'Pendente');
+    assert.ok(window.document.getElementById('reviewTrainingBtn')!.classList.contains('hidden'));
+    assert.equal((window.document.getElementById('agendaModeDetails') as any).open,false);
+    assert.ok(window.document.getElementById('activationSummary')!.textContent.includes('2 de 3 etapas prontas — falta apenas conectar o WhatsApp'));
+    assert.equal((window.document.getElementById('activateTrialBtn') as any).disabled,true);
+    Object.assign(access,{schedule_mode:'external_manual',readiness:{training:true,agenda:false,whatsapp:false}});
+    await window.loadOnboarding();
+    assert.equal((window.document.getElementById('agendaModeDetails') as any).open,true);
+    assert.equal((window.document.getElementById('scheduleMode') as any).value,'external_manual');
+    assert.ok(!window.document.getElementById('maintenanceAcknowledgedLabel')!.classList.contains('hidden'));
+    Object.assign(access,{readiness:{training:true,agenda:true,whatsapp:true}});
+    await window.loadOnboarding();
+    assert.equal((window.document.getElementById('activateTrialBtn') as any).disabled,false);
+    assert.equal(window.document.getElementById('activationProgress')!.getAttribute('aria-valuenow'),'3');
     assert.deepEqual(errors,[]);
   }finally{await window.happyDOM.close();}
 });

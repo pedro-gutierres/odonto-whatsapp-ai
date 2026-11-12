@@ -182,7 +182,7 @@ export default {
     }
 
     // 2.1) TELA DE AUTO-CADASTRO PÚBLICO (/cadastro)
-    if (url.pathname === "/cadastro") {
+    if (url.pathname === "/cadastro" || url.pathname === "/register") {
       const session = await getSessionFromRequest(request, env.AUTH_SECRET);
       if (session) {
         return Response.redirect(`${url.origin}/inbox`, 302);
@@ -501,6 +501,8 @@ export default {
       if ("response" in auth) return auth.response;
       const tenantId = auth.session.tenantId;
 
+      const previousTenant = await getTenantById(env.DB, tenantId);
+
       if (request.method === "GET") {
         const activeOnly = url.searchParams.get("active_only") === "1";
         const professionals = await listProfessionals(env.DB, tenantId, activeOnly);
@@ -563,6 +565,7 @@ export default {
             color: body.color,
             active: body.active,
           });
+          await refreshAgendaReadiness(env.DB, tenantId, previousTenant?.schedule_mode === 'aura' || Boolean(previousTenant?.agenda_ready_at));
           return jsonResponse({ success: true, id });
         } catch (err) {
           console.error("Erro em POST /api/professionals:", String(err));
@@ -604,6 +607,7 @@ export default {
           if (!updated) {
             return jsonResponse({ error: "Profissional não encontrado." }, 404);
           }
+          await refreshAgendaReadiness(env.DB, tenantId, previousTenant?.schedule_mode === 'aura' || Boolean(previousTenant?.agenda_ready_at));
           return jsonResponse({ success: true });
         } catch (err) {
           console.error("Erro em PATCH /api/professionals:", String(err));
@@ -619,6 +623,7 @@ export default {
             return jsonResponse({ error: "id obrigatório" }, 400);
           }
           await deleteProfessional(env.DB, tenantId, id);
+          await refreshAgendaReadiness(env.DB, tenantId, previousTenant?.schedule_mode === 'aura' || Boolean(previousTenant?.agenda_ready_at));
           return jsonResponse({ success: true });
         } catch (err) {
           if (String(err).includes('PROFESSIONAL_IN_USE')) return jsonResponse({error:'Este profissional possui consultas ou bloqueios. Reorganize os horários antes de remover; você também pode pausá-lo.'},409);
@@ -846,8 +851,9 @@ export default {
           if (!body.config) {
             return jsonResponse({ error: "config é obrigatório" }, 400);
           }
+          const complete = isCrucialConfigComplete(body.config);
           await updateTenantConfig(env.DB, tenantId, body.config);
-          await env.DB.prepare("UPDATE tenants SET training_reviewed_at=NULL WHERE id=?1 AND commercial_status!='legacy'").bind(tenantId).run();
+          await env.DB.prepare("UPDATE tenants SET training_reviewed_at=?2 WHERE id=?1").bind(tenantId, complete ? new Date().toISOString() : null).run();
           return jsonResponse({ success: true });
         } catch (err) {
           console.error("Erro em POST /api/config:", String(err));
@@ -1596,4 +1602,23 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
     if (trialRequest) await finishUsage(env, tenant.id, 'trial', job.waMessageId, null, true);
     throw error;
   }
+}
+
+// Preserve the first explicit review for external schedules and validate all active working hours.
+async function refreshAgendaReadiness(db: D1Database, tenantId: string, previouslyReady: boolean) {
+  if (!previouslyReady) return;
+  const professionals = await listProfessionals(db, tenantId, true);
+  const minutes = (time: string | null) => time && /^([01]\d|2[0-3]):[0-5]\d$/.test(time)
+    ? Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) : null;
+  const valid = professionals.length > 0 && professionals.every(p => {
+    let days: unknown;
+    try { days = JSON.parse(p.working_days); } catch { return false; }
+    const start = minutes(p.start_hour), end = minutes(p.end_hour);
+    const pauseStart = minutes(p.break_start), pauseEnd = minutes(p.break_end);
+    return Array.isArray(days) && days.length > 0 && days.every(d => Number.isInteger(d) && d >= 0 && d <= 6)
+      && start !== null && end !== null && start < end
+      && (!(p.break_start || p.break_end) || (pauseStart !== null && pauseEnd !== null && pauseStart < pauseEnd && pauseStart >= start && pauseEnd <= end));
+  });
+  if (valid) await db.prepare("UPDATE tenants SET agenda_ready_at=?2,schedule_mode=COALESCE(schedule_mode,'aura') WHERE id=?1")
+    .bind(tenantId, new Date().toISOString()).run();
 }

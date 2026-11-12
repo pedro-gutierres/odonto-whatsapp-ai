@@ -3,6 +3,7 @@ export const INBOX_SIMULATOR_VIEW_HTML = `
   <div class="aura-simulator-toolbar">
     <div><h2 class="text-base font-semibold">Experimente uma conversa</h2><p class="aura-simulator-note mt-1">Demonstração sem envios ou alterações na agenda.</p></div>
     <div class="flex items-center gap-3"><span id="demoQuota" class="aura-quota">30 respostas disponíveis</span><button type="button" class="aura-inline-help" aria-label="Como funciona a cota do Test Drive" data-aura-help="Os dois modos compartilham 30 respostas por conta, sem reposição automática. Essa cota é separada do teste no WhatsApp. Reiniciar a conversa limpa apenas o histórico deste modo.">?</button></div>
+    <div class="aura-simulator-actions"><button type="button" onclick="selectNavigationTab('config')" class="aura-secondary">Personalizar respostas</button><button type="button" onclick="selectNavigationTab('onboarding')" class="aura-primary">Ativar no meu WhatsApp</button></div>
     <div class="flex flex-wrap items-center gap-4 w-full"><label for="simulatorMode" class="aura-field-hint">Tipo de conversa</label><select id="simulatorMode" onchange="changeSimulatorMode(this.value)"><option value="patient">Simular um paciente</option><option value="aura">Tirar dúvidas sobre o Aura</option></select><button onclick="resetSimulatorChat()" class="aura-text-button ml-auto">Nova conversa</button></div>
     <div id="simulatorLockBanner" role="status" class="hidden aura-note w-full"></div>
   </div>

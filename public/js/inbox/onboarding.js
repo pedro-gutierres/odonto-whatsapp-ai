@@ -1,6 +1,8 @@
 let currentAccess = null;
 let onboardingBusy = false;
-const commercialLabels = { free:'Sua conta gratuita está pronta. Prepare o atendimento no seu ritmo.', preparing:'Conclua os passos abaixo antes de iniciar seu teste.', trial:'Seu teste gratuito está ativo.', active:'Sua assinatura está ativa.', ended:'O atendimento está pausado. Confira seu plano abaixo.', legacy:'Seu atendimento está disponível.' };
+let lastScheduleMode;
+let lastAgendaReadiness;
+const commercialLabels = { free:'Explore o Simulador e prepare seu atendimento.', preparing:'Sua IA está pré-treinada para seu setor. Experimente no Simulador, personalize sua clínica e conecte o WhatsApp para ativar seus 7 dias grátis.', trial:'Seu teste gratuito está ativo.', active:'Sua assinatura está ativa.', ended:'O atendimento está pausado. Confira seu plano abaixo.', legacy:'Seu atendimento está disponível.' };
 async function loadOnboarding() {
   try {
     const response = await fetch('/api/onboarding'); const data = await response.json();
@@ -21,7 +23,22 @@ function renderOnboarding(trialEnabled) {
   document.getElementById('onboardingStatus').textContent = commercialLabels[access.status] || '';
   const trial = access.trial;
   document.getElementById('operationalQuota').textContent = trial.started_at ? trial.used + ' / ' + trial.limit + ' respostas usadas · Até ' + new Date(trial.ends_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : 'O prazo do teste começa somente na ativação.';
-  for (const [id,ready] of [['readyTraining',access.readiness.training],['readyWhatsapp',access.readiness.whatsapp],['readyAgenda',access.readiness.agenda]]) document.getElementById(id).textContent = ready ? '✓' : '○';
+  for (const [id,ready] of [['readyTraining',access.readiness.training],['readyWhatsapp',access.readiness.whatsapp],['readyAgenda',access.readiness.agenda]]) {
+    const badge = document.getElementById(id);
+    badge.textContent = ready ? 'Pronto ✓' : 'Pendente';
+    badge.classList.toggle('is-ready', Boolean(ready));
+    badge.classList.toggle('is-pending', !ready);
+  }
+  document.getElementById('reviewTrainingBtn').classList.toggle('hidden', Boolean(access.readiness.training));
+  const scheduleMode = ['aura','dedicated','external_manual'].includes(access.schedule_mode) ? access.schedule_mode : 'aura';
+  if (lastScheduleMode !== scheduleMode) {
+    document.getElementById('scheduleMode').value = scheduleMode;
+    lastScheduleMode = scheduleMode;
+  }
+  if (lastAgendaReadiness !== access.readiness.agenda) {
+    document.getElementById('agendaModeDetails').open = !access.readiness.agenda;
+    lastAgendaReadiness = access.readiness.agenda;
+  }
   const canManage = currentUser && currentUser.canManageClinic;
   document.getElementById('prepareTrialBtn').classList.toggle('hidden', access.status !== 'free');
   document.getElementById('prepareTrialBtn').disabled = onboardingBusy || !canManage;
@@ -30,8 +47,18 @@ function renderOnboarding(trialEnabled) {
   document.getElementById('activateTrialBtn').disabled = onboardingBusy || (!trialEnabled && access.status !== 'active') || !canManage || !['preparing','active'].includes(access.status) || !Object.values(access.readiness).every(Boolean);
   document.getElementById('activateTrialBtn').textContent = access.status === 'active' ? 'Ativar atendimento da assinatura' : 'Ativar teste de 7 dias';
   document.getElementById('activationAcknowledgmentText').textContent = access.status === 'active' ? 'Autorizo o atendimento real pelo número conectado durante a vigência da assinatura.' : 'Quero iniciar agora os sete dias e autorizo o atendimento pelo número conectado.';
-  document.getElementById('activationSummary').textContent = access.status === 'active' ? 'Sua assinatura está vigente. Ative quando a preparação estiver concluída.' : 'Seu teste começa ao clicar em ativar. Confirme que o negócio, o WhatsApp e a agenda estão prontos.';
-  document.getElementById('activationAvailability').textContent = !trialEnabled ? 'Ativação ainda indisponível.' : !Object.values(access.readiness).every(Boolean) ? 'Conclua os três passos para ativar.' : '';
+  const readyCount = Object.values(access.readiness).filter(Boolean).length;
+  const pending = [['training','personalizar o treinamento'],['agenda','revisar a agenda e a equipe'],['whatsapp','conectar o WhatsApp']]
+    .filter(([key]) => !access.readiness[key]).map(([,label]) => label);
+  const progress = document.getElementById('activationProgress');
+  progress.setAttribute('aria-valuenow', String(readyCount));
+  progress.firstElementChild.style.width = (readyCount / 3 * 100) + '%';
+  const preparation = readyCount + ' de 3 etapas prontas' + (pending.length ? ' — falta' + (pending.length === 1 ? ' apenas ' : ' ') + pending.join(' e ') + '.' : ' — tudo pronto para ativar!');
+  document.getElementById('activationSummary').textContent = preparation + (access.status === 'active'
+    ? ' Sua assinatura está vigente. Confirme abaixo para autorizar o atendimento.'
+    : access.status === 'trial' ? ' Seu teste já está em andamento; concluir a preparação não reinicia o prazo.'
+    : ' Os 7 dias grátis só começam com sua confirmação de ativação.');
+  document.getElementById('activationAvailability').textContent = !trialEnabled && access.status !== 'active' ? 'Ativação do teste ainda indisponível.' : pending.length ? 'Conclua ' + (pending.length === 1 ? 'a etapa pendente' : 'as etapas pendentes') + ' para ativar.' : '';
   document.getElementById('activationSection').classList.toggle('hidden',access.can_operate || access.status==='ended');
   document.getElementById('trialTerms').classList.toggle('hidden',access.status==='active');
   updateScheduleExplanation();

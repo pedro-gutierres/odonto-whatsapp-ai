@@ -375,8 +375,9 @@ test("WhatsApp Meta Embedded Signup, AES-256-GCM storage, duplicate conflict, di
 
     // Verify token stored in D1 is encrypted in AES-256-GCM and decrypts back cleanly
     const dbTenant = await db
-      .prepare("SELECT phone_number_id, waba_id, access_token_enc FROM tenants WHERE id = 'clinica-a'")
+      .prepare("SELECT phone_number_id, waba_id, access_token_enc, whatsapp_diagnosed_at FROM tenants WHERE id = 'clinica-a'")
       .first<any>();
+    assert.ok(dbTenant.whatsapp_diagnosed_at);
     assert.ok(dbTenant.access_token_enc.startsWith("enc:v1:"));
     assert.equal(
       await decryptTenantToken(dbTenant.access_token_enc, env.TOKEN_ENCRYPTION_KEY!),
@@ -423,6 +424,7 @@ test("WhatsApp Meta Embedded Signup, AES-256-GCM storage, duplicate conflict, di
     assert.equal(discData.whatsapp.configured, false);
     assert.equal(discData.whatsapp.raw_phone_number_id, "unconfigured:clinica-a");
     assert.equal(discData.whatsapp.has_custom_token, false);
+    assert.equal((await db.prepare("SELECT whatsapp_diagnosed_at FROM tenants WHERE id='clinica-a'").first<any>()).whatsapp_diagnosed_at,null);
 
     // 7. Manual WhatsApp connection requires own token for regular clinics & encrypts it
     const manualMissingTokenRes = await worker.fetch(
