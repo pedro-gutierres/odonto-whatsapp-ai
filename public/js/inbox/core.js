@@ -88,7 +88,7 @@
     function selectNavigationTab(tabId) {
       if (!Object.hasOwn(auraPages, tabId)) return;
       const page = auraPages[tabId];
-      closeVerticalMenu(); window.auraUI?.close();
+      closeAccountMenu();closeVerticalMenu(); window.auraUI?.close();
       document.getElementById('selectedMenuLabel').textContent=page.title;
       document.title=page.title+' | Aura'; document.body.dataset.view=tabId;
       for (const [id,item] of Object.entries(auraPages)) document.getElementById(item.view).classList.toggle('hidden',id!==tabId);
@@ -430,3 +430,16 @@ function revealAccountEntry() {
     setTimeout(finish,550);
   }));
 }
+
+function closeAccountMenu(){document.getElementById('accountQuickMenu')?.classList.add('hidden');document.getElementById('accountMenuTrigger')?.setAttribute('aria-expanded','false');}
+function toggleAccountMenu(){
+ const menu=document.getElementById('accountQuickMenu'),trigger=document.getElementById('accountMenuTrigger');
+ if(!menu.classList.contains('hidden')){closeAccountMenu();return;}
+ const rect=trigger.getBoundingClientRect();menu.classList.remove('hidden');
+ const box=menu.getBoundingClientRect();menu.style.left=Math.max(8,Math.min(document.getElementById('verticalMenuContainer').getBoundingClientRect().right+10,innerWidth-box.width-8))+'px';
+ menu.style.top=Math.max(8,Math.min(rect.bottom-box.height,innerHeight-box.height-8))+'px';trigger.setAttribute('aria-expanded','true');menu.querySelector('button').focus();
+}
+function accountMenuNavigate(tab,plan=false){selectNavigationTab(tab);if(plan)document.getElementById('plano').scrollIntoView({behavior:'smooth',block:'start'});}
+document.addEventListener('click',event=>{if(!event.target.closest('#accountQuickMenu,#accountMenuTrigger'))closeAccountMenu();});
+document.addEventListener('keydown',event=>{const menu=document.getElementById('accountQuickMenu');if(!menu||menu.classList.contains('hidden'))return;if(event.key==='Escape'){closeAccountMenu();document.getElementById('accountMenuTrigger').focus();}else if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){event.preventDefault();const items=[...menu.querySelectorAll('button')];let i=items.indexOf(document.activeElement);i=event.key==='Home'?0:event.key==='End'?items.length-1:(i+(event.key==='ArrowDown'?1:-1)+items.length)%items.length;items[i].focus();}});
+window.addEventListener('resize',closeAccountMenu);

@@ -172,3 +172,5 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 @media(prefers-reduced-motion:reduce){[data-quiz-step]{animation:none!important}.aura-account-preparation.is-leaving{filter:none;transform:none;transition:none}}
 
 .aura-quiz-option input{width:16px;height:16px;min-height:0;flex-shrink:0}.aura-quiz-option:has(input:focus-visible){outline:2px solid var(--aura-accent);outline-offset:3px}
+
+.aura-sidebar-footer{margin-top:auto}.aura-sidebar-footer #trialStatusWidget{display:none!important}.aura-account-menu{position:fixed;z-index:250;width:210px;padding:7px;background:var(--aura-panel);border:1px solid var(--aura-line);border-radius:14px;box-shadow:var(--aura-shadow)}.aura-account-menu button{display:block;width:100%;padding:12px;text-align:left;border:0;border-radius:8px;background:transparent;color:var(--aura-text);font-size:13px}.aura-account-menu button:hover,.aura-account-menu button:focus-visible{background:var(--aura-soft)}

@@ -231,3 +231,5 @@ O avanço sai para a esquerda em 200 ms e entra da direita em 260 ms; voltar inv
 A entrada do dashboard usa apenas classes temporárias para opacity/filter/transform, removidas após 550 ms para liberar o stacking context. Os testes controlam os timers e cobrem direção, cliques repetidos, foco, movimento reduzido, saída da preparação e consumo do marcador. Fluidez em todos os dispositivos não é garantida por testes de DOM.
 
 No quiz, etapas de escolha recebem foco no título ao entrar; campos de texto continuam recebendo foco no input. Rádio e checkbox não herdam dimensões ou sombra de campos textuais. A navegação por Tab preserva indicador de foco no card, evitando o contorno oval automático no primeiro rádio.
+
+Sidebar simplificada: operação e badge comercial deixam de ser visíveis. Rodapé contém ícones de conta e tema. Conta abre popover fixo fora da sidebar com Conta, Plano e Sair; IDs antigos seguem ocultos para compatibilidade. Fechamento por clique externo/Escape, navegação por setas e posicionamento limitado à viewport.
