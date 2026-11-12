@@ -196,6 +196,9 @@ export default {
       if (!session) {
         return Response.redirect(`${url.origin}/login`, 302);
       }
+      const owner = await getUserById(env.DB, session.userId);
+      if (owner && owner.active !== 0 && owner.tenant_id === session.tenantId && isSuperAdminAuthorized(owner.email,owner.role,env))
+        return Response.redirect(url.origin + '/admin',302);
       return htmlResponse(INBOX_HTML);
     }
 
@@ -251,6 +254,7 @@ export default {
         return jsonResponse(
           {
             success: true,
+            redirect: isSuperAdminAuthorized(user.email,user.role,env) ? "/admin" : "/inbox",
             user: { name: user.name, email: user.email, role: user.role, tenantId: user.tenant_id },
           },
           200,
@@ -311,180 +315,10 @@ export default {
       }
     }
 
-    if (url.pathname === "/api/admin/tenants") {
+    if (url.pathname.startsWith('/api/admin/')) {
       const auth = await requireSuperAdmin(request, env);
-      if ("response" in auth) return auth.response;
-
-      if (request.method === "POST") {
-        try {
-          const body = (await request.json()) as {
-            tenantId?: string;
-            name?: string;
-            phoneNumberId?: string | null;
-            wabaId?: string | null;
-            accessToken?: string | null;
-            adminName?: string;
-            adminEmail?: string;
-            adminPassword?: string;
-          };
-
-          const tenantId = body.tenantId?.trim().toLowerCase() || "";
-          const name = body.name?.trim() || "";
-          if (!/^[a-z0-9][a-z0-9-]{1,48}$/.test(tenantId)) {
-            return jsonResponse({ error: "ID da clínica inválido (use apenas letras minúsculas, números e hífen)." }, 400);
-          }
-          if (!name) {
-            return jsonResponse({ error: "Nome da clínica é obrigatório." }, 400);
-          }
-
-          const hasAnyUserField = Boolean(body.adminName?.trim() || body.adminEmail?.trim() || body.adminPassword);
-          let adminUser: { name: string; email: string; passwordHash: string } | undefined;
-          if (hasAnyUserField) {
-            if (!body.adminName?.trim() || !body.adminEmail?.trim() || !body.adminPassword || body.adminPassword.length < 6) {
-              return jsonResponse({ error: "Para criar o usuário inicial, informe nome, e-mail e senha (mín. 6 caracteres)." }, 400);
-            }
-            adminUser = {
-              name: body.adminName.trim(),
-              email: body.adminEmail.trim().toLowerCase(),
-              passwordHash: await hashPassword(body.adminPassword),
-            };
-          }
-
-          const encryptedToken = body.accessToken?.trim()
-            ? await encryptTenantTokenForEnv(body.accessToken.trim(), env)
-            : null;
-
-          await createTenantWithOptionalUser(env.DB, {
-            tenantId,
-            name,
-            phoneNumberId: body.phoneNumberId?.trim() || null,
-            wabaId: body.wabaId?.trim() || null,
-            accessTokenEnc: encryptedToken,
-            adminUser,
-          });
-
-          return jsonResponse({ success: true, tenantId });
-        } catch (err) {
-          const msg = String(err);
-          if (msg.includes("UNIQUE")) {
-            return jsonResponse({ error: "ID da clínica, Phone Number ID ou E-mail já cadastrado." }, 409);
-          }
-          console.error("Erro em POST /api/admin/tenants:", msg);
-          return jsonResponse({ error: "Erro ao criar clínica." }, 500);
-        }
-      }
-
-      if (request.method === "PATCH") {
-        try {
-          const body = (await request.json()) as {
-            tenantId?: string;
-            name?: string;
-            active?: boolean;
-            phoneNumberId?: string;
-            wabaId?: string;
-            accessToken?: string;
-            clearToken?: boolean;
-          };
-
-          const tenantId = body.tenantId?.trim();
-          if (!tenantId) {
-            return jsonResponse({ error: "tenantId obrigatório" }, 400);
-          }
-
-          const encryptedToken = body.accessToken?.trim()
-            ? await encryptTenantTokenForEnv(body.accessToken.trim(), env)
-            : undefined;
-
-          const updated = await updateTenantAdminSettings(env.DB, tenantId, {
-            name: body.name,
-            active: body.active,
-            phoneNumberId: typeof body.phoneNumberId === "string" ? body.phoneNumberId : undefined,
-            wabaId: typeof body.wabaId === "string" ? body.wabaId : undefined,
-            accessTokenEnc: encryptedToken,
-            clearToken: body.clearToken,
-          });
-
-          if (!updated) {
-            return jsonResponse({ error: "Clínica não encontrada ou sem alterações." }, 404);
-          }
-          return jsonResponse({ success: true });
-        } catch (err) {
-          const msg = String(err);
-          if (msg.includes("UNIQUE")) {
-            return jsonResponse({ error: "Este Phone Number ID já está vinculado a outra clínica." }, 409);
-          }
-          console.error("Erro em PATCH /api/admin/tenants:", msg);
-          return jsonResponse({ error: "Erro ao atualizar clínica." }, 500);
-        }
-      }
-
-      return jsonResponse({ error: "Método não permitido" }, 405);
-    }
-
-    if (url.pathname === "/api/admin/users" && request.method === "POST") {
-      const auth = await requireSuperAdmin(request, env);
-      if ("response" in auth) return auth.response;
-
-      try {
-        const body = (await request.json()) as {
-          tenantId?: string;
-          name?: string;
-          email?: string;
-          password?: string;
-          role?: "admin" | "staff";
-        };
-
-        const tenantId = body.tenantId?.trim();
-        const name = body.name?.trim();
-        const email = body.email?.trim().toLowerCase();
-        const password = body.password || "";
-
-        if (!tenantId || !name || !email || password.length < 6) {
-          return jsonResponse({ error: "Clínica, nome, e-mail e senha (mín. 6 caracteres) são obrigatórios." }, 400);
-        }
-
-        const tenant = await getTenantById(env.DB, tenantId);
-        if (!tenant) {
-          return jsonResponse({ error: "Clínica não encontrada." }, 404);
-        }
-
-        const id = await createClinicUser(env.DB, {
-          tenantId,
-          name,
-          email,
-          passwordHash: await hashPassword(password),
-          role: body.role === "staff" ? "staff" : "admin",
-        });
-
-        return jsonResponse({ success: true, id });
-      } catch (err) {
-        const msg = String(err);
-        if (msg.includes("UNIQUE")) {
-          return jsonResponse({ error: "Já existe um usuário com este e-mail." }, 409);
-        }
-        console.error("Erro em POST /api/admin/users:", msg);
-        return jsonResponse({ error: "Erro ao criar usuário." }, 500);
-      }
-    }
-
-    if (url.pathname === "/api/admin/users/password" && request.method === "PATCH") {
-      const auth = await requireSuperAdmin(request, env);
-      if ("response" in auth) return auth.response;
-
-      try {
-        const body = (await request.json()) as { userId?: number; newPassword?: string };
-        if (!body.userId || !body.newPassword || body.newPassword.length < 6) {
-          return jsonResponse({ error: "userId e nova senha (mín. 6 caracteres) são obrigatórios." }, 400);
-        }
-        const ok = await resetUserPassword(env.DB, body.userId, await hashPassword(body.newPassword));
-        if (!ok) {
-          return jsonResponse({ error: "Usuário não encontrado." }, 404);
-        }
-        return jsonResponse({ success: true });
-      } catch (err) {
-        console.error("Erro em PATCH /api/admin/users/password:", String(err));
-        return jsonResponse({ error: "Erro ao redefinir senha." }, 500);
-      }
+      if ('response' in auth) return auth.response;
+      return jsonResponse({error:'Painel de relatórios somente leitura.'},405);
     }
 
     // -------------------------------------------------------------------------

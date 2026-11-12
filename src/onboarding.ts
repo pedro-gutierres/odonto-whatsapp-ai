@@ -1,6 +1,6 @@
 import type { Env, Tenant } from './types';
 import { commercialAccess, tenantConfig } from './access';
-import { createSessionToken, getSessionFromRequest, hashPassword, isClinicAdminRole, makeSessionCookie } from './auth';
+import { createSessionToken, getSessionFromRequest, hashPassword, isClinicAdminRole, makeSessionCookie, isSuperAdminAuthorized } from './auth';
 import { getTenantById, getUserByEmail, getUserById, isCrucialConfigComplete, listProfessionals } from './db';
 import { jsonResponse } from './http';
 
@@ -136,6 +136,7 @@ export async function authenticatedBusiness(request: Request, env: Env) {
   const user = await getUserById(env.DB, session.userId);
   if (!user || user.active === 0 || user.tenant_id !== session.tenantId) return { response: jsonResponse({ error: 'Sessão encerrada ou usuário pausado.' }, 401) };
   const tenant = await getTenantById(env.DB, session.tenantId);
+  if (isSuperAdminAuthorized(user.email,user.role,env)) return { response: jsonResponse({error:'Acesso exclusivo aos relatórios da plataforma.'},403) };
   if (!tenant || tenant.active !== 1) return { response: jsonResponse({ error: 'Conta inativa. Entre em contato com o responsável.' }, 403) };
   return { tenant, user, canManage: isClinicAdminRole(user.email, user.role, env), access: commercialAccess(tenant) };
 }

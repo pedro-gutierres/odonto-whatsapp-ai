@@ -8,13 +8,13 @@ export const INBOX_TRAINING_VIEW_HTML = `
 
 
       <div class="aura-page-heading"><div><h2>Como a IA deve atender?</h2><p class="aura-description">Preencha as informações do negócio. Os campos essenciais estão identificados; os demais são opcionais.</p></div></div>
-      <details id="businessRegistrationDetails" class="aura-card"><summary class="text-sm font-semibold">Cadastro e contato do negócio</summary><div class="aura-disclosure-content"><form id="clinicProfileForm" onsubmit="handleSaveClinicProfile(event)"
+      <details id="businessRegistrationDetails" class="aura-card"><summary class="text-sm font-semibold">Dados do Consultório / Clínica</summary><div class="aura-disclosure-content"><form id="clinicProfileForm" onsubmit="handleSaveClinicProfile(event)"
           class="lg:col-span-7 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 text-xs">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <i class="fa-solid fa-hospital text-emerald-500"></i>
-                <span>Dados do negócio</span>
+                <span>Dados do Consultório / Clínica</span>
               </h3>
               <p class="text-[11px] text-slate-500 dark:text-slate-400">Informações empresariais, CNPJ e contato administrativo da sua conta.</p>
             </div>

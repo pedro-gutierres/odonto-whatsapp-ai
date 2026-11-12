@@ -5,7 +5,7 @@ import worker, { runDayBeforeConfirmations } from '../src/index';
 import { MockD1Database } from './d1-mock';
 import { commercialAccess, finishUsage, reserveUsage } from '../src/access';
 import { getTenantById, isCrucialConfigComplete, checkAppointmentConflict, createAppointment } from '../src/db';
-import { createSessionToken, verifyPassword } from '../src/auth';
+import { createSessionToken, verifyPassword, hashPassword } from '../src/auth';
 import type { Env } from '../src/types';
 import { verifyPaddleSignature } from '../src/billing';
 import sandboxWorker from '../src/paddle-sandbox';
@@ -475,4 +475,25 @@ test('Equipe válida restaura agenda; expediente inválido ou remoção do últi
   assert.ok((await getTenantById(env.DB,user.id))!.agenda_ready_at);
   assert.equal((await api(env,'/api/professionals',user.cookie,{id:professional.id},'DELETE')).status,200);
   assert.equal((await getTenantById(env.DB,user.id))!.agenda_ready_at,null);
+});
+
+
+test('Owner login is isolated to read-only reports; clean official seed has no patient activity',async()=>{
+ const {db,env}=setup();db.sqlite.exec(fs.readFileSync('seeds/lab.sql','utf8'));
+ await db.prepare('UPDATE users SET password_hash=?1').bind(await hashPassword('fixture-account-password')).run();
+ const login=await api(env,'/api/auth/login','',{email:'pedrogutierres@protonmail.com',password:'fixture-account-password'});
+ assert.equal(login.status,200);assert.equal((await login.json() as any).redirect,'/admin');
+ const cookie=login.headers.get('set-cookie')!.split(';')[0];
+ for(const path of ['/inbox','/painel']){const r=await api(env,path,cookie);assert.equal(r.status,302);assert.ok(r.headers.get('location')!.endsWith('/admin'));}
+ for(const [path,method] of [['/api/admin/tenants','POST'],['/api/admin/tenants','PATCH'],['/api/admin/users','POST'],['/api/admin/users/password','PATCH']])assert.equal((await api(env,path,cookie,{},method)).status,405);
+ assert.equal((await api(env,'/api/conversations',cookie)).status,403);
+ const report=await api(env,'/api/admin/overview',cookie);assert.equal(report.status,200);const data=await report.json() as any;
+ assert.equal(data.stats.tenants_total,2);assert.equal(data.tenants.length,2);
+ assert.ok(!JSON.stringify(data).includes('password_hash'));assert.ok(!JSON.stringify(data).includes('access_token'));assert.ok(!JSON.stringify(data).includes('messages_count'));
+ for(const tenant of data.tenants){assert.equal(tenant.is_test,1);assert.equal(tenant.appointments_count,0);assert.equal(tenant.training_complete,true);assert.ok(tenant.owner_email);}
+ const customer=await api(env,'/api/auth/login','',{email:'autonomo.odonto@teste.aura.ai',password:'fixture-account-password'});
+ assert.equal((await customer.json() as any).redirect,'/inbox');const customerCookie=customer.headers.get('set-cookie')!.split(';')[0];
+ assert.equal((await api(env,'/api/admin/overview',customerCookie)).status,403);
+ for(const table of ['messages','conversation_states','appointments','appointment_blocks','usage_reservations'])assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM '+table).first<any>()).n,0);
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM professionals WHERE active=1').first<any>()).n,2);
 });

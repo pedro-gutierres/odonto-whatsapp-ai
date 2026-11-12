@@ -1119,168 +1119,22 @@ export function isCrucialConfigComplete(cfg: BotConfig | null | undefined): bool
 // -----------------------------------------------------------------------------
 // SUPER ADMIN (VISÃO GLOBAL DO SAAS E GESTÃO DE CLÍNICAS/USUÁRIOS)
 // -----------------------------------------------------------------------------
-export interface AdminTenantSummary {
-  id: string;
-  name: string;
-  phone_number_id: string;
-  whatsapp_configured: boolean;
-  waba_id: string | null;
-  has_custom_token: boolean;
-  training_complete: boolean;
-  active: boolean;
-  created_at: string;
-  messages_count: number;
-  contacts_count: number;
-  appointments_count: number;
-  users_count: number;
-  last_message_at: string | null;
-}
-
-export interface AdminUserSummary {
-  id: number;
-  tenant_id: string;
-  email: string;
-  name: string;
-  role: string;
-  created_at: string;
-}
-
-export interface AdminOverviewData {
-  stats: {
-    tenants_total: number;
-    tenants_active: number;
-    tenants_whatsapp_connected: number;
-    users_total: number;
-    messages_total: number;
-    appointments_total: number;
-  };
-  tenants: AdminTenantSummary[];
-  users: AdminUserSummary[];
-}
-
-export async function listAdminOverview(db: D1Database): Promise<AdminOverviewData> {
-  const [tenantsRes, msgStatsRes, appStatsRes, usersRes] = await db.batch([
-    db.prepare(
-      `SELECT id, name, phone_number_id, waba_id,
-              CASE WHEN access_token_enc IS NOT NULL AND TRIM(access_token_enc) != '' THEN 1 ELSE 0 END AS has_custom_token,
-              bot_config, active, created_at
-       FROM tenants
-       ORDER BY created_at DESC, id ASC`
-    ),
-    db.prepare(
-      `SELECT tenant_id,
-              COUNT(*) AS messages_count,
-              COUNT(DISTINCT contact_wa_id) AS contacts_count,
-              MAX(created_at) AS last_message_at
-       FROM messages
-       GROUP BY tenant_id`
-    ),
-    db.prepare(
-      `SELECT tenant_id, COUNT(*) AS appointments_count
-       FROM appointments
-       GROUP BY tenant_id`
-    ),
-    db.prepare(
-      `SELECT id, tenant_id, email, name, role, created_at
-       FROM users
-       ORDER BY id ASC`
-    ),
-  ]);
-
-  const rawTenants = (tenantsRes.results || []) as Array<{
-    id: string;
-    name: string;
-    phone_number_id: string;
-    waba_id: string | null;
-    has_custom_token: number;
-    bot_config: string;
-    active: number;
-    created_at: string;
-  }>;
-
-  const msgMap = new Map<string, { messages_count: number; contacts_count: number; last_message_at: string | null }>();
-  for (const r of (msgStatsRes.results || []) as Array<{
-    tenant_id: string;
-    messages_count: number;
-    contacts_count: number;
-    last_message_at: string | null;
-  }>) {
-    msgMap.set(r.tenant_id, r);
-  }
-
-  const appMap = new Map<string, number>();
-  for (const r of (appStatsRes.results || []) as Array<{ tenant_id: string; appointments_count: number }>) {
-    appMap.set(r.tenant_id, r.appointments_count);
-  }
-
-  const users = (usersRes.results || []) as AdminUserSummary[];
-  const userCountMap = new Map<string, number>();
-  for (const u of users) {
-    userCountMap.set(u.tenant_id, (userCountMap.get(u.tenant_id) || 0) + 1);
-  }
-
-  let messagesTotal = 0;
-  let appointmentsTotal = 0;
-  let tenantsActive = 0;
-  let tenantsWhatsappConnected = 0;
-
-  const tenants: AdminTenantSummary[] = rawTenants.map((t) => {
-    let parsedCfg: BotConfig | null = null;
-    try {
-      parsedCfg = JSON.parse(t.bot_config) as BotConfig;
-    } catch {
-      parsedCfg = null;
-    }
-
-    const msgInfo = msgMap.get(t.id);
-    const msgCount = msgInfo?.messages_count || 0;
-    const appCount = appMap.get(t.id) || 0;
-    const isActive = t.active === 1;
-    const whatsappOk = isConfiguredPhoneNumberId(t.phone_number_id);
-
-    messagesTotal += msgCount;
-    appointmentsTotal += appCount;
-    if (isActive) tenantsActive++;
-    if (whatsappOk) tenantsWhatsappConnected++;
-
-    return {
-      id: t.id,
-      name: t.name,
-      phone_number_id: t.phone_number_id,
-      whatsapp_configured: whatsappOk,
-      waba_id: t.waba_id,
-      has_custom_token: t.has_custom_token === 1,
-      training_complete: isCrucialConfigComplete(parsedCfg),
-      active: isActive,
-      created_at: t.created_at,
-      messages_count: msgCount,
-      contacts_count: msgInfo?.contacts_count || 0,
-      appointments_count: appCount,
-      users_count: userCountMap.get(t.id) || 0,
-      last_message_at: msgInfo?.last_message_at || null,
-    };
+export async function listAdminOverview(db: D1Database) {
+  const {results} = await db.prepare(`SELECT t.id,t.name,t.business_kind,t.business_sector,t.commercial_status,t.schedule_mode,
+    t.demo_messages_used,t.demo_messages_limit,t.trial_messages_used,t.trial_messages_limit,t.is_test,t.test_label,t.created_at,
+    t.bot_config,t.phone_number_id,
+    (SELECT u.name FROM users u WHERE u.tenant_id=t.id AND u.role='admin' ORDER BY u.id LIMIT 1) AS owner_name,
+    (SELECT u.email FROM users u WHERE u.tenant_id=t.id AND u.role='admin' ORDER BY u.id LIMIT 1) AS owner_email,
+    (SELECT COUNT(*) FROM appointments a WHERE a.tenant_id=t.id) AS appointments_count
+    FROM tenants t WHERE t.id!='aura-owner' ORDER BY t.created_at DESC,t.id`).all<Record<string, any>>();
+  const tenants: Array<Record<string, any>> = (results || []).map(({bot_config,phone_number_id,...row}) => {
+    let config = null; try {config=JSON.parse(bot_config);} catch {}
+    return {...row,whatsapp_configured:isConfiguredPhoneNumberId(phone_number_id),training_complete:isCrucialConfigComplete(config)};
   });
-
-  // Inclui também contagens órfãs caso haja registros de tenant ainda não criados em tenants
-  for (const [tid, info] of msgMap.entries()) {
-    if (!tenants.some((t) => t.id === tid)) messagesTotal += info.messages_count || 0;
-  }
-  for (const [tid, count] of appMap.entries()) {
-    if (!tenants.some((t) => t.id === tid)) appointmentsTotal += count || 0;
-  }
-
-  return {
-    stats: {
-      tenants_total: tenants.length,
-      tenants_active: tenantsActive,
-      tenants_whatsapp_connected: tenantsWhatsappConnected,
-      users_total: users.length,
-      messages_total: messagesTotal,
-      appointments_total: appointmentsTotal,
-    },
-    tenants,
-    users,
-  };
+  return {tenants,stats:{tenants_total:tenants.length,
+    solo:tenants.filter(t=>t.business_kind==='solo').length,clinic:tenants.filter(t=>t.business_kind==='clinic').length,
+    preparing:tenants.filter(t=>t.commercial_status==='preparing').length,trial:tenants.filter(t=>t.commercial_status==='trial').length,
+    active:tenants.filter(t=>t.commercial_status==='active').length,tenants_whatsapp_connected:tenants.filter(t=>t.whatsapp_configured).length}};
 }
 
 export async function createTenantWithOptionalUser(

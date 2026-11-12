@@ -16,14 +16,15 @@ export const INBOX_HEADER_HTML = `
   </nav>
   <div class="aura-sidebar-footer">
     <div class="aura-sidebar-business"><div id="topClinicNameBadge" class="aura-business-name">Meu negócio</div><div id="businessSubtitle" class="aura-business-type">Seu espaço no Aura</div></div>
-    <a id="superAdminNavBtn" href="/admin" class="aura-nav-item hidden"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>Administração</span></a>
-  </div>
-</aside>
-<header class="aura-topbar">
+<div class="aura-sidebar-controls">
   <div class="aura-topbar-title"><button id="verticalMenuTrigger" class="aura-icon-button aura-menu-toggle" onclick="toggleVerticalMenu(event)" aria-label="Abrir navegação" aria-expanded="false" aria-controls="verticalMenuContainer"><i class="fa-solid fa-bars" aria-hidden="true"></i></button><span id="selectedMenuIcon" hidden></span><h1 id="selectedMenuLabel" class="aura-page-title">Conversas</h1></div>
   <div class="aura-topbar-actions">
     <button id="trialStatusWidget" class="aura-plan-badge hidden" onclick="selectNavigationTab('onboarding')" title="Ver situação da conta e plano"><i id="trialStatusIcon" hidden></i><span id="trialDaysBadge">Minha conta</span><span id="trialMessagesBadge" hidden></span></button>
     <button onclick="toggleTheme()" class="aura-icon-button" title="Mudar aparência" aria-label="Alternar aparência clara e escura"><i id="themeIcon" class="fa-solid fa-moon" aria-hidden="true"></i></button>
-    <div class="aura-user"><div class="aura-user-details"><div id="topUserName" class="aura-user-name"></div><div id="topUserEmail" class="aura-user-email"></div></div><button onclick="handleLogout()" class="aura-icon-button" title="Sair da conta" aria-label="Sair da conta"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></button></div>
+    <div class="aura-user"><div class="aura-user-details"><p class="aura-field-hint">Titular da Conta (Pessoa Física)</p><div id="topUserName" class="aura-user-name"></div><div id="topUserEmail" class="aura-user-email"></div></div><button onclick="handleLogout()" class="aura-icon-button" title="Sair da conta" aria-label="Sair da conta"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></button></div>
   </div>
-</header>`;
+</div>
+
+  </div>
+</aside>
+`;

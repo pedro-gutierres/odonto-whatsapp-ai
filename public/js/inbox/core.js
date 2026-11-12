@@ -124,13 +124,10 @@
           currentUser = data.user;
           const nameEl = document.getElementById('topUserName');
           const emailEl = document.getElementById('topUserEmail');
-          const adminBtn = document.getElementById('superAdminNavBtn');
+
           if (nameEl) nameEl.innerText = data.user.name || 'Recepção';
           if (emailEl) emailEl.innerText = data.user.email || '';
-          if (adminBtn && data.user.isSuperAdmin) {
-            adminBtn.classList.remove('hidden');
-            adminBtn.classList.add('flex');
-          }
+
         }
         if (data && data.trial && typeof updateTrialWidget === 'function') {
           updateTrialWidget(data.trial);

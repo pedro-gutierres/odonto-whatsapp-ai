@@ -202,3 +202,14 @@ test('The actual dashboard initializes and navigates all seven pages with offlin
     assert.deepEqual(errors,[]);
   }finally{await window.happyDOM.close();}
 });
+
+
+test('Client sidebar separates operation and account controls without an administrative entry',async()=>{
+ const window=await dom(INBOX_HTML,[]);try{
+ assert.equal(window.document.getElementById('superAdminNavBtn'),null);assert.equal(window.document.querySelector('.aura-topbar'),null);
+ const footer=window.document.querySelector('.aura-sidebar-footer')!;
+ for(const id of ['topClinicNameBadge','businessSubtitle','trialStatusWidget','trialDaysBadge','trialMessagesBadge','topUserName','topUserEmail','themeIcon'])assert.ok(footer.querySelector('#'+id),id);
+ assert.ok(footer.querySelector('[onclick="handleLogout()"]'));assert.ok(footer.querySelector('[onclick="toggleTheme()"]'));
+ assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,7);
+ }finally{await window.happyDOM.close();}
+});

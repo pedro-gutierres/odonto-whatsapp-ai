@@ -1,19 +1,22 @@
--- Clínica de teste (laboratório).
--- ANTES de executar em novo ambiente: confirme o "Phone number ID" real no painel da Meta (API Setup).
-INSERT INTO tenants (id, name, phone_number_id, bot_config, active) VALUES (
-  'lab',
-  'Clínica Teste',
-  '1459702903890342',
-  '{"clinic_name":"Clínica Sorriso Teste","tone":"acolhedor","address":"Rua Exemplo, 123 - Centro, Rio de Janeiro","hours":"Segunda a sexta, 8h às 18h; sábado, 8h às 12h","initial_consultation":{"duration":"30 min","price":"","details":"Avaliação presencial completa com plano de tratamento personalizado."},"procedure_items":[{"name":"Limpeza & Profilaxia","checked":true,"duration":"40 min","note":"Remoção de tártaro, placa bacteriana e polimento","category":"odonto"},{"name":"Clareamento Dental a Laser","checked":true,"duration":"1h","note":"Clareamento de consultório com proteção gengival","category":"odonto"},{"name":"Restaurações Estéticas","checked":true,"duration":"45 min","note":"Resina composta na cor natural do dente","category":"odonto"},{"name":"Ortodontia / Alinhadores","checked":true,"duration":"30 min","note":"Avaliação de alinhadores invisíveis e aparelhos","category":"odonto"},{"name":"Toxina Botulínica (Botox)","checked":true,"duration":"30 min","note":"Aplicação em terço superior, glabela e pés de galinha","category":"estetica"},{"name":"Preenchimento Labial","checked":true,"duration":"45 min","note":"Ácido hialurônico para contorno e volume natural","category":"estetica"}],"procedures":["Limpeza & Profilaxia","Clareamento Dental a Laser","Restaurações Estéticas","Ortodontia / Alinhadores","Toxina Botulínica (Botox)","Preenchimento Labial"],"prices_note":"Valores são informados somente na avaliação presencial com o especialista.","emergency_contact":"Para urgências, ligue para (21) 0000-0000 durante o horário de atendimento."}',
-  1
-)
-ON CONFLICT(id) DO UPDATE SET
-  name = excluded.name,
-  phone_number_id = excluded.phone_number_id,
-  bot_config = excluded.bot_config,
-  active = excluded.active;
-
--- Usuários iniciais de desenvolvimento/teste (senha inicial padrão: 'admin123' — altere em /admin em produção)
-INSERT OR IGNORE INTO users (tenant_id, email, password_hash, name, role) VALUES
-  ('lab', 'pedrogutierres@protonmail.com', '219f1b54263a28a320ddb777b89011a54d75d32bc5d0e6b20b9fdbdc02d61876', 'Pedro Gutierres', 'superadmin'),
-  ('lab', 'admin@clinica.com', '219f1b54263a28a320ddb777b89011a54d75d32bc5d0e6b20b9fdbdc02d61876', 'Dra. Fernanda (Admin)', 'admin');
+-- DESTRUCTIVE: reset explicitly authorized for the account organization rollout. Back up first.
+DELETE FROM usage_reservations;
+DELETE FROM billing_events;
+DELETE FROM checkout_intents;
+DELETE FROM appointment_blocks;
+DELETE FROM agenda_import_batches;
+DELETE FROM appointments;
+DELETE FROM professionals;
+DELETE FROM conversation_states;
+DELETE FROM messages;
+DELETE FROM users;
+DELETE FROM tenants;
+INSERT INTO tenants(id,name,phone_number_id,active,commercial_status) VALUES ('aura-owner','Administração Aura','unconfigured:aura-owner',0,'legacy');
+INSERT INTO users(tenant_id,email,password_hash,name,role,active) VALUES ('aura-owner','pedrogutierres@protonmail.com','pbkdf2_v1:100000:af35368b3bca2f0c721bd2967bbff4e0:3b33e27a646888d3424f754cc9e54c674ba3196ddc7a127f2f59eab3212211fa','Pedro Gutierres','superadmin',1);
+INSERT INTO tenants(id,name,responsible_name,contact_email,phone_number_id,active,commercial_status,business_kind,business_sector,uses_external_schedule,schedule_mode,is_test,test_label,bot_config,training_reviewed_at,agenda_ready_at) VALUES ('teste-autonomo-odonto','Dr. Lucas Mendes','Dr. Lucas Mendes','autonomo.odonto@teste.aura.ai','unconfigured:teste-autonomo-odonto',1,'preparing','solo','dentistry',0,'aura',1,'Conta Teste · Profissional Autônomo (Odontologia)','{"clinic_name":"Dr. Lucas Mendes","doctor_name":"Dr. Lucas Mendes","hours":"Segunda a Sexta, das 08:00 às 18:00","initial_consultation":{"duration":"30 min","price":"A confirmar na clínica","details":"Avaliação inicial completa"},"procedures":["Limpeza e Profilaxia","Clareamento Dental","Avaliação de Implante"],"procedure_items":[{"name":"Limpeza e Profilaxia","checked":true,"category":"odonto","duration":"45 min"},{"name":"Clareamento Dental","checked":true,"category":"odonto","duration":"45 min"},{"name":"Avaliação de Implante","checked":true,"category":"odonto","duration":"45 min"}]}',strftime('%Y-%m-%dT%H:%M:%fZ','now'),NULL);
+INSERT INTO users(tenant_id,email,password_hash,name,role,active) VALUES ('teste-autonomo-odonto','autonomo.odonto@teste.aura.ai','pbkdf2_v1:100000:78da4ca67266dd48867b3effe58fe090:be0288e14eb078ca9f69c067d400f7bd010f3d4feb23e97d448cc2a3b2a03b10','Dr. Lucas Mendes','admin',1);
+INSERT INTO professionals(tenant_id,name,specialty,working_days,start_hour,end_hour,break_start,break_end,procedures_json,color,active) VALUES ('teste-autonomo-odonto','Dr. Lucas Mendes','Odontologia Geral','[1,2,3,4,5]','08:00','18:00','12:00','13:00','[]','#10b981',1);
+UPDATE tenants SET agenda_ready_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id='teste-autonomo-odonto';
+INSERT INTO tenants(id,name,responsible_name,contact_email,phone_number_id,active,commercial_status,business_kind,business_sector,uses_external_schedule,schedule_mode,is_test,test_label,bot_config,training_reviewed_at,agenda_ready_at) VALUES ('teste-clinica-odonto','Clínica Odonto Vida','Mariana Costa','clinica.odonto@teste.aura.ai','unconfigured:teste-clinica-odonto',1,'preparing','clinic','dentistry',0,'aura',1,'Conta Teste · Clínica (Odontologia)','{"clinic_name":"Clínica Odonto Vida","doctor_name":"Mariana Costa","hours":"Segunda a Sexta, das 08:00 às 18:00","initial_consultation":{"duration":"30 min","price":"A confirmar na clínica","details":"Avaliação inicial completa"},"procedures":["Limpeza e Profilaxia","Clareamento Dental","Avaliação de Implante"],"procedure_items":[{"name":"Limpeza e Profilaxia","checked":true,"category":"odonto","duration":"45 min"},{"name":"Clareamento Dental","checked":true,"category":"odonto","duration":"45 min"},{"name":"Avaliação de Implante","checked":true,"category":"odonto","duration":"45 min"}]}',strftime('%Y-%m-%dT%H:%M:%fZ','now'),NULL);
+INSERT INTO users(tenant_id,email,password_hash,name,role,active) VALUES ('teste-clinica-odonto','clinica.odonto@teste.aura.ai','pbkdf2_v1:100000:78da4ca67266dd48867b3effe58fe090:be0288e14eb078ca9f69c067d400f7bd010f3d4feb23e97d448cc2a3b2a03b10','Mariana Costa','admin',1);
+INSERT INTO professionals(tenant_id,name,specialty,working_days,start_hour,end_hour,break_start,break_end,procedures_json,color,active) VALUES ('teste-clinica-odonto','Mariana Costa','Odontologia Geral','[1,2,3,4,5]','08:00','18:00','12:00','13:00','[]','#10b981',1);
+UPDATE tenants SET agenda_ready_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id='teste-clinica-odonto';

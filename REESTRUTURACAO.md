@@ -175,3 +175,13 @@ Reservas interrompidas em uma falha abrupta podem permanecer pendentes para revi
 - Tipagem, 49 testes de backend, 13 testes de frontend e build Cloudflare aprovados. Os testes offline cobrem controles, bloqueios, login, cadastro e inicialização/navegação do painel. Eles não renderizam a página e não validam aparência ou integrações externas.
 - O proprietário aprovou o visual apresentado e solicitou push e deploy deste conjunto. A inspeção visual automatizada em computador e celular permanece pendente por bloqueio da ferramenta de navegador; a aprovação do proprietário não é registrada como essa inspeção.
 - Publicação deste conjunto sem migrations ou operações de escrita nos dados existentes. As próximas melhorias de organização serão tratadas em etapas menores conforme os problemas identificados.
+
+## Organização de contas — 12/11/2026
+
+O proprietário usa exclusivamente /admin: login direcionado aos relatórios, APIs administrativas de escrita removidas e APIs operacionais bloqueadas para esse perfil. Relatórios excluem aura-owner e não retornam conversas, tokens, hashes ou métricas de mensagens de pacientes. O titular é o primeiro usuário admin da operação (contas históricas sem admin aparecem sem titular identificado).
+
+Migration 0015 adiciona is_test/test_label, restritos à apresentação administrativa. O CHECK de business_sector permanece dentistry/aesthetics: o relatório reconhece both, mas persistir esse valor exige futura migration de reconstrução testada; nenhuma trigger de cota ou agenda foi alterada.
+
+seeds/lab.sql é um reset destrutivo explícito, não uma migration nem seed automático. Exige backup antes de reaplicar. Cria três tenants e três acessos com PBKDF2; as duas operações de teste começam sem atividade de pacientes e com treinamento/profissional/agenda inicial. Credenciais de implantação são fornecidas pelo proprietário, não documentadas em texto aberto. Backups ficam em .wrangler/backups, ignorados pelo Git.
+
+O inbox não tem header desktop: operação, titular, plano, tema e saída ficam no rodapé lateral. Mobile preserva o acionador compacto de navegação. Integrações Meta/Paddle não foram validadas por esse reset.

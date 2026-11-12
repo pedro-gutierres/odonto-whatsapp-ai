@@ -113,13 +113,13 @@
       const topClinicBadge = document.getElementById('topClinicNameBadge');
 
       if (heading) heading.innerText = 'Seu WhatsApp de atendimento';
-      if (tenantBadge) tenantBadge.innerText = 'ID: ' + (c.id || '-');
+      if (tenantBadge) tenantBadge.innerText = 'Dados do Consultório / Clínica';
       if (topClinicBadge && c.name) topClinicBadge.innerText = c.name;
 
       if (roleBadge) {
         if (canManageClinicState) {
           roleBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/20';
-          roleBadge.innerText = 'Administrador da Clínica';
+          roleBadge.innerText = 'Responsável pela operação';
         } else {
           roleBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border border-slate-300 dark:border-slate-700';
           roleBadge.innerText = 'Atendente / Recepção';
@@ -391,14 +391,12 @@
 
       tbody.innerHTML = clinicUsersState.map((u) => {
         const isSelf = Number(u.id) === Number(clinicUsersCurrentId);
-        const isSuper = u.role === 'superadmin';
+        const protectedAccess = !['admin','staff'].includes(u.role);
         const isActive = Number(u.active) !== 0;
 
         let roleBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[10px]">Atendente</span>';
-        if (isSuper) {
-          roleBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold text-[10px]">Super Admin</span>';
-        } else if (u.role === 'admin') {
-          roleBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">Administrador</span>';
+        if (u.role === 'admin') {
+          roleBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">Responsável pela operação</span>';
         }
 
         const statusBadge = isActive
@@ -407,7 +405,7 @@
 
         let actionsHtml = '<span class="text-[11px] text-slate-400">Somente leitura</span>';
         if (canManageClinicState) {
-          if (isSuper) {
+          if (protectedAccess) {
             actionsHtml = '<span class="text-[11px] text-slate-400 italic">Protegido</span>';
           } else {
             const btns = [];
