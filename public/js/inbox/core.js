@@ -424,9 +424,9 @@
 function revealAccountEntry() {
   const root=document.documentElement;
   const finish=()=>{root.classList.remove('aura-entry-pending','aura-entry-revealing');try{sessionStorage.removeItem('aura_entry_reveal');}catch{}};
-  if(!root.classList.contains('aura-entry-pending')){finish();return;}
+  if(!root.classList.contains('aura-entry-pending') || (typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches)){finish();return;}
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     root.classList.remove('aura-entry-pending');root.classList.add('aura-entry-revealing');
-    setTimeout(finish,850);
+    setTimeout(finish,550);
   }));
 }

@@ -192,7 +192,7 @@ O inbox não tem header desktop: operação, titular, plano, tema e saída ficam
 
 Migration 0016 adiciona business_sectors e faz backfill, sem reconstruir tenants ou alterar suas triggers. Leituras priorizam a nova coluna. Cadastros de ambas as áreas gravam dentistry na coluna legada e both na nova, com seis procedimentos iniciais e especialidade combinada.
 
-Após resposta 201, o quiz desfoca e apresenta três mensagens durante quatro segundos. Um marcador de sessionStorage inicia a revelação horizontal do dashboard após init, em 850 ms, com limpeza do marcador e fallback de 12 segundos. Movimento reduzido desativa o deslocamento e a animação. Não há pré-carga de mensagens nem acesso automático ao WhatsApp.
+Após resposta 201, o quiz desfoca e apresenta três mensagens durante quatro segundos. Depois a preparação dissolve em blur por 450 ms e navega para o Simulador. Um marcador de sessionStorage inicia a entrada do dashboard após init com blur e opacidade por 550 ms, sem cortina ou clip-path, com limpeza das classes ao final e fallback de 12 segundos. Movimento reduzido elimina a espera pelas transições e o deslocamento. Não há pré-carga de mensagens nem acesso automático ao WhatsApp.
 
 Validação: suíte automatizada de cadastro, escolhas, confirmação de senha, temporização e revelação; prévias do quiz conferidas em navegador desktop e 390 px. A fluidez de 60 fps não foi medida em dispositivos reais.
 
@@ -223,3 +223,9 @@ Os crons de produção separam faturamento por minuto e confirmações de véspe
 Backups prévios em .wrangler/backups/odonto-before-paddle-inbox-0017-20261112.sql e sandbox-before-paddle-inbox-0017-20261112.sql. Migration aplicada no D1 local de produção e nos bancos remotos de produção e sandbox (neste último, também as aditivas 0015 e 0016 pendentes). Nenhum seed ou reset foi executado.
 
 Validação automatizada usa APIs simuladas: janela temporal nos limites, diagnóstico HMAC, resposta sem chamadas Paddle, persistência, retries após falha, consumidor concorrente, lease expirado, rejeição e replay, cron sandbox e produção. Entrega real da Paddle, latência de produção, credenciais externas e deploy automático não foram comprovados por esses testes.
+
+## Refinamento de movimento do cadastro
+
+O avanço sai para a esquerda em 200 ms e entra da direita em 260 ms; voltar inverte essas direções. Um lock cobre saída e entrada, desabilita botões e usa inert nos passos em transição. O foco vai ao primeiro input ou opção selecionada apenas ao concluir a entrada; valores permanecem no DOM. Com prefers-reduced-motion a navegação é síncrona.
+
+A entrada do dashboard usa apenas classes temporárias para opacity/filter/transform, removidas após 550 ms para liberar o stacking context. Os testes controlam os timers e cobrem direção, cliques repetidos, foco, movimento reduzido, saída da preparação e consumo do marcador. Fluidez em todos os dispositivos não é garantida por testes de DOM.

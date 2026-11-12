@@ -118,6 +118,7 @@ test('Pages no longer publish demo credentials or imply signup starts the trial'
 
 test('Registration quiz validates five steps, choices, retry and four-second preparation',async()=>{
  const window=await dom(REGISTER_HTML,[]);try{
+ window.matchMedia=(()=>({matches:true})) as any;
  for(const script of REGISTER_HTML.matchAll(/<script>([\s\S]*?)<\/script>/g))window.eval(script[1]);
  const field=(id:string)=>window.document.getElementById(id) as any;
  const visible=()=>[...window.document.querySelectorAll('[data-quiz-step]')].filter(el=>!(el as any).hidden);
@@ -234,7 +235,7 @@ test('Dashboard entry reveal consumes its one-shot marker and respects reduced m
  window.eval(fs.readFileSync('public/js/inbox/core.js','utf8'));
  window.sessionStorage.setItem('aura_entry_reveal','1');window.document.documentElement.classList.add('aura-entry-pending');
  window.revealAccountEntry();assert.ok(window.document.documentElement.classList.contains('aura-entry-revealing'));
- assert.equal(timers[0].delay,850);timers[0].callback();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),null);assert.ok(!window.document.documentElement.classList.contains('aura-entry-revealing'));
+ assert.equal(timers[0].delay,550);timers[0].callback();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),null);assert.ok(!window.document.documentElement.classList.contains('aura-entry-revealing'));
  window.matchMedia=(()=>({matches:true})) as any;window.sessionStorage.setItem('aura_entry_reveal','1');
  const bootstrap=[...INBOX_HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].find(m=>m[1].includes('aura_entry_reveal'))![1];window.eval(bootstrap);
  assert.ok(!window.document.documentElement.classList.contains('aura-entry-pending'));window.revealAccountEntry();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),null);
@@ -303,5 +304,26 @@ test('Automatic status refresh handles transport failures without false save err
  window.fetch=((_url:any,options:any)=>new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new window.DOMException('Aborted','AbortError'))))) as any;
  const timed=window.loadOnboarding({background:true});timers[0]();assert.equal(await timed,false);window.setTimeout=originalTimeout;
  assert.equal(toasts.length,3);
+ }finally{await window.happyDOM.close();}
+});
+
+
+test('Quiz transitions follow direction, ignore repeated navigation and focus after entry',async()=>{
+ const window=await dom(REGISTER_HTML,[]);try{
+ window.matchMedia=(()=>({matches:false})) as any;
+ const timers:{callback:()=>void,delay:number}[]=[];window.setTimeout=((callback:()=>void,delay:number)=>{timers.push({callback,delay});return timers.length;}) as any;
+ for(const script of REGISTER_HTML.matchAll(/<script>([\s\S]*?)<\/script>/g))window.eval(script[1]);
+ const field=(id:string)=>window.document.getElementById(id) as any;
+ const step=(n:number)=>window.document.querySelector('[data-quiz-step="'+n+'"]') as any;
+ field('adminName').value='Mariana Costa';field('adminName').focus();
+ window.nextQuizStep();window.nextQuizStep();window.previousQuizStep();
+ assert.equal(timers.length,1);assert.equal(timers[0].delay,200);assert.ok(step(1).classList.contains('aura-quiz-exit-forward'));assert.equal(step(1).inert,true);assert.equal(field('step1NextBtn').disabled,true);
+ timers.shift()!.callback();assert.equal(step(1).hidden,true);assert.equal(step(2).hidden,false);assert.ok(step(2).classList.contains('aura-quiz-enter-forward'));assert.equal(timers[0].delay,260);
+ window.nextQuizStep();assert.equal(timers.length,1);
+ timers.shift()!.callback();assert.equal(window.document.activeElement?.id,'email');assert.equal(step(2).inert,false);assert.equal(field('quizNextBtn').disabled,false);assert.ok(!field('registerQuiz').hasAttribute('aria-busy'));
+ window.previousQuizStep();assert.ok(step(2).classList.contains('aura-quiz-exit-backward'));timers.shift()!.callback();assert.ok(step(1).classList.contains('aura-quiz-enter-backward'));timers.shift()!.callback();assert.equal(window.document.activeElement?.id,'adminName');assert.equal(field('adminName').value,'Mariana Costa');
+ window.beginAccountPreparation();assert.deepEqual(timers.map(t=>t.delay),[1400,2800,4000]);timers.shift()!.callback();timers.shift()!.callback();timers.shift()!.callback();
+ assert.ok(field('accountPreparation').classList.contains('is-leaving'));assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),'1');assert.equal(window.location.hash,'');assert.equal(timers[0].delay,450);timers.shift()!.callback();assert.equal(window.location.hash,'#simulator');
+ const css=fs.readFileSync('public/css/aura.css','utf8');assert.ok(!/@keyframes aura-dashboard-reveal/.test(css));assert.ok(!/aura-entry[^{}]*[^}]*clip-path/.test(css));
  }finally{await window.happyDOM.close();}
 });
