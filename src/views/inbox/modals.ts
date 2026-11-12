@@ -332,7 +332,7 @@ export const INBOX_MODALS_HTML = `
             <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Cargo / Permissão</label>
             <select id="cuRole" class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
               <option value="staff">Atendente / Recepção</option>
-              <option value="admin">Administrador</option>
+              <option value="admin" disabled>Administrador</option>
             </select>
           </div>
           <div>

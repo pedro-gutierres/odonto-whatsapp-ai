@@ -27,7 +27,7 @@ async function loadOnboarding({ background = false } = {}) {
     if (!data.access || typeof data.access !== 'object') throw new Error('INVALID_ONBOARDING_RESPONSE');
     const hadHistory = currentAccess && currentAccess.can_read_history;
     currentAccess = data.access; renderOnboarding(data.trial_enabled); setOnboardingRefreshNotice('');
-    if (!background || document.body.dataset.view === 'plan') await loadBilling({ signal: controller.signal });
+    if ((typeof currentUser === 'undefined' || !currentUser || currentUser.canManageClinic !== false) && (!background || document.body.dataset.view === 'plan')) await loadBilling({ signal: controller.signal });
     if (!hadHistory && currentAccess.can_read_history && typeof startPolling === 'function') {
       startPolling(); await loadConversations(false);
     }

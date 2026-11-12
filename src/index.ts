@@ -133,6 +133,11 @@ export default {
       const business = await authenticatedBusiness(request, env);
       if ('response' in business) return business.response!;
       const { tenant, access, canManage } = business;
+      if (!canManage) {
+        const staffPaths = ['/api/onboarding','/api/conversations','/api/messages','/api/media','/api/sync-check','/api/send','/api/toggle-ai','/api/clear-chat','/api/appointments','/api/appointments/run-confirmations','/api/clinic/password'];
+        const allowed = staffPaths.includes(url.pathname) || (url.pathname === '/api/professionals' && request.method === 'GET') || (url.pathname === '/api/agenda/blocks' && request.method === 'GET');
+        if (!allowed) return jsonResponse({error:'Acesso permitido apenas ao administrador.'},403);
+      }
       if (url.pathname.startsWith('/api/billing')) return handleBilling(request,env,tenant,canManage);
       if (url.pathname.startsWith('/api/agenda/import/')) return agendaImport(request,env,tenant,canManage);
       if (url.pathname === '/api/agenda/blocks') return agendaBlocks(request, env, tenant, canManage);
@@ -536,7 +541,8 @@ export default {
             pNotes,
             pDuration,
             profId,
-            profName
+            profName,
+            (await getUserById(env.DB, auth.session.userId))?.name || null
           );
 
           if (!res.success && res.conflict) {
@@ -1358,7 +1364,8 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
         notes,
         duration,
         matchedProf?.id ?? null,
-        matchedProf?.name ?? null
+        matchedProf?.name ?? null,
+        "IA"
       );
       if (res.success) {
         bookingSucceeded = true;

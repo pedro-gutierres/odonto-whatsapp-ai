@@ -870,7 +870,8 @@ export async function createAppointment(
   notes: string = "",
   duration: string = "30 min",
   professionalId: number | null = null,
-  professionalName: string | null = null
+  professionalName: string | null = null,
+  createdByName: string | null = null
 ): Promise<CreateAppointmentResult> {
   const owner = await getTenantById(db, tenantId);
   if (owner?.commercial_status && owner.commercial_status !== 'legacy' && !professionalId)
@@ -895,8 +896,8 @@ export async function createAppointment(
   try {
   const result = await db
     .prepare(
-      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes, duration, professional_id, professional_name, ends_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
+      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes, duration, professional_id, professional_name, ends_at, created_by_name)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`
     )
     .bind(
       tenantId,
@@ -909,7 +910,8 @@ export async function createAppointment(
       duration,
       professionalId,
       professionalName,
-      appointmentEnd(scheduledAt,duration)
+      appointmentEnd(scheduledAt,duration),
+      createdByName
     )
     .run();
   return { success: true, id: result.meta.last_row_id ?? 0 };

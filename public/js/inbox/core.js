@@ -105,6 +105,7 @@
     });
     function selectNavigationTab(tabId) {
       if (!Object.hasOwn(auraPages, tabId)) return;
+      if (currentUser && currentUser.canManageClinic === false && !['chat','agenda'].includes(tabId)) tabId = 'chat';
       const page = auraPages[tabId];
       closeAccountMenu();closeVerticalMenu(); window.auraUI?.close();
       document.getElementById('selectedMenuLabel').textContent=page.title;
@@ -144,6 +145,11 @@
         const data = await res.json();
         if (data && data.user) {
           currentUser = data.user;
+          const staff = data.user.canManageClinic === false;
+          document.body.classList.toggle('aura-staff', staff);
+          const profile = document.getElementById('accountMenuTrigger');
+          if (profile) { profile.disabled = staff; profile.setAttribute('aria-label', staff ? (data.user.name || 'Perfil') : 'Conta e opções'); }
+          const logout = document.getElementById('staffLogout'); if (logout) logout.hidden = !staff;
           const nameEl = document.getElementById('topUserName');
           const emailEl = document.getElementById('topUserEmail');
 
@@ -174,8 +180,8 @@
       if (currentAccess && currentAccess.can_read_history) await loadConversations(false);
       await loadProfessionals();
       await loadAppointments();
-      await loadClinicConfig();
-      if (typeof refreshWhatsappStatusIndicator === 'function') {
+      if (currentUser?.canManageClinic !== false) await loadClinicConfig();
+      if (currentUser?.canManageClinic !== false && typeof refreshWhatsappStatusIndicator === 'function') {
         refreshWhatsappStatusIndicator();
       }
       updateCrucialTrainingLockUI();

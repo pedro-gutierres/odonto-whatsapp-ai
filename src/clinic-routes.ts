@@ -311,7 +311,8 @@ export async function handleClinicRoutes(
         const name = body.name?.trim() || "";
         const email = body.email?.trim().toLowerCase() || "";
         const password = body.password || "";
-        const role: "admin" | "staff" = body.role === "admin" ? "admin" : "staff";
+        if (body.role && body.role !== "staff") return jsonResponse({ error: "Novos integrantes devem ser atendentes." }, 403);
+        const role = "staff" as const;
 
         if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
           return jsonResponse({ error: "Nome e e-mail válido são obrigatórios." }, 400);
@@ -366,6 +367,7 @@ export async function handleClinicRoutes(
           return jsonResponse({ error: "Conta Super Admin não pode ser modificada aqui." }, 403);
         }
 
+        if (body.role && body.role !== target.role) return jsonResponse({ error: "Não é possível alterar o cargo." }, 403);
         const nextRole: "admin" | "staff" | undefined =
           body.role === "admin" ? "admin" : body.role === "staff" ? "staff" : undefined;
 

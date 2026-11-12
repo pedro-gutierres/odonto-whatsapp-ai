@@ -103,12 +103,13 @@ ${INBOX_BLOCKS_VIEW_HTML}
                 <th class="py-3 px-4">Procedimento</th>
                 <th class="py-3 px-4">Data / Horário</th>
                 <th class="py-3 px-4">Situação</th>
+                <th class="py-3 px-4">Agendado por</th>
                 <th class="py-3 px-4 text-center">Informações</th>
               </tr>
             </thead>
             <tbody id="appointmentTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
               <tr>
-                <td colspan="5" class="p-8 text-center text-slate-400">Carregando agendamentos...</td>
+                <td colspan="6" class="p-8 text-center text-slate-400">Carregando agendamentos...</td>
               </tr>
             </tbody>
           </table>

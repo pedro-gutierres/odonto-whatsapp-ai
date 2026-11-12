@@ -233,3 +233,12 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 
 .aura-dashboard-page-header{height:48px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--aura-line);background:var(--aura-panel);color:var(--aura-text);font-size:14px;font-weight:650}
 @media(max-width:860px){.aura-dashboard-page-header{margin-top:60px}.aura-dashboard>main{margin-top:0}}
+
+.aura-staff .aura-nav-item:not([data-nav-tab="chat"]):not([data-nav-tab="agenda"]),.aura-staff .aura-nav-label:first-child,.aura-staff .aura-nav-label:nth-of-type(3){display:none}
+.aura-staff #accountMenuTrigger{cursor:default}
+.aura-staff #staffLogout:not([hidden]){display:inline-grid;flex-shrink:0}
+.aura-staff .aura-topbar-actions{display:flex;flex-wrap:wrap;gap:8px}
+.aura-staff #staffLogout{order:2}
+.aura-staff.aura-sidebar-collapsed #staffLogout{margin:auto}
+
+#staffLogout[hidden]{display:none!important}

@@ -358,7 +358,7 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
         return;
       }
 
@@ -393,6 +393,7 @@
             '<td class="py-3 px-4">',
               statusBadge,
             '</td>',
+            '<td class="py-3 px-4">' + escapeHtml(a.created_by_name || 'Não informado') + '</td>',
             '<td class="py-3 px-4 text-center whitespace-nowrap">',
               '<button type="button" onclick="openAppointmentDetailsModal(' + a.id + ')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-slate-800 text-[#008069] dark:text-emerald-400 font-bold text-xs transition shadow-sm">',
                 '<i class="fa-solid fa-file-lines text-xs"></i>',

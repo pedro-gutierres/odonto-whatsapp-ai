@@ -184,6 +184,22 @@ test("Account email update validates identity and preserves tenant isolation", a
   assert.equal((await db.prepare("SELECT email FROM users WHERE tenant_id='clinica-b' AND role='admin'").first<any>())?.email, "admin@beta.com");
 });
 
+test("Staff access is restricted and appointments retain their creator", async () => {
+  const db = new MockD1Database(); db.applyMigrations(path.resolve("migrations"));
+  await seedClinicAndUsers(db); const env = createTestEnv(db);
+  const staff = await loginAndGetCookie(env, "recepcao@alpha.com", "staff123");
+  const admin = await loginAndGetCookie(env, "admin@alpha.com", "secret123");
+  for (const url of ["/api/config", "/api/clinic/users", "/api/clinic/profile", "/api/billing"]) {
+    assert.equal((await worker.fetch(new Request("https://aura.test" + url, {headers:{cookie:staff}}), env)).status, 403);
+  }
+  const forbidden = await worker.fetch(new Request("https://aura.test/api/clinic/users", {method:"POST",headers:{cookie:admin,"content-type":"application/json"},body:JSON.stringify({name:"Novo",email:"new@example.com",password:"password",role:"admin"})}),env);
+  assert.equal(forbidden.status, 403);
+  const created = await worker.fetch(new Request("https://aura.test/api/appointments", {method:"POST",headers:{cookie:staff,"content-type":"application/json"},body:JSON.stringify({patientName:"Pessoa",scheduledAt:"2031-05-20 10:00",phone:"55119999"})}),env);
+  assert.equal(created.status, 200);
+  const data = await (await worker.fetch(new Request("https://aura.test/api/appointments",{headers:{cookie:admin}}),env)).json() as any;
+  assert.equal(data.appointments[0].created_by_name, "Recepção Alpha");
+});
+
 test("Clinic team management: strict tenant isolation, pausing blocks auth, last-admin guardrail", async () => {
   const db = new MockD1Database();
   db.applyMigrations(path.resolve("migrations"));
