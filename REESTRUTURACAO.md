@@ -233,3 +233,5 @@ A entrada do dashboard usa apenas classes temporárias para opacity/filter/trans
 No quiz, etapas de escolha recebem foco no título ao entrar; campos de texto continuam recebendo foco no input. Rádio e checkbox não herdam dimensões ou sombra de campos textuais. A navegação por Tab preserva indicador de foco no card, evitando o contorno oval automático no primeiro rádio.
 
 Sidebar simplificada: operação e badge comercial deixam de ser visíveis. Rodapé contém ícones de conta e tema. Conta abre popover fixo fora da sidebar com Conta, Plano e Sair; IDs antigos seguem ocultos para compatibilidade. Fechamento por clique externo/Escape, navegação por setas e posicionamento limitado à viewport.
+
+Menu de conta ancorado ao botão na borda direita do rodapé: itens com ícones, conexão visual e abertura por escala/opacidade com origem no próprio botão. Em telas estreitas o posicionamento permanece limitado à viewport e a conexão não é desenhada quando o menu precisa sobrepor a sidebar. Movimento reduzido desativa a animação.

@@ -25,5 +25,5 @@ export const INBOX_HEADER_HTML = `
 </div>
 
   </div>
-</aside><div id="accountQuickMenu" class="aura-account-menu hidden" aria-label="Opções da conta"><button data-nav-tab="account" onclick="accountMenuNavigate('account')">Conta</button><button onclick="accountMenuNavigate('onboarding',true)">Plano</button><button onclick="closeAccountMenu();handleLogout()">Sair</button></div>
+</aside><div id="accountQuickMenu" class="aura-account-menu hidden" aria-label="Opções da conta"><button data-nav-tab="account" onclick="accountMenuNavigate('account')"><i class="fa-regular fa-user" aria-hidden="true"></i><span>Conta</span></button><button onclick="accountMenuNavigate('onboarding',true)"><i class="fa-regular fa-credit-card" aria-hidden="true"></i><span>Plano</span></button><button onclick="closeAccountMenu();handleLogout()"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span>Sair</span></button></div>
 `;

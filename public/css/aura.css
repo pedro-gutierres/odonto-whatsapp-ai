@@ -174,3 +174,15 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 .aura-quiz-option input{width:16px;height:16px;min-height:0;flex-shrink:0}.aura-quiz-option:has(input:focus-visible){outline:2px solid var(--aura-accent);outline-offset:3px}
 
 .aura-sidebar-footer{margin-top:auto}.aura-sidebar-footer #trialStatusWidget{display:none!important}.aura-account-menu{position:fixed;z-index:250;width:210px;padding:7px;background:var(--aura-panel);border:1px solid var(--aura-line);border-radius:14px;box-shadow:var(--aura-shadow)}.aura-account-menu button{display:block;width:100%;padding:12px;text-align:left;border:0;border-radius:8px;background:transparent;color:var(--aura-text);font-size:13px}.aura-account-menu button:hover,.aura-account-menu button:focus-visible{background:var(--aura-soft)}
+
+/* The account menu grows from its edge-aligned trigger. */
+.aura-sidebar-controls .aura-topbar-actions{width:100%;flex-direction:row-reverse;justify-content:space-between}
+.aura-sidebar-controls #accountMenuTrigger{margin-right:-8px}
+#accountMenuTrigger[aria-expanded=true]{background:var(--aura-soft);color:var(--aura-accent);border-color:var(--aura-accent);box-shadow:0 0 0 3px var(--aura-accent-soft)}
+.aura-account-menu{transform-origin:var(--account-origin-x,0) var(--account-anchor-y,50%);animation:aura-account-unfold 240ms cubic-bezier(.22,1,.36,1) both;overflow:visible}
+.aura-account-menu.is-connected:before{content:'';position:absolute;right:100%;top:calc(var(--account-anchor-y) - 1px);width:14px;height:2px;background:var(--aura-accent);pointer-events:none}
+.aura-account-menu button{display:flex;align-items:center;gap:12px}
+.aura-account-menu button i{width:18px;text-align:center;color:var(--aura-muted);flex-shrink:0}
+.aura-account-menu button:last-child{border-top:1px solid var(--aura-line);border-radius:0 0 8px 8px;margin-top:4px}
+@keyframes aura-account-unfold{from{opacity:0;transform:scale(.2);filter:blur(3px)}to{opacity:1;transform:scale(1);filter:blur(0)}}
+@media(prefers-reduced-motion:reduce){.aura-account-menu{animation:none}}

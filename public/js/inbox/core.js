@@ -436,8 +436,15 @@ function toggleAccountMenu(){
  const menu=document.getElementById('accountQuickMenu'),trigger=document.getElementById('accountMenuTrigger');
  if(!menu.classList.contains('hidden')){closeAccountMenu();return;}
  const rect=trigger.getBoundingClientRect();menu.classList.remove('hidden');
- const box=menu.getBoundingClientRect();menu.style.left=Math.max(8,Math.min(document.getElementById('verticalMenuContainer').getBoundingClientRect().right+10,innerWidth-box.width-8))+'px';
- menu.style.top=Math.max(8,Math.min(rect.bottom-box.height,innerHeight-box.height-8))+'px';trigger.setAttribute('aria-expanded','true');menu.querySelector('button').focus();
+ const box=menu.getBoundingClientRect();
+ const left=Math.max(8,Math.min(rect.right+12,innerWidth-box.width-8));
+ const top=Math.max(8,Math.min(rect.top+rect.height/2-box.height/2,innerHeight-box.height-8));
+ const anchorY=Math.max(16,Math.min(rect.top+rect.height/2-top,box.height-16));
+ menu.style.left=left+'px';menu.style.top=top+'px';
+ menu.style.setProperty('--account-anchor-y',anchorY+'px');
+ menu.style.setProperty('--account-origin-x',(rect.left+rect.width/2-left)+'px');
+ menu.classList.toggle('is-connected',left>=rect.right);
+ trigger.setAttribute('aria-expanded','true');menu.querySelector('button').focus();
 }
 function accountMenuNavigate(tab,plan=false){selectNavigationTab(tab);if(plan)document.getElementById('plano').scrollIntoView({behavior:'smooth',block:'start'});}
 document.addEventListener('click',event=>{if(!event.target.closest('#accountQuickMenu,#accountMenuTrigger'))closeAccountMenu();});
