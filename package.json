@@ -6,15 +6,17 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test": "esbuild tests/etapa2.test.ts --bundle --platform=node --format=esm --outfile=.wrangler/tmp/etapa2.test.mjs && esbuild tests/etapa3.test.ts --bundle --platform=node --format=esm --outfile=.wrangler/tmp/etapa3.test.mjs && node --test .wrangler/tmp/etapa2.test.mjs .wrangler/tmp/etapa3.test.mjs",
+    "test": "esbuild tests/etapa2.test.ts --bundle --platform=node --format=esm --outfile=.wrangler/tmp/etapa2.test.mjs && esbuild tests/etapa3.test.ts --bundle --platform=node --format=esm --outfile=.wrangler/tmp/etapa3.test.mjs && node --test .wrangler/tmp/etapa2.test.mjs .wrangler/tmp/etapa3.test.mjs && npm run test:frontend",
     "test:etapa2": "esbuild tests/etapa2.test.ts --bundle --platform=node --format=esm --outfile=.wrangler/tmp/etapa2.test.mjs && node --test .wrangler/tmp/etapa2.test.mjs",
     "test:etapa3": "esbuild tests/etapa3.test.ts --bundle --platform=node --format=esm --outfile=.wrangler/tmp/etapa3.test.mjs && node --test .wrangler/tmp/etapa3.test.mjs",
     "logs": "wrangler tail",
     "db:migrate:remote": "wrangler d1 migrations apply odonto-db --remote",
-    "db:migrate:local": "wrangler d1 migrations apply odonto-db --local"
+    "db:migrate:local": "wrangler d1 migrations apply odonto-db --local",
+    "test:frontend": "esbuild tests/frontend.test.ts --bundle --packages=external --platform=node --format=esm --outfile=.wrangler/tmp/frontend.test.mjs && node --test .wrangler/tmp/frontend.test.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261110.1",
+    "happy-dom": "21.0.4",
     "typescript": "^7.0.2",
     "wrangler": "^4.160.0"
   }

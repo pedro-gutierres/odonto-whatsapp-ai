@@ -78,16 +78,16 @@ export const INBOX_CHAT_VIEW_HTML = `
         <div class="flex items-start gap-2.5">
           <i class="fa-solid fa-lock text-rose-500 mt-0.5 text-sm"></i>
           <div class="text-xs space-y-0.5">
-            <span class="font-bold block text-rose-700 dark:text-rose-300">Atendimento Chat e IA Desligados — Treinamento Obrigatório Pendente</span>
+            <span class="font-bold block text-rose-700 dark:text-rose-300">A IA precisa conhecer seu negócio</span>
             <p class="text-[11px] text-rose-800 dark:text-rose-200" id="chatCrucialLockDetails">
-              Faltam informações cruciais no Treinamento da IA (destacadas em vermelho) para liberar o atendimento automático.
+              Preencha as informações essenciais antes de ativar o atendimento.
             </p>
           </div>
         </div>
         <button type="button" onclick="goToTrainingAndHighlightMissing()"
           class="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs whitespace-nowrap transition shadow-sm self-start sm:self-center flex items-center gap-1.5">
           <i class="fa-solid fa-triangle-exclamation"></i>
-          <span>Ver Pendências em Vermelho</span>
+          <span>Preencher informações</span>
         </button>
       </div>
 
@@ -133,7 +133,7 @@ export const INBOX_CHAT_VIEW_HTML = `
         <div id="sideAvatar" class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xl uppercase mx-auto mb-2 border border-slate-200 dark:border-slate-700">
           ?
         </div>
-        <h3 id="sideContactName" class="text-sm font-bold text-slate-900 dark:text-white">Nenhum Paciente</h3>
+        <h3 id="sideContactName" class="text-sm font-bold text-slate-900 dark:text-white">Nenhuma conversa selecionada</h3>
         <p id="sideContactPhone" class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">-</p>
       </div>
 
@@ -172,7 +172,7 @@ export const INBOX_CHAT_VIEW_HTML = `
       <div class="pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
         <button onclick="handleClearCurrentChat()" id="btnClearChat" disabled
           class="text-xs text-rose-500 hover:text-rose-600 disabled:opacity-30 font-medium transition">
-          <i class="fa-regular fa-trash-can mr-1"></i> Limpar Histórico Deste Chat
+          <i class="fa-regular fa-trash-can mr-1"></i> Excluir histórico Deste Chat
         </button>
       </div>
     </aside>

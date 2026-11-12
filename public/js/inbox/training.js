@@ -2,17 +2,17 @@
     function getMissingListFromConfig(cfg) {
       const missing = [];
       if (!cfg || !cfg.clinic_name || !cfg.clinic_name.trim()) {
-        missing.push('Nome Oficial da Clínica');
+        missing.push('Nome do negócio');
       }
       if (!cfg || !cfg.initial_consultation || !cfg.initial_consultation.duration || !cfg.initial_consultation.duration.trim()) {
-        missing.push('Tempo de Duração da Avaliação Inicial');
+        missing.push('Duração da primeira avaliação');
       }
       if (!cfg || !Array.isArray(cfg.procedure_items)) {
-        missing.push('Procedimentos e Tempos de Duração (clique em Salvar Alterações na IA)');
+        missing.push('Serviços e durações');
       } else {
         const activeItems = cfg.procedure_items.filter(p => p.checked !== false);
         if (activeItems.length === 0) {
-          missing.push('Pelo menos 1 Procedimento ativo com Duração');
+          missing.push('Ao menos um serviço com duração');
         } else {
           const invalidCount = activeItems.filter(p => !p.name || !p.name.trim() || !p.duration || !p.duration.trim()).length;
           if (invalidCount > 0) {
@@ -21,7 +21,7 @@
         }
       }
       if (!cfg || !cfg.hours || !cfg.hours.trim()) {
-        missing.push('Horários e Dias de Atendimento');
+        missing.push('Dias e horários de atendimento');
       }
       return missing;
     }
@@ -31,8 +31,10 @@
     }
 
     function scrollToMissingField(elementId) {
+      if(elementId==='cfgClinicName')elementId='spClinicName';
       const el = document.getElementById(elementId);
       if (!el) return;
+      for(let parent=el.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => {
         try { el.focus({ preventScroll: true }); } catch {}
@@ -47,11 +49,13 @@
         const nameEl = row.querySelector('.proc-name');
         const durEl = row.querySelector('.proc-duration');
         if (!nameEl || !nameEl.value.trim()) {
+          for(let parent=row.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
           row.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setTimeout(() => { if (nameEl) nameEl.focus({ preventScroll: true }); }, 350);
           return;
         }
         if (!durEl || !durEl.value.trim()) {
+          for(let parent=row.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
           row.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setTimeout(() => { if (durEl) durEl.focus({ preventScroll: true }); }, 350);
           return;
@@ -73,7 +77,7 @@
     function updateTrainingValidationHighlights() {
       const missingLive = [];
 
-      // 1. Nome Oficial da Clínica (Card 1)
+      // 1. Nome do negócio
       const clinicNameEl = document.getElementById('cfgClinicName');
       const lblClinicName = document.getElementById('lblCfgClinicName');
       const badgeClinicName = document.getElementById('badgeCfgClinicName');
@@ -93,10 +97,10 @@
             badgeClinicName.innerText = 'Obrigatório';
           }
           if (errClinicName) {
-            errClinicName.innerText = '⚠️ Campo obrigatório em vermelho: informe o nome oficial da clínica.';
+            errClinicName.innerText = 'informe o nome oficial da clínica.';
             errClinicName.classList.remove('hidden');
           }
-          missingLive.push({ action: "scrollToMissingField('cfgClinicName')", label: 'Nome Oficial da Clínica (Card 1)' });
+          missingLive.push({ action: "scrollToMissingField('cfgClinicName')", label: 'Nome do negócio' });
         } else {
           clinicNameEl.classList.remove('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/50', 'dark:bg-rose-950/30');
           clinicNameEl.classList.add('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/80');
@@ -112,7 +116,7 @@
         }
       }
 
-      // 2. Avaliação Inicial: Tempo de Duração (Card 2)
+      // 2. Avaliação Inicial: Tempo de Duração
       const initDurEl = document.getElementById('cfgInitEvalDuration');
       const cardInitContainer = document.getElementById('cardInitEvalContainer');
       const lblInitDur = document.getElementById('lblCfgInitEvalDuration');
@@ -137,10 +141,10 @@
             badgeInitDur.innerText = 'Obrigatório';
           }
           if (errInitDur) {
-            errInitDur.innerText = '⚠️ Campo obrigatório em vermelho: informe o tempo da Avaliação Inicial (ex: 30 min).';
+            errInitDur.innerText = 'informe o tempo da Avaliação Inicial (ex: 30 min).';
             errInitDur.classList.remove('hidden');
           }
-          missingLive.push({ action: "scrollToMissingField('cfgInitEvalDuration')", label: 'Tempo de Duração da Avaliação Inicial / Consulta (Card 2)' });
+          missingLive.push({ action: "scrollToMissingField('cfgInitEvalDuration')", label: 'Duração da primeira avaliação / Consulta' });
         } else {
           initDurEl.classList.remove('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/60', 'dark:bg-rose-950/30');
           initDurEl.classList.add('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800');
@@ -160,7 +164,7 @@
         }
       }
 
-      // 3. Procedimentos Selecionados e Durações (Card 2)
+      // 3. Procedimentos Selecionados e Durações
       const procRows = document.querySelectorAll('.proc-row');
       let checkedProcCount = 0;
       let invalidProcCount = 0;
@@ -227,18 +231,18 @@
           procAlertEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-500 shrink-0"></i><span>Selecione (marque) pelo menos 1 procedimento oferecido pela clínica com seu respectivo tempo de duração.</span>';
           procAlertEl.classList.remove('hidden');
         }
-        missingLive.push({ action: "scrollToMissingField('odontoList')", label: 'Pelo menos 1 Procedimento marcado em Odonto ou Estética (Card 2)' });
+        missingLive.push({ action: "scrollToMissingField('odontoList')", label: 'Pelo menos 1 Procedimento marcado em Odonto ou Estética' });
       } else if (invalidProcCount > 0) {
         if (procAlertEl) {
           procAlertEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-500 shrink-0"></i><span>Existem <strong>' + invalidProcCount + ' procedimento(s) marcado(s) em vermelho</strong> sem Nome ou Tempo de Duração. Preencha ou desmarque-os.</span>';
           procAlertEl.classList.remove('hidden');
         }
-        missingLive.push({ action: "scrollToFirstInvalidProcedure()", label: invalidProcCount + ' procedimento(s) selecionado(s) sem Nome ou Tempo de Duração (Card 2)' });
+        missingLive.push({ action: "scrollToFirstInvalidProcedure()", label: invalidProcCount + ' procedimento(s) selecionado(s) sem Nome ou Tempo de Duração' });
       } else if (procAlertEl) {
         procAlertEl.classList.add('hidden');
       }
 
-      // 4. Horários e Dias de Atendimento (Card 5)
+      // 4. Dias e horários de atendimento
       const hoursEl = document.getElementById('cfgHours');
       const lblHours = document.getElementById('lblCfgHours');
       const badgeHours = document.getElementById('badgeCfgHours');
@@ -258,10 +262,10 @@
             badgeHours.innerText = 'Obrigatório';
           }
           if (errHours) {
-            errHours.innerText = '⚠️ Campo obrigatório em vermelho: informe os horários e dias em que a clínica atende.';
+            errHours.innerText = 'informe os horários e dias em que a clínica atende.';
             errHours.classList.remove('hidden');
           }
-          missingLive.push({ action: "scrollToMissingField('cfgHours')", label: 'Horários e Dias de Atendimento (Card 5)' });
+          missingLive.push({ action: "scrollToMissingField('cfgHours')", label: 'Dias e horários de atendimento' });
         } else {
           hoursEl.classList.remove('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/50', 'dark:bg-rose-950/30');
           hoursEl.classList.add('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/80');
@@ -284,64 +288,13 @@
       const savedComplete = isCrucialTrainingComplete();
       statusBanner.classList.remove('hidden');
 
+      statusBanner.className='aura-note';
       if (missingLive.length > 0) {
-        const itemsHtml = missingLive.map(m => [
-          '<li class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/60 border border-rose-200 dark:border-rose-800/60">',
-            '<span class="flex items-center gap-2 text-xs font-bold text-rose-700 dark:text-rose-300">',
-              '<i class="fa-solid fa-circle-xmark text-rose-500 shrink-0"></i>',
-              '<span>' + escapeHtml(m.label) + '</span>',
-            '</span>',
-            '<button type="button" onclick="' + m.action + '" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold whitespace-nowrap transition shadow-xs">',
-              'Ir para campo ↴',
-            '</button>',
-          '</li>'
-        ].join('')).join('');
-
-        statusBanner.className = 'rounded-2xl p-5 shadow-md border-2 border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 space-y-3 transition-all';
-        statusBanner.innerHTML = [
-          '<div class="flex items-start gap-3">',
-            '<div class="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 text-base shadow-sm">',
-              '<i class="fa-solid fa-lock"></i>',
-            '</div>',
-            '<div class="flex-1 space-y-1">',
-              '<h3 class="text-sm font-extrabold text-rose-700 dark:text-rose-300">Preenchimento Obrigatório Pendente — Chat (IA) e Agenda Bloqueados</h3>',
-              '<p class="text-xs text-rose-800 dark:text-rose-200 leading-relaxed">',
-                'Para liberar o atendimento automático no Chat e os agendamentos na Agenda, preencha os campos destacados em <strong>vermelho</strong> abaixo e clique em <strong>“Salvar Alterações na IA”</strong>:',
-              '</p>',
-            '</div>',
-          '</div>',
-          '<ul class="space-y-2 pt-1">' + itemsHtml + '</ul>'
-        ].join('');
+        statusBanner.innerHTML='<b class="text-xs">Falta preencher o essencial</b><div class="aura-missing-fields">'+missingLive.map(item=>'<button type="button" onclick="'+item.action+'">'+escapeHtml(item.label)+'</button>').join('')+'</div>';
       } else if (!savedComplete) {
-        statusBanner.className = 'rounded-2xl p-5 shadow-md border-2 border-rose-500 bg-rose-50/90 dark:bg-rose-950/30 text-rose-900 dark:text-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all';
-        statusBanner.innerHTML = [
-          '<div class="flex items-start gap-3">',
-            '<div class="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 text-base shadow-sm">',
-              '<i class="fa-solid fa-floppy-disk"></i>',
-            '</div>',
-            '<div class="space-y-0.5">',
-              '<h3 class="text-sm font-extrabold text-rose-700 dark:text-rose-300">Falta Apenas SALVAR para Liberar o Chat e a Agenda!</h3>',
-              '<p class="text-xs text-rose-800 dark:text-rose-200">',
-                'Todos os campos obrigatórios já estão preenchidos nesta tela, mas suas alterações ainda não foram salvas no banco da IA.',
-              '</p>',
-            '</div>',
-          '</div>',
-          '<button type="button" onclick="saveClinicConfig()" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs whitespace-nowrap transition shadow-md flex items-center gap-2 shrink-0 self-start sm:self-center">',
-            '<i class="fa-solid fa-check-double"></i>',
-            '<span>Salvar Alterações e Liberar Agora</span>',
-          '</button>'
-        ].join('');
+        statusBanner.innerHTML='<div class="flex flex-wrap justify-between items-center gap-3"><span>Informações prontas. Salve o treinamento para continuar.</span><button type="button" onclick="saveClinicConfig()" class="aura-text-button">Salvar treinamento</button></div>';
       } else {
-        statusBanner.className = 'rounded-2xl p-4 shadow-sm border border-emerald-500/40 bg-emerald-50/80 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-200 flex items-center gap-3 transition-all';
-        statusBanner.innerHTML = [
-          '<div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 text-sm">',
-            '<i class="fa-solid fa-circle-check"></i>',
-          '</div>',
-          '<div class="text-xs">',
-            '<span class="font-bold text-emerald-800 dark:text-emerald-300 block">Treinamento Obrigatório Concluído — Atendimento Chat (IA) e Agenda Liberados!</span>',
-            '<span class="text-[11px] text-emerald-700 dark:text-emerald-400">Todas as informações essenciais estão ativas e sincronizadas com a Secretária IA.</span>',
-          '</div>'
-        ].join('');
+        statusBanner.innerHTML='<span>Informações essenciais preenchidas. Depois de editar, salve e confirme a revisão em Início.</span>';
       }
     }
 
@@ -349,18 +302,18 @@
       const missingSaved = getMissingListFromConfig(currentConfig);
       const complete = missingSaved.length === 0;
       const missingText = missingSaved.length > 0
-        ? 'Pendências em vermelho no Treinamento: ' + missingSaved.join(' • ') + '.'
-        : 'Todas as informações cruciais estão salvas.';
+        ? 'Complete em Meu negócio e IA: ' + missingSaved.join(' • ') + '.'
+        : 'As informações essenciais estão salvas.';
 
       // Badge global na sidebar do chat
       const sidebarBadge = document.getElementById('sidebarAiGlobalBadge');
       if (sidebarBadge) {
         if (complete) {
           sidebarBadge.className = 'flex items-center gap-1 text-emerald-600 dark:text-emerald-400';
-          sidebarBadge.innerHTML = '<i class="fa-solid fa-bolt text-[10px]"></i> IA Ativa 24h';
+          sidebarBadge.innerHTML = '<i class="fa-solid fa-check text-[10px]"></i> Treinamento pronto';
         } else {
           sidebarBadge.className = 'flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold';
-          sidebarBadge.innerHTML = '<i class="fa-solid fa-power-off text-[10px]"></i> IA Desligada';
+          sidebarBadge.innerHTML = '<i class="fa-solid fa-pen text-[10px]"></i> Complete o treinamento';
         }
       }
 
@@ -389,7 +342,7 @@
       // Botão da Agenda
       const newAppBtn = document.getElementById('btnNewAppointmentAgenda');
       if (newAppBtn) {
-        newAppBtn.title = complete ? 'Criar agendamento' : 'Complete os campos em vermelho no Treinamento para agendar';
+        newAppBtn.title = complete ? 'Criar agendamento' : 'Preencha as informações essenciais para agendar';
       }
 
       // Botão no card do paciente ativo
@@ -421,7 +374,7 @@
             <input type="checkbox" class="proc-checkbox rounded text-[#008069] focus:ring-0 w-4 h-4 shrink-0 cursor-pointer mt-0.5" ${isChecked ? 'checked' : ''}>
             <div class="w-full">
               <input type="text" class="proc-name w-full bg-transparent font-bold text-xs text-slate-800 dark:text-slate-100 border-b border-transparent hover:border-slate-300 focus:border-[#008069] focus:outline-none px-1" value="${escapeHtml(name)}" placeholder="Nome do procedimento">
-              <span class="proc-name-err hidden text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 block">⚠️ Informe o nome do procedimento!</span>
+              <span class="proc-name-err hidden text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 block">Informe o nome do procedimento!</span>
             </div>
           </div>
           
@@ -429,7 +382,7 @@
           <div class="md:w-3/12 flex flex-col gap-1.5 md:pt-0.5">
             <div>
               <input type="text" class="proc-duration w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Duração (ex: 45 min)" value="${escapeHtml(duration)}">
-              <span class="proc-duration-err hidden text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 block">⚠️ Falta duração!</span>
+              <span class="proc-duration-err hidden text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 block">Informe a duração.</span>
             </div>
             <input type="text" class="proc-price w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Preço (ex: R$ 250 ou A partir de...)" value="${escapeHtml(price)}">
           </div>
@@ -683,7 +636,7 @@
       } catch (err) {
         alert("Erro na requisição ao salvar dados da clínica");
       } finally {
-        if (btnText) btnText.innerText = "Salvar Alterações na IA";
+        if (btnText) btnText.innerText = "Salvar treinamento";
         if (btn) btn.disabled = false;
       }
     }

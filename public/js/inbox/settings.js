@@ -112,7 +112,7 @@
       const roleBadge = document.getElementById('settingsRoleBadge');
       const topClinicBadge = document.getElementById('topClinicNameBadge');
 
-      if (heading) heading.innerText = c.name || 'Configurações da Clínica';
+      if (heading) heading.innerText = 'Seu WhatsApp de atendimento';
       if (tenantBadge) tenantBadge.innerText = 'ID: ' + (c.id || '-');
       if (topClinicBadge && c.name) topClinicBadge.innerText = c.name;
 
@@ -184,18 +184,18 @@
         statPhoneId.innerText = wa.configured ? wa.phone_number_id : (wa.raw_phone_number_id || 'unconfigured');
       }
       if (statDisplay) {
-        statDisplay.innerText = wa.display_phone_number ? 'Número: ' + wa.display_phone_number : '';
+        statDisplay.textContent = wa.display_phone_number || 'Ainda não conectado';
       }
       if (statWaba) {
         statWaba.innerText = wa.waba_id ? 'WABA: ' + wa.waba_id : 'WABA: Não informado';
       }
       if (statToken) {
         if (wa.token_source === 'custom_encrypted') {
-          statToken.innerText = 'Token próprio criptografado (AES-256-GCM)';
+          statToken.innerText = 'Credencial protegida';
         } else if (wa.token_source === 'custom_plain') {
           statToken.innerText = 'Token próprio configurado';
         } else if (wa.token_source === 'lab_fallback') {
-          statToken.innerText = 'Sem token próprio (fallback WA_LAB_TOKEN)';
+          statToken.innerText = 'Credencial de teste';
         } else {
           statToken.innerText = 'Nenhum token configurado';
         }
@@ -258,8 +258,7 @@
       if (esMissingAlert && esMissingText) {
         if (!es.enabled) {
           esMissingAlert.classList.remove('hidden');
-          const missingList = Array.isArray(es.missing_env) ? es.missing_env.join(', ') : 'META_APP_ID, META_EMBEDDED_CONFIG_ID';
-          esMissingText.innerText = 'Para ativar o popup oficial Meta Embedded Signup, configure no Cloudflare Worker as variáveis: ' + missingList + '. Enquanto isso, você pode conectar usando a "Configuração Manual / Avançada" logo abaixo.';
+          esMissingText.textContent='A conexão guiada está sendo preparada. Se você já tem as credenciais da Meta, utilize a conexão manual abaixo.';
         } else {
           esMissingAlert.classList.add('hidden');
         }
@@ -349,7 +348,7 @@
         document.getElementById('spCurrentPassword').value = '';
         document.getElementById('spNewPassword').value = '';
         document.getElementById('spConfirmPassword').value = '';
-        showToast('Sua senha foi atualizada com segurança (PBKDF2)!', 'emerald');
+        showToast('Senha atualizada.', 'emerald');
       } catch {
         showToast('Erro de conexão ao alterar senha', 'rose');
       } finally {
@@ -678,7 +677,7 @@
       const btn = document.getElementById('btnLaunchEmbeddedSignup');
       const txt = document.getElementById('btnLaunchEmbeddedSignupText');
       if (btn) btn.disabled = !canManageClinicState || !clinicWhatsappState?.embedded_signup?.enabled;
-      if (txt) txt.innerText = 'Conectar via Meta Embedded Signup';
+      if (txt) txt.innerText = 'Conectar com a Meta';
     }
 
     async function completeEmbeddedSignupExchange(code) {
@@ -688,7 +687,7 @@
       const pin = document.getElementById('esPinInput')?.value.trim() || '';
       setEmbeddedSignupProgress([
         '1. Autorização Meta recebida com sucesso.',
-        '2. Trocando código OAuth por token seguro, assinando webhook e salvando credenciais em AES-256-GCM...',
+        '2. Autorizando o número e preparando o recebimento de mensagens...',
       ]);
 
       try {
@@ -720,7 +719,7 @@
 
         const steps = data.steps || {};
         const lines = [
-          '✓ Token OAuth trocado e criptografado em AES-256-GCM no banco D1.',
+          '✓ Autorização salva com segurança.',
           steps.webhookSubscribed
             ? '✓ Webhook assinado automaticamente na conta WABA.'
             : '⚠ Webhook não foi assinado automaticamente — clique em "Testar Conexão & Diagnóstico" abaixo.',
@@ -895,7 +894,7 @@
 
       if (btn) btn.disabled = true;
       if (container) {
-        container.innerHTML = '<div class="p-3 text-slate-400 flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i><span>Consultando banco D1 e Meta Graph API...</span></div>';
+        container.innerHTML = '<div class="p-3 text-slate-400 flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i><span>Verificando a conexão...</span></div>';
       }
 
       try {
@@ -984,4 +983,9 @@ function verifyNumberScenario() {
   if (!currentAccess || currentAccess.legacy_review_required) return true;
   if (document.getElementById('waNumberScenario').value === 'new_dedicated') return true;
   showToast('Escolha um número novo e dedicado. Números existentes aguardam validação do procedimento.','amber');return false;
+}
+
+function updateNumberScenarioHint() {
+  const existing=document.getElementById('waNumberScenario').value==='existing';
+  document.getElementById('numberScenarioHint').textContent=existing ? 'A conexão de números existentes ainda precisa ser validada. Não prossiga sem confirmar as consequências para seu aplicativo e histórico.' : 'Recomendamos um número dedicado a novos interessados.';
 }

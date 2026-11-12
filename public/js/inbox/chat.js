@@ -59,7 +59,7 @@
           : (isAiOn
             ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40'
             : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40');
-        const statusBadgeText = !trainingComplete ? 'IA Desligada' : (isAiOn ? 'IA Ativa' : 'IA Pausada');
+        const statusBadgeText = !trainingComplete ? 'IA Desligada' : (isAiOn ? 'IA respondendo' : 'IA Pausada');
 
         return `
           <div onclick="selectChat('${c.contact_wa_id}')" 
@@ -429,15 +429,24 @@
       badge.classList.remove('hidden');
       toggleBtn.classList.remove('hidden');
 
+      if (currentAccess && !currentAccess.can_operate) {
+        badge.className = 'text-xs text-slate-500';
+        badge.textContent = 'Atendimento pausado';
+        toggleBtn.classList.add('hidden');
+        sideText.textContent = 'Atendimento pausado';
+        sideBtn.classList.add('hidden');
+        return;
+      }
+
       if (!isCrucialTrainingComplete()) {
         badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60";
-        badge.innerText = "IA Desligada (Treinamento Pendente)";
+        badge.innerText = "Preencha o treinamento";
 
         toggleBtn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 transition shadow-sm";
         toggleIcon.className = "fa-solid fa-lock text-[10px]";
-        toggleText.innerText = "Completar Treinamento";
+        toggleText.innerText = "Preencher informações";
 
-        sideText.innerText = "IA Desligada (Pendências em vermelho)";
+        sideText.innerText = "Aguardando treinamento";
         sideText.className = "font-bold text-rose-600 dark:text-rose-400";
         sideBtn.classList.add('hidden');
         return;
@@ -447,7 +456,7 @@
 
       if (activeAiPaused) {
         badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60";
-        badge.innerText = "Atendimento Humano (IA Pausada)";
+        badge.innerText = "Com a equipe";
 
         toggleBtn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition shadow-sm";
         toggleIcon.className = "fa-solid fa-play text-[10px]";
@@ -457,13 +466,13 @@
         sideText.className = "font-bold text-amber-600 dark:text-amber-400";
       } else {
         badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60";
-        badge.innerText = "IA Respondendo 24h";
+        badge.innerText = "IA disponível";
 
         toggleBtn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition shadow-sm";
         toggleIcon.className = "fa-solid fa-pause text-[10px]";
         toggleText.innerText = "Pausar IA (Assumir)";
 
-        sideText.innerText = "IA Ativa e Respondendo";
+        sideText.innerText = "IA disponível nesta conversa";
         sideText.className = "font-bold text-emerald-600 dark:text-emerald-400";
       }
     }

@@ -13,8 +13,8 @@ function changeSimulatorMode(mode) {
 }
 function renderSimulatorMessages() {
   const container = document.getElementById('simulatorMessagesArea'); container.replaceChildren();
-  const intro = document.createElement('p'); intro.className = 'text-sm text-slate-500 text-center py-4';
-  intro.textContent = simulatorMode === 'patient' ? 'Converse como um paciente fictício. Nenhuma consulta será marcada.' : 'Pergunte sobre cadastro, preparação, teste e funcionamento do Aura.';
+  const intro = document.createElement('p'); intro.className = 'aura-demo-intro';
+  intro.textContent = simulatorMode === 'patient' ? 'Converse como um paciente para conhecer as respostas da sua IA.' : 'Pergunte sobre configuração, teste e contratação.';
   container.append(intro);
   for (const turn of simulatorChats[simulatorMode]) {
     const bubble = document.createElement('div'); bubble.className = 'p-3 rounded-xl text-sm whitespace-pre-wrap max-w-2xl ' + (turn.role === 'user' ? 'ml-auto bg-purple-100 dark:bg-purple-950' : 'bg-white dark:bg-slate-800');
@@ -25,10 +25,10 @@ function renderSimulatorMessages() {
 function updateDemoState() {
   if (!currentAccess) return;
   const demo = currentAccess.demo;
-  document.getElementById('demoQuota').textContent = demo.used + ' / ' + demo.limit + ' respostas usadas';
+  document.getElementById('demoQuota').textContent = demo.used + ' de ' + demo.limit + ' respostas usadas';
   const needsTraining = simulatorMode === 'patient' && !isCrucialTrainingComplete(), exhausted = demo.used >= demo.limit;
   const banner = document.getElementById('simulatorLockBanner');
-  banner.textContent = exhausted ? 'Sua cota do Test Drive terminou. O teste operacional tem outra cota.' : needsTraining ? 'Salve o treinamento mínimo para simular um paciente. Você já pode tirar dúvidas sobre o Aura no outro modo.' : '';
+  banner.textContent = exhausted ? 'Você usou as respostas do Test Drive. Seu teste no WhatsApp tem uma cota separada.' : needsTraining ? 'Preencha e salve as informações do negócio para simular um paciente. Para conhecer o produto, escolha “Tirar dúvidas sobre o Aura”.' : '';
   banner.classList.toggle('hidden', !banner.textContent);
   document.getElementById('simulatorMessageInput').disabled = simulatorSending || exhausted || needsTraining;
   document.getElementById('simulatorSendBtn').disabled = simulatorSending || exhausted || needsTraining;
@@ -49,6 +49,6 @@ async function sendSimulatorMessage(text) {
 }
 function resetSimulatorChat() {
   if (simulatorSending) return;
-  simulatorChats[simulatorMode] = []; renderSimulatorMessages(); showToast('Conversa reiniciada. A cota permanece a mesma.', 'purple');
+  simulatorChats[simulatorMode] = []; renderSimulatorMessages(); showToast('Nova conversa iniciada. A cota não foi renovada.', 'purple');
 }
 function updateTrialWidget() { /* Operational status comes from /api/onboarding. */ }

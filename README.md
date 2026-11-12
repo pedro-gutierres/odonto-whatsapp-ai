@@ -8,7 +8,9 @@ O teste real começa por ativação explícita após treinamento revisado, agend
 
 As configurações, a matriz, os critérios de publicação e as limitações estão em [REESTRUTURACAO.md](REESTRUTURACAO.md). Google e Paddle estão preparados e aguardam configuração/validação externa. A integração financeira Meta e compatibilidade com agendas de outros sistemas continuam pendentes de comprovação.
 
-Novos módulos: `src/access.ts`, `src/onboarding.ts`, `src/simulator.ts`, `src/billing.ts`, `src/google-auth.ts`, `src/agenda-blocks.ts`, `src/agenda-import.ts`. Migrations aditivas `0010`–`0014`. Navegação: Preparação e plano, Atendimento, Agenda, Meu negócio e IA, WhatsApp e consumo, Minha conta e equipe.
+Novos módulos: `src/access.ts`, `src/onboarding.ts`, `src/simulator.ts`, `src/billing.ts`, `src/google-auth.ts`, `src/agenda-blocks.ts`, `src/agenda-import.ts`. Migrations aditivas `0010`–`0014`. Navegação: Início, Conversas, Agenda, Meu negócio e IA, Test Drive, WhatsApp, Conta e equipe.
+
+A revisão de interface usa estilos compartilhados em `public/css/aura.css` e seletores em `public/js/ui.js`, preservando os campos e eventos dos formulários. O bloqueio da agenda permite informar dia, início, fim e término em outro dia. Detalhes técnicos de conexão ficam recolhidos; a ajuda aparece junto às ações que precisam de explicação. `npm run test:frontend` verifica controles e formulários em DOM offline, sem substituir a conferência visual no navegador.
 
 Novas APIs: `/api/onboarding/*`, `/api/billing/*`, `/api/webhooks/paddle`, `/api/auth/google`, `/api/auth/google/options`, `/api/agenda/blocks`, `/api/agenda/import/{preview,commit,undo}`. O CSV aceita somente o modelo Aura com prévia; não representa sincronização com sistemas externos.
 

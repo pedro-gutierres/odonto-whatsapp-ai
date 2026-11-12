@@ -31,8 +31,8 @@ export const ADMIN_HTML = `<!DOCTYPE html>
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
   </style>
-</head>
-<body class="bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 min-h-screen flex flex-col selection:bg-[#008069] selection:text-white transition-colors duration-200">
+<link rel="stylesheet" href="/css/aura.css?v=5"></head>
+<body class="aura-public aura-admin bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 min-h-screen flex flex-col selection:bg-[#008069] selection:text-white transition-colors duration-200">
 
   <!-- HEADER -->
   <header class="h-16 bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-slate-800/80 px-4 lg:px-8 flex items-center justify-between sticky top-0 z-30">
@@ -735,5 +735,5 @@ export const ADMIN_HTML = `<!DOCTYPE html>
       }
     }
   </script>
-</body>
+<script src="/js/ui.js?v=5"></script></body>
 </html>`;

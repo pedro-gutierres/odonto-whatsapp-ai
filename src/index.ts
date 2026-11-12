@@ -1114,7 +1114,7 @@ export default {
     // -------------------------------------------------------------------------
     // FALLBACK EXPLÍCITO PARA ASSETS ESTÁTICOS (/js/*) E WEBHOOK DA META
     // -------------------------------------------------------------------------
-    if (env.ASSETS && (request.method === "GET" || request.method === "HEAD") && url.pathname.startsWith("/js/")) {
+    if (env.ASSETS && (request.method === "GET" || request.method === "HEAD") && (url.pathname.startsWith("/js/") || url.pathname.startsWith("/css/"))) {
       return env.ASSETS.fetch(request);
     }
 

@@ -64,93 +64,50 @@
     }
 
     // 2. SELETOR DE MÓDULOS (MENU VERTICAL)
-    function toggleVerticalMenu(e) {
-      if (e) e.stopPropagation();
-      const dropdown = document.getElementById('verticalMenuDropdown');
-      const chevron = document.getElementById('verticalMenuChevron');
-      const isClosed = dropdown.classList.contains('hidden');
-
-      if (isClosed) {
-        dropdown.classList.remove('hidden');
-        chevron.classList.add('rotate-180');
-      } else {
-        dropdown.classList.add('hidden');
-        chevron.classList.remove('rotate-180');
-      }
+    const auraPages = {
+      onboarding: { title:'Início', view:'viewOnboarding' }, chat: { title:'Conversas', view:'viewChat' },
+      agenda: { title:'Agenda', view:'viewAgenda' }, config: { title:'Meu negócio e IA', view:'viewConfig' },
+      settings: { title:'WhatsApp', view:'viewSettings' }, simulator: { title:'Test Drive', view:'viewSimulator' },
+      account: { title:'Conta e equipe', view:'viewAccount' }
+    };
+    function toggleVerticalMenu(event) {
+      event.stopPropagation();
+      const open = document.body.classList.toggle('aura-nav-open');
+      document.getElementById('verticalMenuTrigger').setAttribute('aria-expanded',String(open));
     }
-
     function closeVerticalMenu() {
-      const dropdown = document.getElementById('verticalMenuDropdown');
-      const chevron = document.getElementById('verticalMenuChevron');
-      if (dropdown) dropdown.classList.add('hidden');
-      if (chevron) chevron.classList.remove('rotate-180');
+      document.body.classList.remove('aura-nav-open');
+      document.getElementById('verticalMenuTrigger')?.setAttribute('aria-expanded','false');
     }
-
-    document.addEventListener('click', (e) => {
-      const container = document.getElementById('verticalMenuContainer');
-      if (container && !container.contains(e.target)) {
-        closeVerticalMenu();
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && document.body.classList.contains('aura-nav-open')) {
+        closeVerticalMenu(); document.getElementById('verticalMenuTrigger').focus();
       }
     });
-
-    function selectNavigationTab(tabId, labelText, iconClass, colorTheme) {
-      closeVerticalMenu();
-      const onboarding = document.getElementById('viewOnboarding');
-      if (onboarding) onboarding.classList.add('hidden');
-      const account = document.getElementById('viewAccount');
-      if (account) account.classList.add('hidden');
-
-      // Atualiza botão seletor superior
-      const label = document.getElementById('selectedMenuLabel');
-      const iconContainer = document.getElementById('selectedMenuIcon');
-      if (label) label.innerText = labelText;
-      if (iconContainer) {
-        iconContainer.innerHTML = `<i class="${iconClass}"></i>`;
-        if (colorTheme === 'sky') {
-          iconContainer.className = "w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-xs";
-        } else if (colorTheme === 'purple') {
-          iconContainer.className = "w-6 h-6 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xs";
-        } else if (colorTheme === 'amber') {
-          iconContainer.className = "w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs";
-        } else {
-          iconContainer.className = "w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs";
+    function selectNavigationTab(tabId) {
+      const page = auraPages[tabId]; if (!page) return;
+      closeVerticalMenu(); window.auraUI?.close();
+      document.getElementById('selectedMenuLabel').textContent=page.title;
+      document.title=page.title+' | Aura'; document.body.dataset.view=tabId;
+      for (const [id,item] of Object.entries(auraPages)) document.getElementById(item.view).classList.toggle('hidden',id!==tabId);
+      for (const item of document.querySelectorAll('[data-nav-tab]')) {
+        if (item.dataset.navTab===tabId) item.setAttribute('aria-current','page'); else item.removeAttribute('aria-current');
+      }
+      if (location.hash !== '#'+tabId) history.replaceState(null,'','#'+tabId);
+      if (tabId==='onboarding') loadOnboarding();
+      else if (tabId==='account') loadClinicSettingsView();
+      else if (tabId==='agenda') {loadProfessionals();loadAppointments();}
+      else if (tabId==='config') {loadClinicConfig().then(updateTrainingValidationHighlights);loadClinicProfileAndWhatsapp();}
+      else if (tabId==='settings') loadClinicSettingsView();
+      else if (tabId==='simulator') initSimulatorView();
+      else if (tabId==='chat') {
+        if(currentAccess?.can_read_history)loadConversations(false);
+        else {
+          const container=document.getElementById('conversationList');container.replaceChildren();
+          const message=document.createElement('p');message.className='aura-description p-5';message.textContent='As conversas aparecem aqui depois que você ativa o atendimento no WhatsApp.';container.append(message);
         }
       }
-
-      // Alterna Views
-      const viewChat = document.getElementById('viewChat');
-      const viewAgenda = document.getElementById('viewAgenda');
-      const viewConfig = document.getElementById('viewConfig');
-      const viewSettings = document.getElementById('viewSettings');
-      const viewSimulator = document.getElementById('viewSimulator');
-
-      viewChat.classList.add('hidden');
-      viewAgenda.classList.add('hidden');
-      viewConfig.classList.add('hidden');
-      if (viewSettings) viewSettings.classList.add('hidden');
-      if (viewSimulator) viewSimulator.classList.add('hidden');
-
-      if (tabId === 'onboarding') {
-        onboarding.classList.remove('hidden'); loadOnboarding();
-      } else if (tabId === 'account') {
-        account.classList.remove('hidden'); loadClinicSettingsView();
-      } else if (tabId === 'agenda') {
-        viewAgenda.classList.remove('hidden');
-        loadProfessionals();
-        loadAppointments();
-      } else if (tabId === 'config') {
-        viewConfig.classList.remove('hidden');
-        loadClinicConfig().then(() => updateTrainingValidationHighlights());
-        loadClinicProfileAndWhatsapp();
-      } else if (tabId === 'settings') {
-        if (viewSettings) viewSettings.classList.remove('hidden');
-        if (typeof loadClinicSettingsView === 'function') loadClinicSettingsView();
-      } else if (tabId === 'simulator') {
-        if (viewSimulator) viewSimulator.classList.remove('hidden');
-        if (typeof initSimulatorView === 'function') initSimulatorView();
-      } else {
-        viewChat.classList.remove('hidden');
-      }
+      window.auraUI?.refresh();
     }
 
     // 3. INICIALIZAÇÃO GERAL
@@ -201,13 +158,14 @@
       }
       updateCrucialTrainingLockUI();
       if (currentAccess && currentAccess.can_read_history) startPolling();
-      if (currentAccess && !currentAccess.legacy_review_required) selectNavigationTab('onboarding','Preparação e plano','fa-solid fa-list-check','emerald');
+      const requestedTab=location.hash.slice(1);
+      selectNavigationTab(auraPages[requestedTab] ? requestedTab : currentAccess?.legacy_review_required ? 'chat':'onboarding');
       setInterval(() => { if (!document.hidden) loadOnboarding(); }, 30000);
     }
 
     // 7. LOGOUT
     async function handleLogout() {
-      if (confirm("Deseja sair do painel da clínica?")) {
+      if (confirm("Sair da sua conta?")) {
         try {
           await fetch('/api/auth/logout', { method: 'POST' });
         } finally {

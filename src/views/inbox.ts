@@ -8,14 +8,14 @@ import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "4";
+const ASSET_VERSION = "5";
 
 export const INBOX_HTML = `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Central da Recepcionista | Aura AI Odonto & Estética</title>
+  <title>Seu atendimento | Aura</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -37,6 +37,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/aura.css?v=5">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .wa-bg-light {
@@ -55,7 +56,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
     .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
   </style>
 </head>
-<body class="bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 h-screen flex flex-col overflow-hidden selection:bg-[#008069] selection:text-white transition-colors duration-200">
+<body class="aura-dashboard bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 h-screen flex flex-col overflow-hidden selection:bg-[#008069] selection:text-white transition-colors duration-200">
 ${INBOX_HEADER_HTML}
 
   <!-- BANNER GLOBAL DE TRIAL EXPIRADO OU LIMITE ATINGIDO -->
@@ -65,14 +66,14 @@ ${INBOX_HEADER_HTML}
       <div>
         <span class="font-extrabold" id="trialExpiredTitle">Período de testes ou cota de 100 mensagens atingida!</span>
         <span class="opacity-90 block sm:inline sm:ml-1" id="trialExpiredSubtitle">
-          O simulador e novas respostas automáticas da IA estão pausados. Suas consultas, configurações e equipe continuam salvos e acessíveis abaixo.
+          O atendimento real está pausado. Seu histórico continua disponível.
         </span>
       </div>
     </div>
     <a href="#plano" onclick="selectNavigationTab('onboarding','Preparação e plano','fa-solid fa-list-check','emerald');return false" id="btnTrialUpgrade"
        class="px-3.5 py-1.5 rounded-xl bg-white text-rose-700 hover:bg-slate-100 font-bold text-xs shadow-sm transition whitespace-nowrap flex items-center gap-1.5 ml-3">
       <i class="fa-solid fa-crown text-amber-500"></i>
-      <span>Ativar Assinatura</span>
+      <span>Ver plano</span>
     </a>
   </div>
 
@@ -84,6 +85,7 @@ ${INBOX_TRAINING_VIEW_HTML}
 ${INBOX_SETTINGS_VIEW_HTML}
 ${INBOX_SIMULATOR_VIEW_HTML}
 ${INBOX_MODALS_HTML}
+  <script src="/js/ui.js?v=5"></script>
   <!-- SCRIPTS MODULARES DA PLATAFORMA (Cloudflare Static Assets) -->
   <script src="/js/inbox/billing.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/onboarding.js?v=${ASSET_VERSION}"></script>

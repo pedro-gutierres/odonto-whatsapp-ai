@@ -1,6 +1,6 @@
 let currentAccess = null;
 let onboardingBusy = false;
-const commercialLabels = { free: 'Conta gratuita. Seu teste ainda não começou.', preparing: 'Preparando o teste. Seus sete dias ainda não começaram.', trial: 'Teste operacional ativo.', active: 'Assinatura ativa.', ended: 'Acesso operacional encerrado. Seu histórico permanece disponível.', legacy: 'Conta anterior à reestruturação. Operação preservada até revisão comercial.' };
+const commercialLabels = { free:'Sua conta gratuita está pronta. Prepare o atendimento no seu ritmo.', preparing:'Conclua os passos abaixo antes de iniciar seu teste.', trial:'Seu teste gratuito está ativo.', active:'Sua assinatura está ativa.', ended:'O atendimento está pausado. Confira seu plano abaixo.', legacy:'Seu atendimento está disponível.' };
 async function loadOnboarding() {
   try {
     const response = await fetch('/api/onboarding'); const data = await response.json();
@@ -20,7 +20,7 @@ function renderOnboarding(trialEnabled) {
   document.getElementById('businessSubtitle').textContent = profile;
   document.getElementById('onboardingStatus').textContent = commercialLabels[access.status] || '';
   const trial = access.trial;
-  document.getElementById('operationalQuota').textContent = trial.started_at ? trial.used + ' / ' + trial.limit + ' respostas da IA · Término: ' + new Date(trial.ends_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : 'Teste operacional não iniciado';
+  document.getElementById('operationalQuota').textContent = trial.started_at ? trial.used + ' / ' + trial.limit + ' respostas usadas · Até ' + new Date(trial.ends_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : 'O prazo do teste começa somente na ativação.';
   for (const [id,ready] of [['readyTraining',access.readiness.training],['readyWhatsapp',access.readiness.whatsapp],['readyAgenda',access.readiness.agenda]]) document.getElementById(id).textContent = ready ? '✓' : '○';
   const canManage = currentUser && currentUser.canManageClinic;
   document.getElementById('prepareTrialBtn').classList.toggle('hidden', access.status !== 'free');
@@ -28,16 +28,19 @@ function renderOnboarding(trialEnabled) {
   document.getElementById('reviewTrainingBtn').disabled = onboardingBusy || !canManage;
   document.getElementById('saveAgendaReadinessBtn').disabled = onboardingBusy || !access.can_prepare || !canManage;
   document.getElementById('activateTrialBtn').disabled = onboardingBusy || (!trialEnabled && access.status !== 'active') || !canManage || !['preparing','active'].includes(access.status) || !Object.values(access.readiness).every(Boolean);
-  document.getElementById('activateTrialBtn').textContent = access.status === 'active' ? 'Ativar atendimento da assinatura' : 'Ativar atendimento por 7 dias';
+  document.getElementById('activateTrialBtn').textContent = access.status === 'active' ? 'Ativar atendimento da assinatura' : 'Ativar teste de 7 dias';
   document.getElementById('activationAcknowledgmentText').textContent = access.status === 'active' ? 'Autorizo o atendimento real pelo número conectado durante a vigência da assinatura.' : 'Quero iniciar agora os sete dias e autorizo o atendimento pelo número conectado.';
-  document.getElementById('activationSummary').textContent = access.status === 'active' ? 'A assinatura está vigente. Confira a preparação antes de ativar o atendimento real.' : 'Confira treinamento, diagnóstico do número e agenda acima. Ao ativar, o término será em 168 horas, com limite de 100 respostas da IA.';
-  document.getElementById('activationAvailability').textContent = !trialEnabled ? 'Ativação indisponível neste ambiente.' : access.status === 'ended' ? 'O teste terminou. Um novo clique não renova o benefício.' : '';
+  document.getElementById('activationSummary').textContent = access.status === 'active' ? 'Sua assinatura está vigente. Ative quando a preparação estiver concluída.' : 'Seu teste começa ao clicar em ativar. Confirme que o negócio, o WhatsApp e a agenda estão prontos.';
+  document.getElementById('activationAvailability').textContent = !trialEnabled ? 'Ativação ainda indisponível.' : !Object.values(access.readiness).every(Boolean) ? 'Conclua os três passos para ativar.' : '';
+  document.getElementById('activationSection').classList.toggle('hidden',access.can_operate || access.status==='ended');
+  document.getElementById('trialTerms').classList.toggle('hidden',access.status==='active');
+  updateScheduleExplanation();
   const badge = document.getElementById('trialStatusWidget'); badge.classList.remove('hidden'); badge.classList.add('flex');
-  document.getElementById('trialDaysBadge').textContent = ({free:'Conta gratuita',preparing:'Em preparação',trial:'Teste ativo',active:'Assinatura ativa',ended:'Operação encerrada',legacy:'Conta existente'})[access.status];
+  document.getElementById('trialDaysBadge').textContent = ({free:'Conta gratuita',preparing:'Em preparação',trial:'Teste ativo',active:'Plano ativo',ended:'Ver meu plano',legacy:'Minha conta'})[access.status];
   document.getElementById('trialMessagesBadge').textContent = access.status === 'trial' ? trial.used + '/' + trial.limit + ' respostas' : 'Test Drive: ' + access.demo.used + '/' + access.demo.limit;
   document.getElementById('globalTrialExpiredBanner').classList.toggle('hidden', access.status !== 'ended');
-  document.getElementById('trialExpiredTitle').textContent = 'Acesso operacional encerrado';
-  document.getElementById('trialExpiredSubtitle').textContent = 'Envios e novas operações estão bloqueados. Consulte seu histórico e o plano.';
+  document.getElementById('trialExpiredTitle').textContent = 'Atendimento pausado';
+  document.getElementById('trialExpiredSubtitle').textContent = 'Seu histórico continua disponível. Confira seu plano para retomar.';
   applyCommercialLocks(); if (typeof updateDemoState === 'function') updateDemoState();
 }
 function applyCommercialLocks() {
@@ -52,7 +55,7 @@ function applyCommercialLocks() {
     if (element) element.disabled = !real || !activePhone;
   }
   const notice = document.getElementById('agendaAccessNotice');
-  if (notice) notice.textContent = currentAccess.status === 'free' ? 'Demonstração da agenda. Inicie a preparação para cadastrar profissionais e bloqueios; consultas reais exigem ativação.' : !real ? 'Você pode consultar esta agenda. Novas consultas exigem atendimento ativo.' : '';
+  if (notice) notice.textContent = currentAccess.status === 'free' ? 'Agenda de demonstração. Prepare seu atendimento para configurar horários e profissionais.' : !real ? currentAccess.status==='preparing' ? 'Prepare os horários antes de ativar o atendimento.' : 'Agenda disponível para consulta. O atendimento real está pausado.' : '';
   const form = document.getElementById('agendaBlockForm');
   if (form) for (const control of form.elements) control.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
   for (const button of document.querySelectorAll('#viewAgenda button[onclick]')) {
@@ -60,7 +63,7 @@ function applyCommercialLocks() {
   }
   for (const element of document.querySelectorAll('#appointmentDetailsModal select,#appointmentDetailsModal textarea,#btnSaveAppointmentDetails,#appointmentDetailsModal button[onclick*="handleDelete"]')) element.disabled = !real;
   for (const element of document.querySelectorAll('#professionalsModal input,#professionalsModal select,#btnSaveProfessional')) element.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
-  for (const element of document.querySelectorAll('#settingsPanelWhatsapp form input,#settingsPanelWhatsapp form button[type="submit"],#settingsPanelWhatsapp button[onclick*="launchMetaEmbeddedSignup"]')) element.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
+  for (const element of document.querySelectorAll('#settingsPanelWhatsapp form input,#settingsPanelWhatsapp form button[type="submit"],#settingsPanelWhatsapp button[onclick*="launchMetaEmbeddedSignup"]')) element.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic || (element.id==='btnLaunchEmbeddedSignup' && !clinicWhatsappState?.embedded_signup?.enabled);
   const scenario = document.getElementById('waNumberScenario');
   if (scenario) scenario.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
 }
@@ -88,23 +91,28 @@ async function loadAgendaBlocks() {
   if (!response.ok) return;
   const data = await response.json(); const list = document.getElementById('agendaBlocksList'); list.replaceChildren();
   for (const block of data.blocks) {
-    const row = document.createElement('div'); row.className = 'flex justify-between gap-3 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg';
-    const text = document.createElement('span'); text.textContent = block.professional_name + ': ' + block.starts_at + ' até ' + block.ends_at;
-    const button = document.createElement('button'); button.textContent = 'Remover'; button.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
+    const row = document.createElement('div'); row.className = 'aura-block-item';
+    const text = document.createElement('div');
+    const name = document.createElement('p'); name.className='aura-block-name'; name.textContent=block.professional_name;
+    const period = document.createElement('p'); period.className='aura-block-time'; period.textContent=formatBlockPeriod(block.starts_at,block.ends_at);
+    text.append(name,period);
+    const button = document.createElement('button'); button.type='button'; button.className='aura-text-button'; button.textContent = 'Remover'; button.setAttribute('aria-label','Remover bloqueio de '+block.professional_name); button.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
     button.onclick = async () => {
       try { const res = await fetch('/api/agenda/blocks',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({id:block.id})}); const result = await res.json(); if(!res.ok)throw new Error(result.error); await loadAgendaBlocks(); }
       catch(error){showToast(error.message,'amber');}
     };
     row.append(text,button); list.append(row);
   }
-  applyCommercialLocks();
+  if (!data.blocks.length) { const empty=document.createElement('p');empty.className='aura-field-hint';empty.textContent='Nenhum horário bloqueado.';list.append(empty); }
+  applyCommercialLocks(); window.auraUI?.refresh();
 }
 async function saveAgendaBlock(event) {
   event.preventDefault();
+  if(!syncBlockPeriod())return;
   try {
     const response = await fetch('/api/agenda/blocks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({professionalId:Number(document.getElementById('blockProfessional').value),startsAt:document.getElementById('blockStart').value,endsAt:document.getElementById('blockEnd').value})});
     const data = await response.json(); if(!response.ok)throw new Error(data.error);
-    await loadAgendaBlocks(); showToast('Horário bloqueado sem criar consulta ou lembrete.');
+    await loadAgendaBlocks(); document.getElementById('blockEditor').open=false; showToast('Horário bloqueado.');
   }catch(error){showToast(error.message,'amber');}
 }
 let occupationImportPreview = null;
@@ -134,4 +142,35 @@ async function commitOccupationImport() {
     const data=await response.json();if(!response.ok)throw new Error(data.error);
     occupationImportPreview=null;document.getElementById('occupationImportPreview').textContent='Bloqueios importados. Confira a lista de ocupações acima.';await loadAgendaBlocks();
   }catch(error){button.disabled=false;showToast(error.message,'amber');}
+}
+
+function updateScheduleExplanation() {
+  const mode=document.getElementById('scheduleMode').value;
+  const descriptions={aura:'Cadastre e mantenha seus compromissos na agenda do Aura.',dedicated:'Defina no Aura apenas os períodos reservados e mantenha-os livres também na sua outra agenda.',external_manual:'Bloqueie no Aura os horários ocupados na outra agenda. Atualize também remarcações e cancelamentos; não há sincronização automática.'};
+  document.getElementById('scheduleExplanation').textContent=descriptions[mode];
+  document.getElementById('maintenanceAcknowledgedLabel').classList.toggle('hidden',mode==='aura');
+}
+
+function openBlockEditor() {
+  const editor=document.getElementById('blockEditor');editor.open=true;
+  if(!document.getElementById('blockDate').value)document.getElementById('blockDate').value=window.auraUI.today();
+  if(!document.getElementById('blockStartTime').value)document.getElementById('blockStartTime').value='09:00';
+  if(!document.getElementById('blockEndTime').value)document.getElementById('blockEndTime').value='10:00';
+  syncBlockPeriod();window.auraUI.refresh();
+  document.getElementById('agendaBlocksSection').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function syncBlockPeriod() {
+  const date=document.getElementById('blockDate').value,start=document.getElementById('blockStartTime').value,end=document.getElementById('blockEndTime').value;
+  const multiple=document.getElementById('blockMultipleDays').checked,endDate=document.getElementById('blockEndDate');
+  document.getElementById('blockEndDateLabel').classList.toggle('hidden',!multiple);endDate.required=multiple;endDate.min=date;
+  if(!multiple || !endDate.value)endDate.value=date;
+  const startsAt=date && start ? date+'T'+start : '',endsAt=(multiple ? endDate.value:date) && end ? (multiple ? endDate.value:date)+'T'+end : '';
+  document.getElementById('blockStart').value=startsAt;document.getElementById('blockEnd').value=endsAt;
+  const valid=Boolean(startsAt && endsAt && endsAt>startsAt);
+  document.getElementById('blockPeriodError').textContent=startsAt && endsAt && !valid ? 'O término precisa ser depois do início. Para atravessar a meia-noite, marque “Termina em outro dia”.' : '';
+  window.auraUI?.refresh();return valid;
+}
+function formatBlockPeriod(start,end) {
+  const format=value=>{const [date,time]=value.split(/[ T]/);const [year,month,day]=date.split('-');return day+'/'+month+'/'+year+' às '+time;};
+  return start.slice(0,10)===end.slice(0,10) ? format(start)+'–'+end.slice(11,16) : format(start)+' até '+format(end);
 }

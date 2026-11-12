@@ -39,7 +39,7 @@
         applyCommercialLocks();
 
         const badge = document.getElementById('menuAppointmentsBadge');
-        if (badge) badge.innerText = appointments.length;
+        if (badge) badge.textContent = String(appointments.length);
       } catch (err) {
         console.error("Erro ao carregar agenda:", err);
       } finally {
@@ -128,22 +128,22 @@
       // 1. Total cadastrados: número de conversas no chat (com fallback para total de agendamentos)
       const totalCadastrados = conversations.length > 0 ? conversations.length : appointments.length;
       const metricTotalEl = document.getElementById('metricTotal');
-      if (metricTotalEl) metricTotalEl.innerText = totalCadastrados;
+      if (metricTotalEl) metricTotalEl.textContent = String(totalCadastrados);
 
       // 2. Agendados: pessoas com procedimentos, consultas ou avaliações agendados com antecedência
       const agendados = visibleApps.filter(a => a.status === 'agendado' || a.status === 'pre_agendado').length;
       const metricAgendadosEl = document.getElementById('metricAgendados');
-      if (metricAgendadosEl) metricAgendadosEl.innerText = agendados;
+      if (metricAgendadosEl) metricAgendadosEl.textContent = String(agendados);
 
       // 3. Confirmados: somente quando houver confirmação
       const confirmed = visibleApps.filter(a => a.status === 'confirmado').length;
       const metricConfirmedEl = document.getElementById('metricConfirmed');
-      if (metricConfirmedEl) metricConfirmedEl.innerText = confirmed;
+      if (metricConfirmedEl) metricConfirmedEl.textContent = String(confirmed);
 
       // 4. Concluídos: atendimentos finalizados
       const concluidos = visibleApps.filter(a => a.status === 'concluido').length;
       const metricConcluidosEl = document.getElementById('metricConcluidos');
-      if (metricConcluidosEl) metricConcluidosEl.innerText = concluidos;
+      if (metricConcluidosEl) metricConcluidosEl.textContent = String(concluidos);
     }
 
     function calNavigateMonth(offset) {
@@ -634,7 +634,7 @@
       const timeSlotText = startHStr + ':' + startMStr + ' às ' + endHStr + ':' + endMStr + ' (' + durMin + ' min)';
 
       if (!dateVal) {
-        feedbackEl.innerHTML = '<span class="text-slate-500 dark:text-slate-400">Horário estimado: <strong>' + timeSlotText + '</strong>. Selecione uma data para verificar conflitos.</span>';
+        feedbackEl.innerHTML = '<span class="text-slate-500 dark:text-slate-400">Duração prevista: <strong>' + timeSlotText + '</strong>. Selecione uma data para verificar conflitos.</span>';
         feedbackEl.className = "mt-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/40 text-[11px] transition-all";
         if (submitBtn) submitBtn.disabled = false;
         return;
@@ -650,7 +650,7 @@
           '<div class="flex items-start gap-2 text-rose-600 dark:text-rose-400 font-medium">',
             '<i class="fa-solid fa-triangle-exclamation text-rose-500 mt-0.5"></i>',
             '<div>',
-              '<span class="font-bold block">Horário Indisponível (Conflito de Agenda)!</span>',
+              '<span class="font-bold block">Horário indisponível</span>',
               conflictDetail,
             '</div>',
           '</div>'
@@ -662,7 +662,7 @@
           '<div class="flex items-center justify-between text-emerald-700 dark:text-emerald-300">',
             '<div class="flex items-center gap-2">',
               '<i class="fa-solid fa-circle-check text-emerald-500"></i>',
-              '<span>Grade Consumida: <strong>' + timeSlotText + '</strong></span>',
+              '<span>Duração prevista: <strong>' + timeSlotText + '</strong></span>',
             '</div>',
             '<span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">Disponível</span>',
           '</div>'

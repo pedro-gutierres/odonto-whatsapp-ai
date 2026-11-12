@@ -44,7 +44,7 @@ export const INBOX_MODALS_HTML = `
             class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
         </div>
         <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Procedimento / Serviço</label>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Serviço</label>
           <select id="appProcedure" required onchange="onAppointmentTimeOrProcChange()"
             class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
             <!-- Preenchido dinamicamente com base nos serviços cadastrados -->
@@ -52,57 +52,19 @@ export const INBOX_MODALS_HTML = `
         </div>
 
         <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Profissional (Dentista / Esteticista)</label>
+          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Profissional</label>
           <select id="appProfessional" onchange="onAppointmentTimeOrProcChange()"
             class="w-full px-3 py-2 bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-[#008069]">
-            <option value="">Agenda Geral (Sem profissional específico)</option>
+            <option value="">Selecione o profissional</option>
           </select>
         </div>
 
         <div>
-          <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Data & Horário de Início (Formato 24h)</label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <!-- SELETOR DE DATA INTERATIVO -->
-            <div onclick="const el = document.getElementById('appDate'); if (el.showPicker) { el.showPicker(); } else { el.focus(); }" 
-              class="group p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#1e293b] hover:border-[#008069] dark:hover:border-[#008069] transition cursor-pointer flex flex-col justify-between gap-1 shadow-sm select-none">
-              <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#008069] transition">
-                <span class="flex items-center gap-1.5">
-                  <i class="fa-regular fa-calendar-days text-[#008069]"></i>
-                  <span>Data da Consulta</span>
-                </span>
-                <span class="text-[9px] text-slate-400 font-normal">dd/mm/aaaa</span>
-              </div>
-              <input type="date" id="appDate" required onchange="onAppointmentTimeOrProcChange()" onclick="event.stopPropagation(); if (this.showPicker) this.showPicker();"
-                class="w-full bg-transparent text-slate-900 dark:text-white font-bold text-xs focus:outline-none cursor-pointer">
-            </div>
-
-            <!-- SELETOR DE HORA (24H) E MINUTOS (10 EM 10 MINUTOS) -->
-            <div class="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-[#1e293b] flex flex-col justify-between gap-1 shadow-sm">
-              <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                <span class="flex items-center gap-1.5">
-                  <i class="fa-regular fa-clock text-[#008069]"></i>
-                  <span>Horário Início</span>
-                </span>
-                <span class="text-[9px] text-slate-400 font-normal">Hora : Minutos</span>
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <select id="appHourSelect" onchange="onAppointmentTimeOrProcChange()"
-                  class="w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-bold text-xs focus:outline-none focus:border-[#008069]">
-                  <!-- Preenchido com 00 a 23 via JS -->
-                </select>
-                <select id="appMinuteSelect" onchange="onAppointmentTimeOrProcChange()"
-                  class="w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-bold text-xs focus:outline-none focus:border-[#008069]">
-                  <option value="00">00 min</option>
-                  <option value="10">10 min</option>
-                  <option value="20">20 min</option>
-                  <option value="30">30 min</option>
-                  <option value="40">40 min</option>
-                  <option value="50">50 min</option>
-                </select>
-              </div>
-            </div>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="aura-field col-span-2" for="appDate">Dia da consulta<input type="date" id="appDate" required onchange="onAppointmentTimeOrProcChange()"></label>
+            <label class="aura-field" for="appHourSelect">Hora<select id="appHourSelect" onchange="onAppointmentTimeOrProcChange()"></select></label>
+            <label class="aura-field" for="appMinuteSelect">Minutos<select id="appMinuteSelect" onchange="onAppointmentTimeOrProcChange()"><option value="00">00</option><option value="10">10</option><option value="20">20</option><option value="30">30</option><option value="40">40</option><option value="50">50</option></select></label>
           </div>
-
           <!-- FEEDBACK DE CONSUMO DE TEMPO & VERIFICAÇÃO DE CONFLITO EM TEMPO REAL -->
           <div id="appTimeSlotFeedback" class="mt-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/40 text-[11px] transition-all">
             <!-- Preenchido dinamicamente por onAppointmentTimeOrProcChange() -->
@@ -126,7 +88,7 @@ export const INBOX_MODALS_HTML = `
 
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
           <button type="button" onclick="closeAppointmentModal()" class="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium">Cancelar</button>
-          <button type="submit" id="btnSaveAppointmentModal" class="px-4 py-1.5 rounded-lg bg-[#008069] hover:bg-[#006a57] text-white font-semibold shadow-sm transition">Salvar Agendamento</button>
+          <button type="submit" id="btnSaveAppointmentModal" class="px-4 py-1.5 rounded-lg bg-[#008069] hover:bg-[#006a57] text-white font-semibold shadow-sm transition">Salvar consulta</button>
         </div>
       </form>
     </div>

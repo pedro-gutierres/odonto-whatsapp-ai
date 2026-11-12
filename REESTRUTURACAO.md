@@ -140,3 +140,15 @@ Reservas interrompidas em uma falha abrupta podem permanecer pendentes para revi
 - `npm run typecheck` e 49 testes aprovados. Bundle Cloudflare gerado com sucesso.
 - As requisições HTTP automatizadas ao domínio público foram bloqueadas pela Cloudflare (403 / erro 1010), antes do código do aplicativo. Não foi alterada a proteção nem contornado o bloqueio.
 - A ferramenta de navegador também negou acesso à origem local. Validação visual e validação com contas externas permanecem pendentes; não são equivalentes aos testes simulados aprovados.
+
+## Revisão da interface — entrega de 11/11/2026
+
+- Landing page, entrada e cadastro com texto mais curto e identidade visual compartilhada. Cadastro gratuito e início explícito do teste continuam distintos.
+- Navegação lateral no computador e menu recolhível no celular. Sete áreas com nomes consistentes e indicação da página atual.
+- Seletores de opções, calendário e horário compartilhados, com busca em listas longas, teclado e indicação de campos desabilitados. Campos originais mantêm valores, validação e eventos existentes.
+- Agenda prioriza consultas e disponibilidade. Bloqueios usam dia e horários separados, com término em outro dia explícito; os dados enviados à API mantêm o formato anterior e o horário de Brasília.
+- Treinamento organizado em seções; informações técnicas da conexão recolhidas; ajuda contextual em ações menos evidentes. Salvar treinamento não é descrito como ativar o serviço.
+- Sem migrations, alteração de regras comerciais ou mudança intencional dos dados existentes. Google, Paddle e conexão guiada Meta permanecem indisponíveis sem configuração.
+- Tipagem, 49 testes de backend, 13 testes de frontend e build Cloudflare aprovados. Os testes offline cobrem controles, bloqueios, login, cadastro e inicialização/navegação do painel. Eles não renderizam a página e não validam aparência ou integrações externas.
+- O proprietário aprovou o visual apresentado e solicitou push e deploy deste conjunto. A inspeção visual automatizada em computador e celular permanece pendente por bloqueio da ferramenta de navegador; a aprovação do proprietário não é registrada como essa inspeção.
+- Publicação deste conjunto sem migrations ou operações de escrita nos dados existentes. As próximas melhorias de organização serão tratadas em etapas menores conforme os problemas identificados.
