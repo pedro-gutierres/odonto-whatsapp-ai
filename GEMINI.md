@@ -1,15 +1,15 @@
 # Regras e Contexto do Projeto (Aura AI — WhatsApp Odonto & Estética)
 
-## Regras Obrigatórias de Entrega
+## Regras de Entrega e Versionamento
 
 Trabalhar em conjuntos pequenos e completos. Ao concluir um conjunto autorizado para implementação:
-1. Validar tipagem (`npm run typecheck`) e testes (`npm test`) antes de publicar.
+1. Validar tipagem (`npm run typecheck`) e testes (`npm test`) antes de registrar no Git / enviar ao GitHub.
 2. Atualizar a documentação do comportamento e registrar pendências reais; não marcar integrações como validadas somente por testes simulados.
-3. Preparar backup e conferir compatibilidade antes de aplicar migrations remotas.
-4. Atualizar o repositório no GitHub (`git add` seletivo, `git commit`, `git push origin main`) e publicar o conjunto validado na Cloudflare (`npx wrangler deploy`). Não publicar edições intermediárias automaticamente.
+3. Preparar backup e conferir compatibilidade antes de aplicar migrations remotas (quando aplicável).
+4. Registrar as alterações validadas no histórico do GitHub (`git add` seletivo, `git commit`, `git push origin main`). **Não** há obrigação de rodar `npx wrangler deploy`: o Worker de produção na Cloudflare está vinculado ao repositório no GitHub e faz deploy automático a cada push em `main`. Por isso, não enviar edições intermediárias sem validação para `main` e só executar deploy manual via CLI se solicitado explicitamente.
 5. **Nunca** commitar `.dev.vars`, `.dev.vars.txt`, `.env`, backups ou segredos. Não incluir alterações pré-existentes de terceiros no commit por conveniência.
 
-Pedidos explícitos de somente análise, implementação local ou de não publicar prevalecem sobre a rotina acima. As decisões comerciais aprovadas, a transição das contas e as configurações opcionais estão em `REESTRUTURACAO.md`.
+Pedidos explícitos de somente análise, implementação local (sem `git push`) ou de deploy manual prevalecem sobre a rotina acima. As decisões comerciais aprovadas, a transição das contas e as configurações opcionais estão em `REESTRUTURACAO.md`.
 
 Paddle de produção permanece desabilitado até configurar e validar a conta externa. A integração sandbox usa exclusivamente `wrangler.paddle-sandbox.jsonc` e seu banco isolado; os testes Pix, webhook, portal e cancelamentos estão registrados em `REESTRUTURACAO.md`. Nunca publicar secrets ou IDs sandbox na configuração de produção. O acesso usa apenas e-mail e senha (login Google removido). Não prometer métricas Meta, coexistência ou compatibilidade com agendas externas sem prova específica. Contas `legacy` devem preservar sua operação até classificação individual.
 

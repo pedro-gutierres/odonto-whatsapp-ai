@@ -156,11 +156,13 @@ npx wrangler secret put META_APP_SECRET        # (Opcional) App secret específi
 Para habilitar o botão **Meta Embedded Signup** na tela **Configurações & Perfil**, configure também as variáveis públicas `META_APP_ID` e `META_EMBEDDED_CONFIG_ID` no `wrangler.jsonc` ou no painel da Cloudflare.
 
 ### 4. Comandos de Desenvolvimento e Deploy
+> O Worker de produção na Cloudflare é publicado automaticamente via integração com o GitHub a cada push na branch `main`; não é necessário executar `npm run deploy` após cada alteração.
+
 ```bash
 npm run typecheck          # Verifica tipagem TypeScript (tsc --noEmit)
 npm test                   # Executa suíte automatizada de testes (tests/clinic-whatsapp.test.ts, tests/operations-billing.test.ts e tests/frontend-ui.test.ts)
 npm run dev                # Servidor local com Wrangler
-npm run deploy             # Publica o Worker na Cloudflare (npx wrangler deploy)
+npm run deploy             # Publicação manual na Cloudflare via CLI (npx wrangler deploy), quando necessária
 npm run logs               # Logs em tempo real (npx wrangler tail)
 npm run db:migrate:local   # Aplica migrations no D1 local
 npm run db:migrate:remote  # Aplica migrations no D1 remoto
