@@ -237,3 +237,5 @@ Sidebar simplificada: operação e badge comercial deixam de ser visíveis. Roda
 Menu de conta ancorado ao botão na borda direita do rodapé: itens com ícones, conexão visual e abertura por escala/opacidade com origem no próprio botão. Em telas estreitas o posicionamento permanece limitado à viewport e a conexão não é desenhada quando o menu precisa sobrepor a sidebar. Movimento reduzido desativa a animação.
 
 Correção da âncora do menu: dimensões medidas por offsetHeight/offsetWidth, sem a escala da animação que reduzia a altura aparente e deixava a lista escapar da viewport. Menu alinhado acima do botão, com limite de altura e rolagem para telas pequenas. Tema passa a ser uma opção interna (Modo escuro/claro), removido do rodapé lateral.
+
+Plano e pagamentos agora ficam em /inbox#plan, em view própria, acessível pela opção Plano do mini menu e pelo aviso de atendimento pausado. Início mantém preparação/ativação, sem os cards comerciais de assinatura. IDs de billing e suas regras de autorização permanecem únicos; portal, situação e vigência da assinatura concentram-se na nova página.

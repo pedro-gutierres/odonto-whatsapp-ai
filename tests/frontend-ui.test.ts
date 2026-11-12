@@ -101,7 +101,7 @@ test('Block editor keeps day/time values and validates overnight periods',async(
 });
 test('Dashboard has unique field IDs and preserves every view and critical action',async()=>{
   const window=await dom(INBOX_HTML);
-  try{const ids=[...window.document.querySelectorAll('[id]')].map(element=>element.id);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs make actions target the wrong field');for(const id of ['viewChat','viewAgenda','viewConfig','viewSettings','viewSimulator','viewOnboarding','viewAccount','businessProfileLabel','onboardingStatus','operationalQuota','readyTraining','readyWhatsapp','readyAgenda','scheduleExplanation','maintenanceAcknowledgedLabel','activationSection','activationSummary','trialTerms','activationAcknowledged','activationAcknowledgmentText','activationAvailability','plano','billingAvailability','billingDetails','checkoutMonthly','checkoutYearly','billingPortal','paidRenewalAccepted','chatCount','profCountBadge','prepareTrialBtn','reviewTrainingBtn','saveAgendaReadinessBtn','scheduleMode','maintenanceAcknowledged','activateTrialBtn','btnSaveClinicProfile','cfgClinicName','btnSaveConfigText','blockStart','blockEnd','appDate','appHourSelect','appMinuteSelect'])assert.ok(window.document.getElementById(id),id);assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,7);
+  try{const ids=[...window.document.querySelectorAll('[id]')].map(element=>element.id);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs make actions target the wrong field');for(const id of ['viewChat','viewAgenda','viewConfig','viewSettings','viewSimulator','viewOnboarding','viewPlan','viewAccount','businessProfileLabel','onboardingStatus','operationalQuota','readyTraining','readyWhatsapp','readyAgenda','scheduleExplanation','maintenanceAcknowledgedLabel','activationSection','activationSummary','trialTerms','activationAcknowledged','activationAcknowledgmentText','activationAvailability','plano','billingAvailability','billingDetails','checkoutMonthly','checkoutYearly','billingPortal','paidRenewalAccepted','chatCount','profCountBadge','prepareTrialBtn','reviewTrainingBtn','saveAgendaReadinessBtn','scheduleMode','maintenanceAcknowledged','activateTrialBtn','btnSaveClinicProfile','cfgClinicName','btnSaveConfigText','blockStart','blockEnd','appDate','appHourSelect','appMinuteSelect'])assert.ok(window.document.getElementById(id),id);assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,8);
   }finally{await window.happyDOM.close();}
 });
 test('Pages no longer publish demo credentials or imply signup starts the trial',()=>{
@@ -159,7 +159,7 @@ test('Login reports invalid credentials and restores its submit button',async()=
     window.togglePasswordVisibility();assert.equal((window.document.getElementById('password') as any).type,'text');
   }finally{await window.happyDOM.close();}
 });
-test('The actual dashboard initializes and navigates all seven pages with offline API fixtures',async()=>{
+test('The actual dashboard initializes and navigates all eight pages with offline API fixtures',async()=>{
   const window=await dom(INBOX_HTML,[]);const errors:string[]=[];
   window.console.error=(...values:any[])=>errors.push(values.map(value=>value?.stack || String(value)).join(' '));window.setInterval=(()=>0) as any;
   const whatsapp={configured:false,raw_phone_number_id:'unconfigured:test',phone_number_id:null,waba_id:null,has_custom_token:false,token_source:'none',display_phone_number:null,verified_name:null,connected_at:null,webhook_url:'https://unit.invalid/webhook',embedded_signup:{enabled:false,missing_env:['META_APP_ID'],app_id:null,config_id:null,graph_version:'v26.0'}};
@@ -178,7 +178,7 @@ test('The actual dashboard initializes and navigates all seven pages with offlin
     window.eval(scripts.map(name=>fs.readFileSync('public/js/'+name+'.js','utf8')).join('\n'));
     await window.init();await window.happyDOM.whenAsyncComplete();
     assert.equal(window.document.getElementById('selectedMenuLabel')!.textContent,'Conversas','Initialization without a hash keeps the default page');
-    for(const page of ['onboarding','config','settings','agenda','account','simulator','chat']){
+    for(const page of ['onboarding','plan','config','settings','agenda','account','simulator','chat']){
       window.selectNavigationTab(page);await window.happyDOM.whenAsyncComplete();assert.equal(window.document.querySelector('[aria-current=page]')?.getAttribute('data-nav-tab'),page);
     }
     assert.ok(window.document.getElementById('conversationList')!.textContent.includes('depois que você ativa'));
@@ -186,7 +186,7 @@ test('The actual dashboard initializes and navigates all seven pages with offlin
     window.toggleVerticalMenu({stopPropagation(){}});assert.equal(window.document.getElementById('verticalMenuTrigger')!.getAttribute('aria-expanded'),'true');
     window.document.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(window.document.getElementById('verticalMenuTrigger')!.getAttribute('aria-expanded'),'false');
     assert.equal((window.document.getElementById('btnLaunchEmbeddedSignup') as any).disabled,true,'Missing Meta configuration must keep guided connection disabled');
-    for(const tab of ['simulator','onboarding','config','settings','agenda','account','chat']){
+    for(const tab of ['simulator','onboarding','plan','config','settings','agenda','account','chat']){
       window.history.replaceState(null,'','#'+tab);await window.init();await window.happyDOM.whenAsyncComplete();
       assert.equal(window.document.querySelector('[aria-current=page]')?.getAttribute('data-nav-tab'),tab);
     }
@@ -222,7 +222,7 @@ test('Client sidebar separates operation and account controls without an adminis
  const footer=window.document.querySelector('.aura-sidebar-footer')!;
  for(const id of ['topClinicNameBadge','businessSubtitle','trialStatusWidget','trialDaysBadge','trialMessagesBadge','topUserName','topUserEmail'])assert.ok(footer.querySelector('#'+id),id);
  assert.ok(footer.querySelector('[onclick="handleLogout()"]'));assert.ok(window.document.querySelector('#accountQuickMenu #themeIcon'));assert.ok(!footer.querySelector('[onclick*="toggleTheme"]'));
- assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,7);
+ assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,8);
  }finally{await window.happyDOM.close();}
 });
 
@@ -340,5 +340,14 @@ test('Account popover opens upwards using unscaled height and contains the theme
  assert.ok(menu.querySelector('[onclick*="toggleTheme"]'));assert.ok(!window.document.querySelector('.aura-sidebar-footer [onclick*="toggleTheme"]'));
  window.document.documentElement.classList.remove('dark');window.updateAccountThemeLabel();assert.equal(window.document.getElementById('accountThemeLabel')!.textContent,'Modo escuro');
  window.toggleTheme();window.updateAccountThemeLabel();assert.equal(window.document.getElementById('accountThemeLabel')!.textContent,'Modo claro');
+ }finally{await window.happyDOM.close();}
+});
+
+
+test('Plans and payment controls belong to their own page',async()=>{
+ const window=await dom(INBOX_HTML,[]);try{
+ const home=window.document.getElementById('viewOnboarding')!,plan=window.document.getElementById('viewPlan')!;
+ for(const id of ['plano','billingAvailability','billingDetails','checkoutMonthly','checkoutYearly','billingPortal','paidRenewalAccepted']){assert.ok(plan.querySelector('#'+id));assert.equal(home.querySelector('#'+id),null);}
+ assert.equal(window.document.querySelector('[data-nav-tab="onboarding"] span')!.textContent,'Início');assert.ok(window.document.querySelector('#accountQuickMenu [data-nav-tab="plan"]'));
  }finally{await window.happyDOM.close();}
 });

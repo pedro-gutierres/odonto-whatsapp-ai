@@ -1,3 +1,4 @@
+import { INBOX_PLAN_VIEW_HTML } from "./inbox/plan-view";
 import { INBOX_ACCOUNT_VIEW_HTML } from "./inbox/account-view";
 import { INBOX_ONBOARDING_VIEW_HTML } from "./inbox/onboarding-view";
 import { INBOX_HEADER_HTML } from "./inbox/header";
@@ -8,7 +9,7 @@ import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "17";
+const ASSET_VERSION = "18";
 
 export const INBOX_HTML = `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -71,7 +72,7 @@ ${INBOX_HEADER_HTML}
         </span>
       </div>
     </div>
-    <a href="#plano" onclick="selectNavigationTab('onboarding','Preparação e plano','fa-solid fa-list-check','emerald');return false" id="btnTrialUpgrade"
+    <a href="#plano" onclick="selectNavigationTab('plan');return false" id="btnTrialUpgrade"
        class="px-3.5 py-1.5 rounded-xl bg-white text-rose-700 hover:bg-slate-100 font-bold text-xs shadow-sm transition whitespace-nowrap flex items-center gap-1.5 ml-3">
       <i class="fa-solid fa-crown text-amber-500"></i>
       <span>Ver plano</span>
@@ -80,6 +81,7 @@ ${INBOX_HEADER_HTML}
 
 ${INBOX_ACCOUNT_VIEW_HTML}
 ${INBOX_ONBOARDING_VIEW_HTML}
+${INBOX_PLAN_VIEW_HTML}
 ${INBOX_CHAT_VIEW_HTML}
 ${INBOX_AGENDA_VIEW_HTML}
 ${INBOX_TRAINING_VIEW_HTML}

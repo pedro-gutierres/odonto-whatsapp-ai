@@ -66,7 +66,8 @@
 
     // 2. SELETOR DE MÓDULOS (MENU VERTICAL)
     const auraPages = {
-      onboarding: { title:'Início & Plano', view:'viewOnboarding' }, chat: { title:'Conversas', view:'viewChat' },
+      plan: { title:'Plano', view:'viewPlan' },
+      onboarding: { title:'Início', view:'viewOnboarding' }, chat: { title:'Conversas', view:'viewChat' },
       agenda: { title:'Agenda & Equipe', view:'viewAgenda' }, config: { title:'Treinar IA', view:'viewConfig' },
       settings: { title:'Conectar WhatsApp', view:'viewSettings' }, simulator: { title:'Simulador da IA', view:'viewSimulator' },
       account: { title:'Dados & Acessos', view:'viewAccount' }
@@ -96,7 +97,8 @@
         if (item.dataset.navTab===tabId) item.setAttribute('aria-current','page'); else item.removeAttribute('aria-current');
       }
       if (location.hash !== '#'+tabId) history.replaceState(null,'','#'+tabId);
-      if (tabId==='onboarding') loadOnboarding();
+      if (tabId==='plan') loadBilling();
+      else if (tabId==='onboarding') loadOnboarding();
       else if (tabId==='account') loadClinicSettingsView();
       else if (tabId==='agenda') {loadProfessionals();loadAppointments();}
       else if (tabId==='config') {loadClinicConfig().then(updateTrainingValidationHighlights);loadClinicProfileAndWhatsapp();}

@@ -4,7 +4,7 @@ export const INBOX_HEADER_HTML = `
   <a href="/inbox" class="aura-brand" aria-label="Aura, início"><span class="aura-brand-mark">a</span><span class="aura-brand-name">aura</span></a>
   <nav id="verticalMenuDropdown" aria-label="Menu principal">
     <p class="aura-nav-label">Começar</p>
-    <button class="aura-nav-item" data-nav-tab="onboarding" onclick="selectNavigationTab('onboarding')"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Início &amp; Plano</span></button>
+    <button class="aura-nav-item" data-nav-tab="onboarding" onclick="selectNavigationTab('onboarding')"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Início</span></button>
     <button class="aura-nav-item aura-nav-simulator" data-nav-tab="simulator" onclick="selectNavigationTab('simulator')"><i class="fa-regular fa-message" aria-hidden="true"></i><span>Simulador da IA</span><span class="aura-nav-pill">Testar</span></button>
     <p class="aura-nav-label">Atendimento Diário</p>
     <button class="aura-nav-item" data-nav-tab="chat" onclick="selectNavigationTab('chat')"><i class="fa-regular fa-comments" aria-hidden="true"></i><span>Conversas</span></button>
@@ -24,5 +24,5 @@ export const INBOX_HEADER_HTML = `
 </div>
 
   </div>
-</aside><div id="accountQuickMenu" class="aura-account-menu hidden" aria-label="Opções da conta"><button data-nav-tab="account" onclick="accountMenuNavigate('account')"><i class="fa-regular fa-user" aria-hidden="true"></i><span>Conta</span></button><button onclick="accountMenuNavigate('onboarding',true)"><i class="fa-regular fa-credit-card" aria-hidden="true"></i><span>Plano</span></button><button onclick="toggleTheme();updateAccountThemeLabel()"><i id="themeIcon" class="fa-solid fa-moon" aria-hidden="true"></i><span id="accountThemeLabel">Modo escuro</span></button><button onclick="closeAccountMenu();handleLogout()"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span>Sair</span></button></div>
+</aside><div id="accountQuickMenu" class="aura-account-menu hidden" aria-label="Opções da conta"><button data-nav-tab="account" onclick="accountMenuNavigate('account')"><i class="fa-regular fa-user" aria-hidden="true"></i><span>Conta</span></button><button data-nav-tab="plan" onclick="accountMenuNavigate('plan')"><i class="fa-regular fa-credit-card" aria-hidden="true"></i><span>Plano</span></button><button onclick="toggleTheme();updateAccountThemeLabel()"><i id="themeIcon" class="fa-solid fa-moon" aria-hidden="true"></i><span id="accountThemeLabel">Modo escuro</span></button><button onclick="closeAccountMenu();handleLogout()"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span>Sair</span></button></div>
 `;

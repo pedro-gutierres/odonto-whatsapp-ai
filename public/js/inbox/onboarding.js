@@ -2,7 +2,7 @@ let currentAccess = null;
 let onboardingBusy = false;
 let lastScheduleMode;
 let lastAgendaReadiness;
-const commercialLabels = { free:'Explore o Simulador e prepare seu atendimento.', preparing:'Sua IA está pré-treinada para seu setor. Experimente no Simulador, personalize sua clínica e conecte o WhatsApp para ativar seus 7 dias grátis.', trial:'Seu teste gratuito está ativo.', active:'Sua assinatura está ativa.', ended:'O atendimento está pausado. Confira seu plano abaixo.', legacy:'Seu atendimento está disponível.' };
+const commercialLabels = { free:'Explore o Simulador e prepare seu atendimento.', preparing:'Sua IA está pré-treinada para seu setor. Experimente no Simulador, personalize sua clínica e conecte o WhatsApp para ativar seus 7 dias grátis.', trial:'Seu teste gratuito está ativo.', active:'Sua assinatura está ativa.', ended:'O atendimento está pausado. Confira sua assinatura na página Plano.', legacy:'Seu atendimento está disponível.' };
 let onboardingRequestId = 0;
 let onboardingRequests = 0;
 async function loadOnboarding({ background = false } = {}) {
@@ -27,7 +27,7 @@ async function loadOnboarding({ background = false } = {}) {
     if (!data.access || typeof data.access !== 'object') throw new Error('INVALID_ONBOARDING_RESPONSE');
     const hadHistory = currentAccess && currentAccess.can_read_history;
     currentAccess = data.access; renderOnboarding(data.trial_enabled); setOnboardingRefreshNotice('');
-    if (!background || document.body.dataset.view === 'onboarding') await loadBilling({ signal: controller.signal });
+    if (!background || document.body.dataset.view === 'plan') await loadBilling({ signal: controller.signal });
     if (!hadHistory && currentAccess.can_read_history && typeof startPolling === 'function') {
       startPolling(); await loadConversations(false);
     }
