@@ -205,7 +205,7 @@ export function buildSystemPromptParts(cfg: BotConfig, context?: PromptContext):
     if (ic.price && ic.price.trim()) {
       linhas.push(`- Valor: ${ic.price.trim()}`);
     } else {
-      linhas.push("- Valor: Gratuita / Sem custo (Cortesia da clínica)");
+      linhas.push("- Valor não informado. Não presuma gratuidade; encaminhe a dúvida à equipe.");
     }
     if (ic.details && ic.details.trim()) {
       linhas.push(`- Como funciona a Avaliação Inicial: ${ic.details.trim()}`);

@@ -1,8 +1,15 @@
+import { agendaImport } from "./agenda-import";
+import { handleGoogleAuth } from "./google-auth";
+import { handleBilling, paddleWebhook } from "./billing";
 // Ponto de entrada do Cloudflare Worker.
 // Portas de entrada:
 //   fetch     -> Landing Page (/), Login (/login), Painel (/inbox), Webhooks da Meta e APIs REST autenticadas
 //   queue     -> Processa cada mensagem recebida (busca clínica, checa pausa da IA, chama Claude, responde no WhatsApp)
 //   scheduled -> Cron diário (23:00 UTC / 20h Brasília) para confirmações de véspera multi-tenant
+import { commercialAccess, canStillOperate, reserveUsage, finishUsage } from "./access";
+import { authenticatedBusiness, handleOnboarding, registerAccount } from "./onboarding";
+import { agendaBlocks } from "./agenda-blocks";
+import { simulatorChat } from "./simulator";
 import type { BotConfig, Env, InboundJob, ProfessionalRecord } from "./types";
 import { arrayBufferToBase64, downloadWhatsAppMedia, extractJobs, sendText, verifySignature } from "./whatsapp";
 import { askClaude, type ChatTurn, type ImageAttachment } from "./claude";
@@ -45,8 +52,6 @@ import {
   updateTenantConfig,
   isCrucialConfigComplete,
   getTenantTrialInfo,
-  incrementTenantTrialMessages,
-  updateAppointmentStatus,
   listAdminOverview,
   createTenantWithOptionalUser,
   updateTenantAdminSettings,
@@ -78,49 +83,6 @@ import { ADMIN_HTML } from "./views/admin";
 const MSG_MIDIA_NAO_SUPORTADA = "Por enquanto consigo atender por texto, áudio ou foto. Pode escrever ou enviar um áudio com sua dúvida? 😊";
 const MSG_FALHA_IA = "Vou encaminhar sua mensagem para a nossa equipe, que responde assim que possível. Obrigada pela paciência!";
 
-const DEFAULT_CONFIG_TEMPLATE: BotConfig = {
-  clinic_name: "Clínica Sorriso & Estética Integrada",
-  doctor_name: "Dra. Fernanda Alves",
-  doctor_cro: "CRO-SP 102.450 / Harmonização Orofacial",
-  specialties: ["Harmonização Orofacial", "Odontologia Estética", "Reabilitação Oral"],
-  tone: "acolhedor",
-  initial_consultation: {
-    duration: "30 min",
-    price: "Gratuita",
-    details: "Avaliação inicial completa com planejamento personalizado.",
-  },
-  procedure_items: [
-    { name: "Limpeza & Profilaxia", checked: true, duration: "30 min", price: "R$ 150" },
-    { name: "Avaliação Odontológica", checked: true, duration: "30 min", price: "Gratuita" },
-    { name: "Clareamento Dental", checked: true, duration: "45 min", price: "R$ 600" },
-    { name: "Harmonização Facial", checked: true, duration: "60 min", price: "Sob avaliação" },
-    { name: "Toxina Botulínica (Botox)", checked: true, duration: "30 min", price: "Sob avaliação" },
-  ],
-  procedures: [
-    "Limpeza & Profilaxia",
-    "Clareamento Dental a Laser",
-    "Alinhadores Invisíveis",
-    "Lentes de Resina e Porcelana",
-    "Toxina Botulínica (Botox)",
-    "Preenchimento Labial & Facial",
-    "Bioestimulador de Colágeno (Sculptra)",
-  ],
-  custom_procedures: [
-    { name: "Lipoaspiração Enzimática de Papada", category: "Estética", duration: "45 min", note: "Requer avaliação anatômica prévia" },
-  ],
-  price_strategy: "avaliacao",
-  prices_note: "Não passamos orçamentos fechados sem avaliação presencial com o especialista.",
-  payment_methods: "À vista no Pix com 10% de desconto ou em até 12x sem juros no cartão.",
-  insurance: "Atendimento particular exclusivo. Fornecemos nota fiscal detalhada e relatório para reembolso.",
-  address: "Av. Paulista, 1800, Conjunto 124 - Bela Vista, São Paulo/SP",
-  parking: "Estacionamento conveniado com manobrista no próprio edifício.",
-  hours: "Segunda a Sexta das 08h às 19h | Sábados das 08h às 13h",
-  delay_tolerance: "Tolerância de até 15 minutos para pontualidade dos atendimentos.",
-  emergency_contact: "Em caso de dor aguda, avise a equipe para encaixe de urgência no mesmo dia.",
-  clinical_rules: "Gestantes e lactantes não realizam procedimentos injetáveis. Proibido fornecer atestados ou receitas pelo WhatsApp.",
-  extra: "Clínica equipada com tecnologia 3D e escaneamento digital intraoral.",
-};
-
 async function requireSession(request: Request, env: Env): Promise<{ session: SessionUser } | { response: Response }> {
   const session = await getSessionFromRequest(request, env.AUTH_SECRET);
   if (!session) {
@@ -145,7 +107,7 @@ async function requireSuperAdmin(
   }
 
   const dbUser = await getUserById(env.DB, session.userId);
-  if (!dbUser || !isSuperAdminAuthorized(dbUser.email, dbUser.role, env)) {
+  if (!dbUser || dbUser.active === 0 || !isSuperAdminAuthorized(dbUser.email, dbUser.role, env)) {
     if (isHtml) {
       return {
         response: htmlResponse(
@@ -164,6 +126,36 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const isSecure = url.protocol === "https:";
+    if (url.pathname === '/api/webhooks/paddle') return paddleWebhook(request,env);
+    if (url.pathname === '/api/auth/google' || url.pathname === '/api/auth/google/options') return handleGoogleAuth(request,env);
+    // One access policy protects direct API calls as well as the UI.
+    if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/')
+      && !url.pathname.startsWith('/api/admin/') && url.pathname !== '/api/time') {
+      const business = await authenticatedBusiness(request, env);
+      if ('response' in business) return business.response!;
+      const { tenant, access, canManage } = business;
+      if (url.pathname.startsWith('/api/billing')) return handleBilling(request,env,tenant,canManage);
+      if (url.pathname.startsWith('/api/agenda/import/')) return agendaImport(request,env,tenant,canManage);
+      if (url.pathname === '/api/agenda/blocks') return agendaBlocks(request, env, tenant, canManage);
+      if (url.pathname.startsWith('/api/onboarding')) return handleOnboarding(request, env, tenant, canManage);
+      const writes = !['GET','HEAD'].includes(request.method);
+      const operational = ['/api/send','/api/toggle-ai','/api/clear-chat','/api/appointments/run-confirmations'].includes(url.pathname)
+        || (url.pathname === '/api/appointments' && writes);
+      if (operational && !access.can_operate) return jsonResponse({ error: 'O atendimento real está desativado. Consulte Preparação e plano.', code: 'OPERATION_BLOCKED', access }, 403);
+      const prepares = (url.pathname === '/api/professionals' && writes)
+        || ['/api/clinic/whatsapp/manual','/api/clinic/whatsapp/embedded-signup','/api/clinic/whatsapp/subscribe'].includes(url.pathname);
+      if (prepares && (!access.can_prepare || !canManage)) return jsonResponse({ error: 'Inicie a preparação e utilize o acesso do responsável.', code: 'PREPARATION_REQUIRED' }, 403);
+      if (!access.legacy_review_required && ['/api/clinic/whatsapp/manual','/api/clinic/whatsapp/embedded-signup'].includes(url.pathname)) {
+        let payload:any;try { payload=await request.clone().json(); } catch { return jsonResponse({error:'JSON inválido.'},400); }
+        if (payload?.numberScenario!=='new_dedicated') return jsonResponse({error:'Nesta etapa, conecte um número novo e dedicado. O uso de números existentes depende da validação do procedimento e do histórico.',code:'EXISTING_NUMBER_REVIEW_REQUIRED'},409);
+      }
+      if (url.pathname === '/api/config' && writes && !canManage) return jsonResponse({ error: 'Somente o responsável pode editar o treinamento.' }, 403);
+      if (['/api/conversations','/api/messages','/api/media','/api/sync-check'].includes(url.pathname) && !access.can_read_history)
+        return jsonResponse({ error: 'O atendimento real será liberado após a ativação.', code: 'OPERATION_BLOCKED' }, 403);
+      if (url.pathname === '/api/init-perf' && !isSuperAdminAuthorized(business.user.email,business.user.role,env))
+        return jsonResponse({ error: 'Inicialização restrita ao administrador global.' }, 403);
+    }
+
 
     if (url.pathname === "/health") {
       return new Response("ok", { headers: SECURITY_HEADERS });
@@ -212,159 +204,7 @@ export default {
     // APIS DE AUTENTICAÇÃO
     // -------------------------------------------------------------------------
     if (url.pathname === "/api/auth/register" && request.method === "POST") {
-      try {
-        let body: any;
-        try {
-          body = await request.json();
-        } catch {
-          return jsonResponse({ error: "JSON inválido." }, 400);
-        }
-
-        const clinicName = typeof body.clinicName === "string" ? body.clinicName.trim() : "";
-        const adminName = typeof body.adminName === "string" ? body.adminName.trim() : "";
-        const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-        const password = typeof body.password === "string" ? body.password : "";
-        const rawPhone = typeof body.phone === "string" ? body.phone.trim() : "";
-
-        if (!clinicName || !adminName || !email || !password || !rawPhone) {
-          return jsonResponse(
-            { error: "Todos os campos são obrigatórios (clínica, responsável, e-mail, senha e telefone)." },
-            400
-          );
-        }
-
-        const EMAIL_REGEX = /^[a-zA-Z0-9]+([._%+-][a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
-        if (email.length > 254 || !EMAIL_REGEX.test(email)) {
-          return jsonResponse({ error: "E-mail inválido." }, 400);
-        }
-
-        if (password.length < 6) {
-          return jsonResponse({ error: "A senha deve ter no mínimo 6 caracteres." }, 400);
-        }
-
-        const cleanDigits = rawPhone.replace(/\D/g, "");
-        if (cleanDigits.length < 10) {
-          return jsonResponse({ error: "Telefone inválido (mínimo 10 dígitos)." }, 400);
-        }
-
-        const existingUser = await getUserByEmail(env.DB, email);
-        if (existingUser) {
-          return jsonResponse(
-            { error: "Este e-mail já está cadastrado no sistema. Faça login para acessar." },
-            409
-          );
-        }
-
-        const baseSlug =
-          clinicName
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "")
-            .slice(0, 30) || "clinica";
-        const tenantId = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
-        const phoneNumberId = `unconfigured:${tenantId}`;
-
-        const botConfig: BotConfig = {
-          clinic_name: clinicName,
-          doctor_name: adminName,
-          doctor_cro: "CRO/SP 123456",
-          tone: "acolhedor",
-          price_strategy: "avaliacao",
-          initial_consultation: {
-            duration: "30 min",
-            price: "Gratuita",
-            details: "Avaliação clínica inicial com planejamento digital do sorriso.",
-          },
-          procedures: [
-            "Limpeza & Profilaxia",
-            "Avaliação Odontológica",
-            "Clareamento Dental",
-            "Restauração Estética",
-            "Tratamento de Canal",
-            "Harmonização Facial",
-            "Botox",
-          ],
-          procedure_items: [
-            { name: "Limpeza & Profilaxia", checked: true, duration: "30 min", price: "R$ 150" },
-            { name: "Avaliação Odontológica", checked: true, duration: "30 min", price: "Gratuita" },
-            { name: "Clareamento Dental", checked: true, duration: "45 min", price: "R$ 600" },
-            { name: "Harmonização Facial", checked: true, duration: "60 min", price: "Sob avaliação" },
-          ],
-          hours: "Segunda a Sexta, das 08:00 às 18:00; Sábados das 08:00 às 12:00",
-          unfilled_fallback: "avaliacao",
-          extra: "Em caso de emergência ou dor aguda, informe imediatamente a recepção.",
-        };
-
-        const passwordHash = await hashPassword(password);
-        const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-        await env.DB.batch([
-          env.DB.prepare(
-            `INSERT INTO tenants (
-               id, name, phone_number_id, contact_email, admin_phone, responsible_name,
-               plan_status, trial_ends_at, trial_messages_used, trial_messages_limit, billing_cycle,
-               bot_config, active
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'trial', ?7, 0, 100, 'monthly', ?8, 1)`
-          ).bind(
-            tenantId,
-            clinicName,
-            phoneNumberId,
-            email,
-            rawPhone,
-            adminName,
-            trialEndsAt,
-            JSON.stringify(botConfig)
-          ),
-          env.DB.prepare(
-            `INSERT INTO users (tenant_id, email, password_hash, name, role, active)
-             VALUES (?1, ?2, ?3, ?4, 'admin', 1)`
-          ).bind(tenantId, email, passwordHash, adminName),
-        ]);
-
-        const insertedUser = await getUserByEmail(env.DB, email);
-        const userId = insertedUser ? insertedUser.id : 1;
-
-        const token = await createSessionToken(
-          {
-            userId,
-            tenantId,
-            email,
-            name: adminName,
-            role: "admin",
-          },
-          env.AUTH_SECRET
-        );
-
-        return jsonResponse(
-          {
-            success: true,
-            redirect: "/inbox",
-            tenantId,
-            user: {
-              id: userId,
-              name: adminName,
-              email,
-              role: "admin",
-              tenantId,
-            },
-          },
-          201,
-          {
-            "Set-Cookie": makeSessionCookie(token, isSecure),
-          }
-        );
-      } catch (err: any) {
-        console.error("Erro em /api/auth/register:", String(err));
-        if (String(err).includes("UNIQUE constraint failed: users.email")) {
-          return jsonResponse(
-            { error: "Este e-mail já está cadastrado no sistema. Faça login para acessar." },
-            409
-          );
-        }
-        return jsonResponse({ error: "Erro interno ao processar o cadastro." }, 500);
-      }
+      return registerAccount(request, env);
     }
 
     if (url.pathname === "/api/auth/login" && request.method === "POST") {
@@ -432,7 +272,8 @@ export default {
       const isSuperAdmin = isSuperAdminAuthorized(dbUser.email, dbUser.role, env);
       const canManageClinic = isClinicAdminRole(dbUser.email, dbUser.role, env);
       const tenant = await getTenantById(env.DB, session.tenantId);
-      const trial = tenant ? getTenantTrialInfo(tenant) : undefined;
+      const access = tenant ? commercialAccess(tenant) : null;
+      const trial = tenant ? {...getTenantTrialInfo(tenant), ...(access && !access.legacy_review_required ? {plan_status:access.status,can_send_messages:access.can_operate,is_expired:access.status==='ended'} : {})} : undefined;
       return jsonResponse({
         authenticated: true,
         user: {
@@ -442,8 +283,10 @@ export default {
           role: dbUser.role,
           isSuperAdmin,
           canManageClinic,
+          googleOnly: dbUser.password_hash === "!google-only",
         },
         ...(trial ? { trial } : {}),
+        ...(tenant ? { access: commercialAccess(tenant) } : {}),
       });
     }
 
@@ -773,6 +616,7 @@ export default {
           await deleteProfessional(env.DB, tenantId, id);
           return jsonResponse({ success: true });
         } catch (err) {
+          if (String(err).includes('PROFESSIONAL_IN_USE')) return jsonResponse({error:'Este profissional possui consultas ou bloqueios. Reorganize os horários antes de remover; você também pode pausá-lo.'},409);
           console.error("Erro em DELETE /api/professionals:", String(err));
           return jsonResponse({ error: "Erro ao excluir profissional." }, 500);
         }
@@ -936,6 +780,7 @@ export default {
           });
           return jsonResponse({ success: true });
         } catch (err) {
+          if (/APPOINTMENT_CONFLICT|VALID_APPOINTMENT_REQUIRED/.test(String(err))) return jsonResponse({error:"Horário indisponível ou profissional inválido."},409);
           console.error("Erro em PATCH /api/appointments:", String(err));
           return jsonResponse({ error: "Erro ao atualizar agendamento." }, 500);
         }
@@ -984,7 +829,8 @@ export default {
       if (request.method === "GET") {
         let config = await getTenantConfig(env.DB, tenantId);
         if (!config) {
-          config = DEFAULT_CONFIG_TEMPLATE;
+          const tenant = await getTenantById(env.DB, tenantId);
+          config = { clinic_name: tenant?.name || "" };
         }
         return jsonResponse({ config });
       }
@@ -996,6 +842,7 @@ export default {
             return jsonResponse({ error: "config é obrigatório" }, 400);
           }
           await updateTenantConfig(env.DB, tenantId, body.config);
+          await env.DB.prepare("UPDATE tenants SET training_reviewed_at=NULL WHERE id=?1 AND commercial_status!='legacy'").bind(tenantId).run();
           return jsonResponse({ success: true });
         } catch (err) {
           console.error("Erro em POST /api/config:", String(err));
@@ -1135,6 +982,7 @@ export default {
 
         if (tenant && hasValidPhoneId && token) {
           try {
+            if (!await canStillOperate(env, tenantId)) return jsonResponse({error:'O atendimento foi encerrado.'},403);
             sentId = await sendText(env, tenant.phone_number_id, token, phone, text);
             whatsappSent = true;
           } catch (e) {
@@ -1258,215 +1106,9 @@ export default {
     // SIMULADOR DE ATENDIMENTO ("TEST DRIVE GUIADO" - ETAPA 3 / MILESTONE 3)
     // -------------------------------------------------------------------------
     if (url.pathname === "/api/simulator/chat") {
-      if (request.method !== "POST") {
-        return jsonResponse({ error: "Método não permitido" }, 405);
-      }
-
-      const auth = await requireSession(request, env);
-      if ("response" in auth) return auth.response;
-
-      const dbUser = await getUserById(env.DB, auth.session.userId);
-      if (!dbUser || dbUser.active === 0 || dbUser.tenant_id !== auth.session.tenantId) {
-        return jsonResponse({ error: "Usuário inativo ou desativado" }, 403);
-      }
-
-      const tenant = await getTenantById(env.DB, auth.session.tenantId);
-      if (!tenant || tenant.active === 0) {
-        return jsonResponse({ error: "Clínica inativa ou suspensa" }, 403);
-      }
-
-      const trialInfo = getTenantTrialInfo(tenant);
-      if (!trialInfo.can_send_messages) {
-        return jsonResponse(
-          {
-            error: "Trial limit reached or trial expired",
-            code: "TRIAL_LIMIT_EXCEEDED",
-            trial: trialInfo,
-          },
-          403
-        );
-      }
-
-      let body: any;
-      try {
-        body = await request.json();
-      } catch {
-        return jsonResponse({ error: "JSON inválido na requisição" }, 400);
-      }
-
-      if (!body || typeof body.message !== "string" || !body.message.trim()) {
-        return jsonResponse({ error: "Mensagem obrigatória não informada ou vazia" }, 400);
-      }
-
-      const rawMessage = body.message.trim().slice(0, 10000);
-
-      let rawHistory: ChatTurn[] = [];
-      if (Array.isArray(body.history)) {
-        for (const item of body.history) {
-          if (
-            item &&
-            typeof item === "object" &&
-            (item.role === "user" || item.role === "assistant") &&
-            typeof item.content === "string" &&
-            item.content.trim()
-          ) {
-            rawHistory.push({
-              role: item.role,
-              content: String(item.content).slice(0, 4000),
-            });
-          }
-        }
-      }
-
-      if (rawHistory.length > 20) {
-        rawHistory = rawHistory.slice(-20);
-      }
-
-      const chatHistory: ChatTurn[] = [
-        ...rawHistory,
-        { role: "user", content: rawMessage },
-      ];
-
-      let cfg: BotConfig = { clinic_name: tenant.name };
-      if (tenant.bot_config) {
-        try {
-          cfg = { ...cfg, ...JSON.parse(tenant.bot_config) };
-        } catch (e) {
-          console.warn("Aviso ao parsear bot_config do tenant no simulador:", e);
-        }
-      }
-
-      const nowBrasiliaStr = new Intl.DateTimeFormat("pt-BR", {
-        timeZone: "America/Sao_Paulo",
-        dateStyle: "full",
-        timeStyle: "short",
-      }).format(new Date());
-
-      const [upcoming, profs] = await Promise.all([
-        getUpcomingAppointments(env.DB, tenant.id),
-        listProfessionals(env.DB, tenant.id, true),
-      ]);
-
-      const existingAppointments = upcoming.map((a) => ({
-        scheduled_at: a.scheduled_at,
-        procedure: a.procedure || "Consulta",
-        duration: a.duration || "30 min",
-        professional_id: a.professional_id ?? null,
-        professional_name: a.professional_name ?? null,
-      }));
-
-      const systemParts = buildSystemPromptParts(cfg, {
-        nowBrasiliaStr,
-        existingAppointments,
-        professionals: profs,
-      });
-
-      let reply = (await askClaude(env, systemParts, chatHistory)) ?? MSG_FALHA_IA;
-
-      let action: any = undefined;
-
-      const matchAgendar = /<<<AGENDAR:\s*({[\s\S]*?})\s*>>>/i.exec(reply);
-      if (matchAgendar) {
-        try {
-          const data = JSON.parse(matchAgendar[1]);
-          const patientName = data.patient_name?.trim() || "Paciente Simulador";
-          const procedure = data.procedure?.trim() || "Consulta / Avaliação";
-          const scheduledAt = data.scheduled_at?.trim() || "A combinar";
-          const duration = data.duration?.trim() || "30 min";
-          const notes = data.notes?.trim() || "Agendado via Test Drive Simulador";
-
-          let matchedProf: ProfessionalRecord | undefined;
-          if (profs.length > 0) {
-            if (data.professional_id) {
-              matchedProf = profs.find((p) => p.id === Number(data.professional_id));
-            }
-            if (!matchedProf && data.professional_name) {
-              const targetName = String(data.professional_name).toLowerCase().trim();
-              matchedProf = profs.find(
-                (p) => p.name.toLowerCase().includes(targetName) || targetName.includes(p.name.toLowerCase())
-              );
-            }
-            if (!matchedProf && profs.length === 1) {
-              matchedProf = profs[0];
-            }
-          }
-
-          const res = await createAppointment(
-            env.DB,
-            tenant.id,
-            "simulador",
-            patientName,
-            procedure,
-            scheduledAt,
-            "agendado",
-            notes,
-            duration,
-            matchedProf?.id ?? null,
-            matchedProf?.name ?? null
-          );
-
-          if (res.success) {
-            action = {
-              type: "appointment_created",
-              appointmentId: res.id,
-              details: {
-                patient_name: patientName,
-                procedure,
-                scheduled_at: scheduledAt,
-                duration,
-                professional_id: matchedProf?.id ?? null,
-                professional_name: matchedProf?.name ?? null,
-              },
-            };
-          } else {
-            action = {
-              type: "appointment_conflict",
-              message: res.message || "Horário já ocupado na grade.",
-              details: {
-                patient_name: patientName,
-                procedure,
-                scheduled_at: scheduledAt,
-                duration,
-              },
-            };
-          }
-        } catch (e) {
-          console.warn("Erro ao fazer parse de <<<AGENDAR>>> no simulador:", e);
-        }
-      }
-
-      const matchConfirmar = /<<<CONFIRMAR:\s*({[\s\S]*?})\s*>>>/i.exec(reply);
-      if (matchConfirmar) {
-        try {
-          const data = JSON.parse(matchConfirmar[1]);
-          if (data.appointment_id) {
-            await updateAppointmentStatus(env.DB, tenant.id, Number(data.appointment_id), "confirmado", "ai");
-            if (!action) {
-              action = {
-                type: "appointment_confirmed",
-                appointmentId: Number(data.appointment_id),
-              };
-            }
-          }
-        } catch (e) {
-          console.warn("Erro ao processar <<<CONFIRMAR>>> no simulador:", e);
-        }
-      }
-
-      reply = reply
-        .replace(/<<<AGENDAR:[^>]*>>>/gi, "")
-        .replace(/<<<CONFIRMAR:[^>]*>>>/gi, "")
-        .trim();
-
-      const updatedUsed = await incrementTenantTrialMessages(env.DB, tenant.id);
-      tenant.trial_messages_used = updatedUsed;
-      const updatedTrial = getTenantTrialInfo(tenant);
-
-      return jsonResponse({
-        reply,
-        ...(action ? { action } : {}),
-        trial: updatedTrial,
-      });
+      const business = await authenticatedBusiness(request, env);
+      if ("response" in business) return business.response!;
+      return simulatorChat(request, env, business.tenant);
     }
 
     // -------------------------------------------------------------------------
@@ -1587,6 +1229,7 @@ export async function runDayBeforeConfirmations(
       continue;
     }
 
+    if (!await canStillOperate(env, app.tenant_id)) { skipped++; continue; }
     const token = await resolveTenantAccessToken({ access_token_enc: app.access_token_enc }, env);
     if (!token) {
       console.warn(`[CRON] Clínica ${app.tenant_id} sem token WhatsApp configurado; pulando confirmação.`);
@@ -1601,6 +1244,7 @@ export async function runDayBeforeConfirmations(
     const msgText = `Olá, ${patientName}! 😊\nPassando para confirmar seu horário de *${proc}* amanhã (${tomorrowDateStr}) às *${timePart}*.\n\nVocê confirma sua presença? Por favor, responda com *SIM* para confirmar.`;
 
     try {
+      if (!await canStillOperate(env, app.tenant_id)) { skipped++; continue; }
       const sentId = await sendText(env, app.phone_number_id, token, contactPhone, msgText);
       await saveOutbound(env.DB, app.tenant_id, contactPhone, msgText, sentId);
       sent++;
@@ -1641,6 +1285,10 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
 
   const state = await claimInbound(env.DB, tenant.id, job);
   if (state === "done") return;
+  if (!commercialAccess(tenant).can_operate) {
+    await markAnswered(env.DB, job.waMessageId);
+    return;
+  }
 
   const token = await resolveTenantAccessToken(tenant, env);
 
@@ -1744,6 +1392,14 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
     throw new Error(`Token WhatsApp não configurado para a clínica ${tenant.id}`);
   }
 
+  const trialRequest = tenant.commercial_status === 'trial';
+  if (trialRequest) {
+    const reservation = await reserveUsage(env, tenant.id, 'trial', job.waMessageId);
+    if (reservation.kind === 'replay') { await markAnswered(env.DB, job.waMessageId); return; }
+    if (reservation.kind === 'limit') { await markAnswered(env.DB, job.waMessageId); return; }
+    if (reservation.kind !== 'reserved') throw new Error('RESPONSE_PENDING');
+  }
+  try {
   let reply: string;
   let freshHistory: { role: "user" | "assistant"; content: string }[] = [];
   let activeProfessionals: ProfessionalRecord[] = [];
@@ -1789,6 +1445,12 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
     reply = (await askClaude(env, systemParts, freshHistory, imageAttachment)) ?? MSG_FALHA_IA;
   }
 
+  if (!await canStillOperate(env, tenant.id, trialRequest)) throw new Error('OPERATION_ENDED');
+  // In request mode the reception confirms; no definite slot is created by AI.
+  if (tenant.schedule_mode === 'request') {
+    reply = reply.replace(/<<<AGENDAR:[\s\S]*?>>>/gi, '').replace(/<<<CONFIRMAR:[\s\S]*?>>>/gi, '').trim();
+    reply += '\n\nSeu pedido depende da confirmação da recepção; nenhum horário está confirmado.';
+  }
   // 1. Processa comando de agendamento automático feito pela IA durante a conversa
   const agendarRegex = /<<<AGENDAR:\s*({[\s\S]*?})\s*>>>/gi;
   const confirmarRegex = /<<<CONFIRMAR:\s*({[\s\S]*?})\s*>>>/gi;
@@ -1918,13 +1580,15 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
 
   reply = reply.slice(0, 4000);
 
-  let sentId: string | null = null;
-  try {
-    sentId = await sendText(env, tenant.phone_number_id, token, job.from, reply);
-  } catch (err) {
-    console.warn("Aviso: WhatsApp não entregou (ex: restrição geográfica ou token/janela Meta):", String(err));
-  }
-
+  if (!await canStillOperate(env, tenant.id, trialRequest)) throw new Error('OPERATION_ENDED');
+  const sentId = await sendText(env, tenant.phone_number_id, token, job.from, reply);
+  if (!sentId) throw new Error('WHATSAPP_SEND_NOT_CONFIRMED');
+  // Persist the accepted send before other local writes, so a retry cannot resend it.
+  if (trialRequest) await finishUsage(env, tenant.id, 'trial', job.waMessageId, { sentId });
   await saveOutbound(env.DB, tenant.id, job.from, reply, sentId);
   await markAnswered(env.DB, job.waMessageId);
+  } catch (error) {
+    if (trialRequest) await finishUsage(env, tenant.id, 'trial', job.waMessageId, null, true);
+    throw error;
+  }
 }

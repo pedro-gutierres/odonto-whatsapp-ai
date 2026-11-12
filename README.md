@@ -1,4 +1,16 @@
-# Aura AI — Secretária WhatsApp com IA & CRM Multi-Tenant para Clínicas
+# Aura AI — Atendimento de novos interessados pelo WhatsApp
+
+## Reestruturação comercial e funcional
+
+O cadastro gratuito não inicia o teste. O negócio informa autônomo/clínica e odontologia/estética, personaliza a IA e recebe um Test Drive isolado com 30 respostas, compartilhadas entre simulação de paciente e dúvidas sobre o Aura.
+
+O teste real começa por ativação explícita após treinamento revisado, agenda preparada e WhatsApp diagnosticado: 168 horas ou 100 respostas automáticas, sem cartão ou cobrança automática. A matriz de acesso vale para APIs, fila e lembretes. Contas anteriores permanecem em transição (`legacy`), sem conversão automática ou alteração de seus dados.
+
+As configurações, a matriz, os critérios de publicação e as limitações estão em [REESTRUTURACAO.md](REESTRUTURACAO.md). Google e Paddle estão preparados e aguardam configuração/validação externa. A integração financeira Meta e compatibilidade com agendas de outros sistemas continuam pendentes de comprovação.
+
+Novos módulos: `src/access.ts`, `src/onboarding.ts`, `src/simulator.ts`, `src/billing.ts`, `src/google-auth.ts`, `src/agenda-blocks.ts`, `src/agenda-import.ts`. Migrations aditivas `0010`–`0014`. Navegação: Preparação e plano, Atendimento, Agenda, Meu negócio e IA, WhatsApp e consumo, Minha conta e equipe.
+
+Novas APIs: `/api/onboarding/*`, `/api/billing/*`, `/api/webhooks/paddle`, `/api/auth/google`, `/api/auth/google/options`, `/api/agenda/blocks`, `/api/agenda/import/{preview,commit,undo}`. O CSV aceita somente o modelo Aura com prévia; não representa sincronização com sistemas externos.
 
 Plataforma SaaS para clínicas odontológicas e de estética avançada no Brasil, executada 100% na edge da Cloudflare (**Workers + D1 + Queues + R2 + Workers AI + Cron Triggers**), conectada à **API Oficial do WhatsApp Cloud (Meta)** e à **Anthropic Claude API** (com Prompt Caching e Visão).
 
@@ -51,7 +63,7 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 | `src/types.ts` | Tipagem compartilhada (`Env`, `InboundJob`, `Tenant`, `BotConfig`, `ConversationSummary`, `ConversationMessage`, `ProfessionalRecord`, `ClinicUserSummary`, `ClinicWhatsAppStatus`). |
 | `src/views/landing.ts` | Landing page institucional (`/`). |
 | `src/views/login.ts` | Tela de autenticação (`/login`). |
-| `src/views/inbox.ts` + `src/views/inbox/` + `public/js/inbox/` | Painel principal (`/inbox` e `/painel`) com 4 módulos: **Atendimento WhatsApp Multi-Chat**, **Agenda & Profissionais com Calendário**, **Treinamento da IA** e **Configurações & Perfil** (dados da clínica, equipe e Meta Embedded Signup). |
+| `src/views/inbox.ts` + `src/views/inbox/` + `public/js/inbox/` | Painel principal (`/inbox` e `/painel`) com módulos de preparação/plano, demonstração, conta e operação: **Atendimento WhatsApp Multi-Chat**, **Agenda & Profissionais com Calendário**, **Treinamento da IA** e **Configurações & Perfil** (dados da clínica, equipe e Meta Embedded Signup). |
 | `src/views/admin.ts` | Painel global **Super Admin** (`/admin`) para visão consolidada do SaaS, gestão de clínicas (`tenants`), credenciais WhatsApp e usuários (`users`). |
 | `migrations/` | SQL D1: `0001_init.sql` (`tenants`, `messages`), `0002_conversation_states.sql` (`conversation_states`), `0003_auth_and_appointments.sql` (`users`, `appointments`), `0004_perf_indexes.sql` (`idx_messages_tenant_id`), `0005_superadmin_role.sql` (`superadmin`), `0006_media_messages.sql` (`media_key`, `media_mime`, `media_type`), `0007_professionals.sql` (`professionals` e vínculo em `appointments`) e `0008_clinic_settings_and_team.sql` (dados cadastrais da clínica, metadados WhatsApp e `users.active`). |
 | `seeds/lab.sql` | Seed inicial da clínica de testes (`lab`). |
@@ -63,6 +75,8 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 
 ### Rotas Públicas
 - `GET /` — Landing page institucional
+- `GET /cadastro` — Cadastro gratuito sem início automático do teste
+- `POST /api/auth/register` — Cadastro completo e criação da sessão
 - `GET /login` — Tela de login
 - `GET /health` — Healthcheck (`ok`)
 - `GET /webhook` — Handshake de verificação da Meta (`WA_VERIFY_TOKEN`)
@@ -152,7 +166,9 @@ npm run db:migrate:remote  # Aplica migrations no D1 remoto
 
 ---
 
-## Onboarding de uma Nova Clínica Real (Multi-Tenant)
+## Cadastro e manutenção administrativa (Multi-Tenant)
+
+Para novos clientes, use `/cadastro` e o checklist de preparação. O procedimento SQL abaixo é administrativo/legado e não deve substituir a nova jornada comercial.
 
 Para ativar uma nova clínica em produção no D1:
 

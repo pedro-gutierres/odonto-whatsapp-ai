@@ -13,11 +13,11 @@ export const INBOX_SETTINGS_VIEW_HTML = `
           </div>
           <div>
             <div class="flex flex-wrap items-center gap-2">
-              <h2 id="settingsClinicHeading" class="text-base font-extrabold text-slate-900 dark:text-white">Configurações da Clínica</h2>
+              <h2 id="settingsClinicHeading" class="text-base font-extrabold text-slate-900 dark:text-white">Conexão e consumo do WhatsApp</h2>
               <span id="settingsTenantBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">-</span>
               <span id="settingsRoleBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/20">-</span>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gerencie a conexão oficial do WhatsApp Cloud API, dados cadastrais, sua senha e a equipe da clínica.</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Conecte um número dedicado à captação e confira seu funcionamento antes da ativação.</p>
           </div>
         </div>
 
@@ -27,32 +27,16 @@ export const INBOX_SETTINGS_VIEW_HTML = `
         </div>
       </section>
 
-      <!-- SUB-NAVEGAÇÃO DE CONFIGURAÇÕES -->
-      <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-        <button type="button" id="subTabBtnWhatsapp" onclick="switchSettingsSubTab('whatsapp')"
-          class="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition bg-[#008069] text-white shadow-sm">
-          <i class="fa-brands fa-whatsapp text-sm"></i>
-          <span>Conexão WhatsApp (Meta)</span>
-        </button>
-
-        <button type="button" id="subTabBtnProfile" onclick="switchSettingsSubTab('profile')"
-          class="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition bg-white dark:bg-[#111827] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-400">
-          <i class="fa-solid fa-building-shield"></i>
-          <span>Dados da Clínica & Senha</span>
-        </button>
-
-        <button type="button" id="subTabBtnUsers" onclick="switchSettingsSubTab('users')"
-          class="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition bg-white dark:bg-[#111827] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-400">
-          <i class="fa-solid fa-users-gear"></i>
-          <span>Equipe & Usuários</span>
-          <span id="settingsUsersCountBadge" class="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px]">0</span>
-        </button>
-      </div>
-
       <!-- =================================================================== -->
       <!-- SUB-PAINEL 1: CONEXÃO WHATSAPP OFICIAL (META EMBEDDED SIGNUP)       -->
       <!-- =================================================================== -->
       <section id="settingsPanelWhatsapp" class="space-y-6">
+        <label class="block p-4 border dark:border-slate-800 rounded-xl text-sm">Qual número você pretende conectar?
+          <select id="waNumberScenario" class="block mt-2 p-2 rounded-lg bg-slate-100 dark:bg-slate-800"><option value="">Selecione</option><option value="new_dedicated">Número novo, dedicado a novos interessados</option><option value="existing">Número que já utiliza WhatsApp</option></select>
+          <span class="block text-xs text-slate-500 mt-2">Para novas contas, a conexão de números existentes aguarda validação do procedimento, do histórico e da coexistência.</span>
+        </label>
+        <div class="p-4 border border-amber-500/40 rounded-xl text-sm text-amber-700 dark:text-amber-300">Prefira um número novo e dedicado. Para um número que já utiliza WhatsApp, confirme o procedimento e suas consequências antes de conectar. Preservação de histórico e coexistência dependem do caminho suportado; esta tela não comprova essas condições.</div>
+        <div class="p-4 border dark:border-slate-800 rounded-xl text-sm"><b>Consumo e cobrança da Meta</b><p class="text-slate-500 mt-2">Os valores da Meta ainda estão indisponíveis no Aura. Consulte a cobrança na sua conta Meta. O contador do teste do Aura e a cota do Test Drive são independentes dessa cobrança; ausência de dados aqui não significa custo zero.</p></div>
 
         <!-- CARD 1: STATUS REAL DA CONEXÃO -->
         <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
@@ -252,143 +236,12 @@ export const INBOX_SETTINGS_VIEW_HTML = `
       <!-- =================================================================== -->
       <!-- SUB-PAINEL 2: DADOS CADASTRAIS DA CLÍNICA & ALTERAÇÃO DE SENHA      -->
       <!-- =================================================================== -->
-      <section id="settingsPanelProfile" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        <!-- FORMULÁRIO DE DADOS CADASTRAIS -->
-        <form id="clinicProfileForm" onsubmit="handleSaveClinicProfile(event)"
-          class="lg:col-span-7 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 text-xs">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <i class="fa-solid fa-hospital text-emerald-500"></i>
-                <span>Dados Cadastrais da Clínica</span>
-              </h3>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400">Informações empresariais, CNPJ e contato administrativo da sua conta.</p>
-            </div>
-          </div>
-
-          <div id="profileStaffReadOnlyNotice" class="hidden p-3 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-2">
-            <i class="fa-solid fa-lock text-amber-500"></i>
-            <span>Somente leitura: apenas administradores da clínica podem alterar os dados cadastrais. Você pode alterar sua própria senha ao lado.</span>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div class="sm:col-span-2">
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Nome da Clínica (Fantasia) *</label>
-              <input type="text" id="spClinicName" required maxlength="120" placeholder="Ex: Clínica Sorriso & Estética"
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
-            </div>
-            <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Razão Social</label>
-              <input type="text" id="spLegalName" maxlength="160" placeholder="Ex: Sorriso Odontologia LTDA"
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
-            </div>
-            <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">CNPJ ou CPF</label>
-              <input type="text" id="spCnpj" maxlength="25" placeholder="00.000.000/0001-00"
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-mono focus:outline-none focus:border-[#008069]">
-            </div>
-            <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Responsável pela Conta</label>
-              <input type="text" id="spResponsibleName" maxlength="120" placeholder="Ex: Dra. Fernanda Alves"
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
-            </div>
-            <div>
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">WhatsApp / Tel. Administrativo</label>
-              <input type="text" id="spAdminPhone" maxlength="30" placeholder="(11) 99999-9999"
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
-            </div>
-            <div class="sm:col-span-2">
-              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">E-mail Administrativo / Financeiro</label>
-              <input type="email" id="spContactEmail" maxlength="160" placeholder="financeiro@suaclinica.com.br"
-                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
-            </div>
-          </div>
-
-          <div class="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button type="submit" id="btnSaveClinicProfile"
-              class="px-5 py-2.5 rounded-xl bg-[#008069] hover:bg-[#006a57] disabled:opacity-50 text-white font-bold shadow-sm transition flex items-center gap-2">
-              <i class="fa-solid fa-floppy-disk"></i>
-              <span>Salvar Dados da Clínica</span>
-            </button>
-          </div>
-        </form>
-
-        <!-- ALTERAR PRÓPRIA SENHA -->
-        <form id="ownPasswordForm" onsubmit="handleChangeOwnPassword(event)"
-          class="lg:col-span-5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 text-xs self-start">
-          <div class="pb-3 border-b border-slate-100 dark:border-slate-800">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <i class="fa-solid fa-shield-halved text-purple-500"></i>
-              <span>Alterar Minha Senha</span>
-            </h3>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400">Atualize sua senha de acesso (criptografia PBKDF2 SHA-256).</p>
-          </div>
-
-          <div>
-            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Senha Atual *</label>
-            <input type="password" id="spCurrentPassword" required autocomplete="current-password" placeholder="••••••••"
-              class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
-          </div>
-          <div>
-            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Nova Senha * (mín. 6 caracteres)</label>
-            <input type="password" id="spNewPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres"
-              class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
-          </div>
-          <div>
-            <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Confirmar Nova Senha *</label>
-            <input type="password" id="spConfirmPassword" required minlength="6" autocomplete="new-password" placeholder="Repita a nova senha"
-              class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
-          </div>
-
-          <div class="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button type="submit" id="btnChangeOwnPassword"
-              class="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 font-bold shadow-sm transition flex items-center justify-center gap-2">
-              <i class="fa-solid fa-key"></i>
-              <span>Atualizar Minha Senha</span>
-            </button>
-          </div>
-        </form>
-      </section>
 
       <!-- =================================================================== -->
       <!-- SUB-PAINEL 3: EQUIPE & USUÁRIOS DA CLÍNICA                          -->
       <!-- =================================================================== -->
-      <section id="settingsPanelUsers" class="hidden bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <i class="fa-solid fa-users text-sky-500"></i>
-              <span>Usuários da Clínica</span>
-            </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Cadastre recepcionistas, atendentes ou administradores com acesso exclusivo a esta clínica.</p>
-          </div>
 
-          <button type="button" id="btnOpenNewClinicUser" onclick="openClinicUserModal()"
-            class="px-4 py-2 rounded-xl bg-[#008069] hover:bg-[#006a57] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition self-start sm:self-auto">
-            <i class="fa-solid fa-user-plus text-[11px]"></i>
-            <span>Novo Usuário</span>
-          </button>
-        </div>
-
-        <div class="overflow-x-auto custom-scroll">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr class="bg-slate-50 dark:bg-slate-900/60 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                <th class="py-3 px-4 font-bold">Nome</th>
-                <th class="py-3 px-4 font-bold">E-mail de Acesso</th>
-                <th class="py-3 px-4 font-bold">Cargo</th>
-                <th class="py-3 px-4 font-bold">Status</th>
-                <th class="py-3 px-4 font-bold">Criado em</th>
-                <th class="py-3 px-4 font-bold text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="clinicUsersTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/80">
-              <tr><td colspan="6" class="py-8 text-center text-slate-400">Carregando equipe...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
 
     </div>
   </main>

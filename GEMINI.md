@@ -2,10 +2,16 @@
 
 ## Regras Obrigatórias de Entrega
 
-Sempre que qualquer alteração de código for realizada:
-1. Validar tipagem (`npm run typecheck`) antes de publicar.
-2. Atualizar o repositório no GitHub (`git add`, `git commit`, `git push origin main`). **Nunca** commitar `.dev.vars`, `.dev.vars.txt`, `.env` ou segredos.
-3. Fazer o deploy na Cloudflare (`npx wrangler deploy`).
+Trabalhar em conjuntos pequenos e completos. Ao concluir um conjunto autorizado para implementação:
+1. Validar tipagem (`npm run typecheck`) e testes (`npm test`) antes de publicar.
+2. Atualizar a documentação do comportamento e registrar pendências reais; não marcar integrações como validadas somente por testes simulados.
+3. Preparar backup e conferir compatibilidade antes de aplicar migrations remotas.
+4. Atualizar o repositório no GitHub (`git add` seletivo, `git commit`, `git push origin main`) e publicar o conjunto validado na Cloudflare (`npx wrangler deploy`). Não publicar edições intermediárias automaticamente.
+5. **Nunca** commitar `.dev.vars`, `.dev.vars.txt`, `.env`, backups ou segredos. Não incluir alterações pré-existentes de terceiros no commit por conveniência.
+
+Pedidos explícitos de somente análise, implementação local ou de não publicar prevalecem sobre a rotina acima. As decisões comerciais aprovadas, a transição das contas e as configurações opcionais estão em `REESTRUTURACAO.md`.
+
+Google e Paddle permanecem desabilitados até configurar e validar as contas externas. Não prometer métricas Meta, coexistência ou compatibilidade com agendas externas sem prova específica. Contas `legacy` devem preservar sua operação até classificação individual.
 
 ---
 

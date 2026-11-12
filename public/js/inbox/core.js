@@ -95,6 +95,10 @@
 
     function selectNavigationTab(tabId, labelText, iconClass, colorTheme) {
       closeVerticalMenu();
+      const onboarding = document.getElementById('viewOnboarding');
+      if (onboarding) onboarding.classList.add('hidden');
+      const account = document.getElementById('viewAccount');
+      if (account) account.classList.add('hidden');
 
       // Atualiza botão seletor superior
       const label = document.getElementById('selectedMenuLabel');
@@ -126,13 +130,18 @@
       if (viewSettings) viewSettings.classList.add('hidden');
       if (viewSimulator) viewSimulator.classList.add('hidden');
 
-      if (tabId === 'agenda') {
+      if (tabId === 'onboarding') {
+        onboarding.classList.remove('hidden'); loadOnboarding();
+      } else if (tabId === 'account') {
+        account.classList.remove('hidden'); loadClinicSettingsView();
+      } else if (tabId === 'agenda') {
         viewAgenda.classList.remove('hidden');
         loadProfessionals();
         loadAppointments();
       } else if (tabId === 'config') {
         viewConfig.classList.remove('hidden');
         loadClinicConfig().then(() => updateTrainingValidationHighlights());
+        loadClinicProfileAndWhatsapp();
       } else if (tabId === 'settings') {
         if (viewSettings) viewSettings.classList.remove('hidden');
         if (typeof loadClinicSettingsView === 'function') loadClinicSettingsView();
@@ -155,6 +164,8 @@
         const data = await res.json();
         if (data && data.user) {
           currentUser = data.user;
+          document.getElementById('ownPasswordForm').classList.toggle('hidden',!!data.user.googleOnly);
+          document.getElementById('googleAccountNotice').classList.toggle('hidden',!data.user.googleOnly);
           const nameEl = document.getElementById('topUserName');
           const emailEl = document.getElementById('topUserEmail');
           const adminBtn = document.getElementById('superAdminNavBtn');
@@ -180,7 +191,8 @@
       const ok = await loadCurrentUser();
       if (!ok) return;
       startLiveBrasiliaSync();
-      await loadConversations(false);
+      await loadOnboarding();
+      if (currentAccess && currentAccess.can_read_history) await loadConversations(false);
       await loadProfessionals();
       await loadAppointments();
       await loadClinicConfig();
@@ -188,7 +200,8 @@
         refreshWhatsappStatusIndicator();
       }
       updateCrucialTrainingLockUI();
-      startPolling();
+      if (currentAccess && currentAccess.can_read_history) startPolling();
+      if (currentAccess && !currentAccess.legacy_review_required) selectNavigationTab('onboarding','Preparação e plano','fa-solid fa-list-check','emerald');
     }
 
     // 7. LOGOUT
@@ -210,6 +223,7 @@
 
     async function checkSync() {
       if (isPollingBusy || document.hidden) return;
+      if (!currentAccess || !currentAccess.can_read_history) return;
       isPollingBusy = true;
       try {
         const p = activePhone || '';

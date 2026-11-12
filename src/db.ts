@@ -1,5 +1,6 @@
 // Tudo que lê e escreve no banco (D1). Toda consulta passa por tenant_id:
 // é isso que impede a conversa de uma clínica de aparecer em outra.
+import { validLocalDate, durationMinutes, appointmentEnd } from "./dates";
 import type {
   InboundJob,
   Tenant,
@@ -467,13 +468,6 @@ export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
     await db.prepare("ALTER TABLE tenants ADD COLUMN billing_cycle TEXT DEFAULT 'monthly';").run();
   }
 
-  // Backfill de trial_ends_at para tenants existentes sem expiração definida
-  await db
-    .prepare(
-      "UPDATE tenants SET trial_ends_at = datetime(COALESCE(created_at, datetime('now')), '+7 days') WHERE trial_ends_at IS NULL;"
-    )
-    .run();
-
   const userCols = await db.prepare("PRAGMA table_info(users)").all<{ name: string }>();
   const existingUserCols = new Set((userCols.results || []).map((c) => c.name));
   if (!existingUserCols.has("active")) {
@@ -673,6 +667,10 @@ export async function updateProfessional(
 }
 
 export async function deleteProfessional(db: D1Database, tenantId: string, id: number): Promise<void> {
+  const owner=await getTenantById(db,tenantId);
+  const occupied=await db.prepare('SELECT id FROM appointment_blocks WHERE tenant_id=?1 AND professional_id=?2 LIMIT 1').bind(tenantId,id).first();
+  const booked=owner?.commercial_status!=='legacy' ? await db.prepare("SELECT id FROM appointments WHERE tenant_id=?1 AND professional_id=?2 AND status!='cancelado' LIMIT 1").bind(tenantId,id).first() : null;
+  if(occupied || booked) throw new Error('PROFESSIONAL_IN_USE');
   // Desvincula agendamentos existentes mantendo professional_name histórico antes de excluir
   await db.batch([
     db.prepare("UPDATE appointments SET professional_id = NULL WHERE professional_id = ?1 AND tenant_id = ?2").bind(id, tenantId),
@@ -725,7 +723,7 @@ export function parseAppointmentTimeInterval(
   scheduledAt: string,
   durationStr?: string | null
 ): { date: string; startMin: number; endMin: number } | null {
-  if (!scheduledAt) return null;
+  if (!validLocalDate(scheduledAt)) return null;
   const dateMatch = scheduledAt.match(/(\d{4}-\d{2}-\d{2})/);
   const timeMatch = scheduledAt.match(/(\d{2}):(\d{2})/);
   if (!dateMatch || !timeMatch) return null;
@@ -734,6 +732,7 @@ export function parseAppointmentTimeInterval(
   const startMin = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
   const durMin = parseDurationMinutes(durationStr);
   const endMin = startMin + durMin;
+  if (durationMinutes(durationStr || '30 min') === null || endMin > 1440) return null;
 
   return { date, startMin, endMin };
 }
@@ -742,6 +741,7 @@ function parseHmMinutes(hm?: string | null): number | null {
   if (!hm) return null;
   const m = String(hm).trim().match(/^(\d{2}):(\d{2})$/);
   if (!m) return null;
+  if (Number(m[1])>23 || Number(m[2])>59) return null;
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
@@ -757,12 +757,18 @@ export async function checkAppointmentConflict(
 ): Promise<{ conflict: boolean; reason?: string; conflictWith?: AppointmentRecord }> {
   const targetInterval = parseAppointmentTimeInterval(scheduledAt, durationStr);
   if (!targetInterval) {
-    return { conflict: false };
+    return { conflict: true, reason: "Informe uma data e um horário válidos." };
   }
+
+  const { results: blocks } = await db.prepare(`SELECT starts_at,ends_at FROM appointment_blocks WHERE tenant_id=?1 AND (?2 IS NULL OR professional_id=?2)`).bind(tenantId, professionalId ?? null).all<{starts_at:string;ends_at:string}>();
+  const targetStart = `${targetInterval.date} ${String(Math.floor(targetInterval.startMin / 60)).padStart(2,"0")}:${String(targetInterval.startMin % 60).padStart(2,"0")}`;
+  const targetEnd = `${targetInterval.date} ${String(Math.floor(targetInterval.endMin / 60)).padStart(2,"0")}:${String(targetInterval.endMin % 60).padStart(2,"0")}`;
+  if ((blocks || []).some(b => targetStart < b.ends_at && targetEnd > b.starts_at)) return { conflict: true, reason: "Horário ocupado por um bloqueio da agenda." };
 
   // 1. Se um profissional foi informado, valida dia da semana, expediente e intervalo dele
   if (professionalId) {
     const prof = await getProfessionalById(db, tenantId, professionalId);
+    if (!prof) return { conflict: true, reason: "Profissional inválido." };
     if (prof) {
       if (!prof.active) {
         return { conflict: true, reason: `O profissional ${prof.name} está pausado/inativo no momento.` };
@@ -786,6 +792,8 @@ export async function checkAppointmentConflict(
 
       const shiftStart = parseHmMinutes(prof.start_hour);
       const shiftEnd = parseHmMinutes(prof.end_hour);
+      if (shiftStart===null || shiftEnd===null || shiftStart>=shiftEnd)
+        return {conflict:true,reason:'O expediente do profissional precisa ser corrigido.'};
       if (shiftStart !== null && shiftEnd !== null) {
         if (targetInterval.startMin < shiftStart || targetInterval.endMin > shiftEnd) {
           return {
@@ -827,11 +835,9 @@ export async function checkAppointmentConflict(
     if (excludeId && existing.id === excludeId) continue;
 
     if (professionalId) {
-      if (existing.professional_id !== professionalId) continue;
+      if (existing.professional_id && existing.professional_id !== professionalId) continue;
     } else if (existing.professional_id) {
-      // Sem profissional específico: não bloqueia consultas já atribuídas a um profissional diferente,
-      // a menos que este agendamento também seja geral (NULL)
-      continue;
+      // An unassigned appointment must not bypass occupied professional slots.
     }
 
     const exInterval = parseAppointmentTimeInterval(existing.scheduled_at, existing.duration);
@@ -866,6 +872,9 @@ export async function createAppointment(
   professionalId: number | null = null,
   professionalName: string | null = null
 ): Promise<CreateAppointmentResult> {
+  const owner = await getTenantById(db, tenantId);
+  if (owner?.commercial_status && owner.commercial_status !== 'legacy' && !professionalId)
+    return { success:false, conflict:true, message:'Escolha o profissional para validar o expediente.' };
   // Verificação centralizada de conflitos na grade (por profissional quando informado)
   const conflictCheck = await checkAppointmentConflict(db, tenantId, scheduledAt, duration, undefined, professionalId);
   if (conflictCheck.conflict) {
@@ -883,25 +892,31 @@ export async function createAppointment(
     }
   }
 
+  try {
   const result = await db
     .prepare(
-      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes, duration, professional_id, professional_name)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
+      `INSERT INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes, duration, professional_id, professional_name, ends_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
     )
     .bind(
       tenantId,
       contactWaId,
       patientName,
       procedure,
-      scheduledAt,
+      scheduledAt.replace("T"," "),
       status,
       notes,
       duration,
       professionalId,
-      professionalName
+      professionalName,
+      appointmentEnd(scheduledAt,duration)
     )
     .run();
   return { success: true, id: result.meta.last_row_id ?? 0 };
+  } catch (error) {
+    if (/APPOINTMENT_CONFLICT|VALID_APPOINTMENT_REQUIRED/.test(String(error))) return {success:false,conflict:true,message:'O horário ficou indisponível ou os dados não permitem confirmar a consulta.'};
+    throw error;
+  }
 }
 
 export async function updateAppointmentDetails(
@@ -918,10 +933,14 @@ export async function updateAppointmentDetails(
     professionalName?: string | null;
   }
 ): Promise<void> {
+  const current = await getAppointmentById(db,tenantId,id);
+  if (!current) return;
   const sets: string[] = [];
   const bindings: (string | number | null)[] = [];
   let paramIdx = 1;
 
+  const end=appointmentEnd(updates.scheduledAt ?? current.scheduled_at,updates.duration ?? current.duration ?? '30 min');
+  sets.push(`ends_at = ?${paramIdx++}`); bindings.push(end);
   if (typeof updates.status !== "undefined") {
     sets.push(`status = ?${paramIdx++}`);
     bindings.push(updates.status);
@@ -940,7 +959,7 @@ export async function updateAppointmentDetails(
   }
   if (typeof updates.scheduledAt !== "undefined") {
     sets.push(`scheduled_at = ?${paramIdx++}`);
-    bindings.push(updates.scheduledAt);
+    bindings.push(updates.scheduledAt.replace("T"," "));
   }
   if (typeof updates.duration !== "undefined") {
     sets.push(`duration = ?${paramIdx++}`);
@@ -1018,7 +1037,15 @@ export async function getUpcomingAppointments(
     )
     .bind(tenantId)
     .all<AppointmentRecord>();
-  return results || [];
+  const { results: blocks } = await db.prepare(`SELECT b.*,p.name AS professional_name FROM appointment_blocks b
+    JOIN professionals p ON p.id=b.professional_id AND p.tenant_id=b.tenant_id
+    WHERE b.tenant_id=?1 AND b.ends_at>=strftime('%Y-%m-%d %H:%M','now','-3 hours') ORDER BY b.starts_at LIMIT 200`)
+    .bind(tenantId).all<{id:number;starts_at:string;ends_at:string;professional_id:number;professional_name:string}>();
+  const occupations = (blocks || []).map(b => ({ id:-b.id, tenant_id:tenantId, contact_wa_id:'', patient_name:'',
+    procedure:'Horário bloqueado', scheduled_at:b.starts_at, status:'agendado' as const, notes:null,
+    duration: `${Math.round((Date.parse(b.ends_at.replace(' ','T')+'Z')-Date.parse(b.starts_at.replace(' ','T')+'Z'))/60000)} min`,
+    professional_id:b.professional_id, professional_name:b.professional_name, created_at:'' }));
+  return [...(results || []), ...occupations];
 }
 
 export async function deleteAppointment(
@@ -1051,7 +1078,8 @@ export async function updateTenantConfig(
   config: BotConfig
 ): Promise<void> {
   const configJson = JSON.stringify(config);
-  const clinicName = config.clinic_name?.trim() || "Clínica Sorriso & Estética";
+  const previous = await getTenantById(db,tenantId);
+  const clinicName = config.clinic_name?.trim() || previous?.name || "Meu negócio";
 
   // Atualiza clínica já cadastrada sem tocar em phone_number_id (evita colisão na constraint UNIQUE)
   const updateResult = await db
@@ -1080,9 +1108,10 @@ export function isCrucialConfigComplete(cfg: BotConfig | null | undefined): bool
     return false;
   }
   if (!Array.isArray(cfg.procedure_items)) return false;
+  if (durationMinutes(cfg.initial_consultation.duration) === null) return false;
   const activeItems = cfg.procedure_items.filter((p) => p.checked !== false);
   if (activeItems.length === 0) return false;
-  const hasInvalidActive = activeItems.some((p) => !p.name?.trim() || !p.duration?.trim());
+  const hasInvalidActive = activeItems.some((p) => !p.name?.trim() || durationMinutes(p.duration) === null);
   if (hasInvalidActive) return false;
   return true;
 }
@@ -1503,6 +1532,9 @@ export async function updateTenantWhatsAppConnection(
     sets.push(`wa_verified_name = ?${idx++}`);
     bindings.push(data.waVerifiedName?.trim() || null);
   }
+  if (data.markConnected || typeof data.accessTokenEnc === "string") {
+    sets.push("whatsapp_diagnosed_at = NULL");
+  }
   if (data.markConnected) {
     sets.push(`wa_connected_at = datetime('now')`);
   }
@@ -1525,6 +1557,7 @@ export async function disconnectTenantWhatsApp(db: D1Database, tenantId: string)
            access_token_enc = NULL,
            wa_display_phone = NULL,
            wa_verified_name = NULL,
+           whatsapp_diagnosed_at = NULL,
            wa_connected_at = NULL
        WHERE id = ?2`
     )

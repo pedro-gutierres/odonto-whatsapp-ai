@@ -27,10 +27,16 @@
         const res = await fetch('/api/appointments');
         const data = await res.json();
         appointments = data.appointments || [];
+        if (currentAccess && currentAccess.status === 'free') {
+          const date = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo'}).format(new Date());
+          appointments = [{ id:-1, patient_name:'Exemplo de demonstração', procedure:'Avaliação (exemplo)', scheduled_at:date+' 14:00', duration:'30 min', status:'pre_agendado', contact_wa_id:'', professional_id:null }];
+        }
         renderProfessionalsFilter();
         updateAppointmentMetrics();
         renderAppointmentsTable();
         renderCalendar();
+        await loadAgendaBlocks();
+        applyCommercialLocks();
 
         const badge = document.getElementById('menuAppointmentsBadge');
         if (badge) badge.innerText = appointments.length;
@@ -667,6 +673,7 @@
     }
 
     function openAppointmentModal(defaultProc = '', defaultDate = '', defaultTime = '09:00') {
+      if (currentAccess && !currentAccess.can_operate) return showToast('Ative o atendimento para criar consultas reais.', 'amber');
       if (!isCrucialTrainingComplete()) {
         const missing = getMissingListFromConfig(currentConfig);
         alert("Treinamento obrigatório pendente:\n• " + missing.join("\n• ") + "\n\nVamos abrir o Treinamento da IA com os campos destacados em vermelho.");

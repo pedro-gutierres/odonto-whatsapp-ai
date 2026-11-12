@@ -4,6 +4,26 @@ export const INBOX_AGENDA_VIEW_HTML = `
   <!-- ======================================================================= -->
   <main id="viewAgenda" class="flex-1 overflow-y-auto custom-scroll p-4 lg:p-8 hidden bg-slate-50 dark:bg-[#0b0f17]">
     <div class="max-w-7xl mx-auto space-y-6">
+      <p id="agendaAccessNotice" class="text-sm text-sky-700 dark:text-sky-300"></p>
+      <section class="p-5 rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 space-y-3">
+        <h3 class="font-bold">Ocupações e bloqueios</h3>
+        <p class="text-sm text-slate-500">Registre horários que o Aura não pode oferecer. Bloqueios não criam pacientes nem enviam lembretes. Horários de Brasília.</p>
+        <form id="agendaBlockForm" onsubmit="saveAgendaBlock(event)" class="flex flex-wrap gap-2 items-end">
+          <label class="text-sm">Profissional<select id="blockProfessional" required class="block p-2 rounded-lg bg-slate-100 dark:bg-slate-800"></select></label>
+          <label class="text-sm">Início<input id="blockStart" type="datetime-local" required class="block p-2 rounded-lg bg-slate-100 dark:bg-slate-800"></label>
+          <label class="text-sm">Término<input id="blockEnd" type="datetime-local" required class="block p-2 rounded-lg bg-slate-100 dark:bg-slate-800"></label>
+          <button class="p-2 rounded-lg bg-sky-600 text-white text-sm disabled:opacity-40">Bloquear horário</button>
+        </form>
+        <div id="agendaBlocksList" class="space-y-2 text-sm"></div>
+        <details class="pt-3 border-t dark:border-slate-800"><summary class="text-sm font-bold cursor-pointer">Importar ocupações pelo modelo CSV do Aura</summary>
+          <p class="text-sm text-slate-500 mt-3">Use apenas profissional, início e fim. Até 40 horários por lote. Arquivos de outros sistemas precisam ser adaptados e conferidos; não há importação universal.</p>
+          <button onclick="downloadOccupationTemplate()" class="underline text-sm mt-3">Baixar modelo CSV</button>
+          <label class="block text-sm my-3">Arquivo CSV<input id="occupationCsv" type="file" accept=".csv,text/csv" class="block mt-2"></label>
+          <button id="previewOccupationBtn" onclick="previewOccupationImport()" class="text-sm font-bold text-sky-600">Conferir prévia</button>
+          <div id="occupationImportPreview" class="text-sm my-3 space-y-2" aria-live="polite"></div>
+          <button id="commitOccupationBtn" disabled onclick="commitOccupationImport()" class="text-sm font-bold text-emerald-600 disabled:opacity-40">Confirmar os bloqueios da prévia</button>
+        </details>
+      </section>
       
       <!-- TOPO DA AGENDA: TÍTULO & AÇÕES -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">

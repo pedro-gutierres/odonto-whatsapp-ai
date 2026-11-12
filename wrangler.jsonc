@@ -3,6 +3,7 @@
   "name": "odonto-whatsapp-ai",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
+  "keep_vars": true,
   "observability": { "enabled": true },
 
   // Assets estáticos públicos (JS modular do painel /inbox)
@@ -13,6 +14,7 @@
 
   // Valores que NÃO são secretos (pode ficar no GitHub)
   "vars": {
+    "OPERATIONAL_TRIAL_ENABLED": "true",
     "GRAPH_VERSION": "v26.0",
     "CLAUDE_MODEL": "claude-haiku-5-5",
     "CLAUDE_EFFORT": "low",

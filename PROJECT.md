@@ -100,3 +100,15 @@ In Etapa 3, we add:
 - `public/js/inbox/simulator.js`: Simulator client-side controller
 - `public/js/inbox/core.js`: Navigation tab and state manager
 - `tests/etapa3.test.ts`: Automated test suite
+
+## Reestruturação comercial — 11/11/2026
+
+Este registro da Etapa 3 acima é histórico. O comportamento atual e as decisões aprovadas estão em `REESTRUTURACAO.md`.
+
+- Base de perfil, condição comercial, preparação e permissões: IMPLEMENTADA.
+- Cadastro gratuito, Test Drive isolado (30 respostas/dois modos), teste explícito (168h/100 respostas): IMPLEMENTADOS.
+- Agenda estruturada, bloqueios e importação do CSV Aura com prévia/confirmação: IMPLEMENTADOS.
+- Google e Paddle: CÓDIGO PREPARADO; aguardando contas/configurações e validação externa. Proprietário pediu para preencher os tokens posteriormente.
+- Métricas Meta, números existentes/coexistência e compatibilidade de outros sistemas: PENDENTES DE COMPROVAÇÃO.
+- Verificação local: tipagem e 49 testes aprovados; verificação visual bloqueada pela ferramenta de navegador.
+- Migração remota: CONCLUÍDA, com backup e inventário preservado (15 contas, 16 usuários, 3 consultas, 56 mensagens). Publicação: EM PREPARAÇÃO.

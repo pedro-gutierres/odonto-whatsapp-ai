@@ -1,3 +1,5 @@
+import { INBOX_ACCOUNT_VIEW_HTML } from "./inbox/account-view";
+import { INBOX_ONBOARDING_VIEW_HTML } from "./inbox/onboarding-view";
 import { INBOX_HEADER_HTML } from "./inbox/header";
 import { INBOX_CHAT_VIEW_HTML } from "./inbox/chat-view";
 import { INBOX_AGENDA_VIEW_HTML } from "./inbox/agenda-view";
@@ -6,7 +8,7 @@ import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "2";
+const ASSET_VERSION = "3";
 
 export const INBOX_HTML = `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -67,14 +69,15 @@ ${INBOX_HEADER_HTML}
         </span>
       </div>
     </div>
-    <a href="https://wa.me/5511999999999?text=Ol%C3%A1!%20Gostaria%20de%20ativar%20meu%20plano%20da%20Aura%20AI" 
-       target="_blank" rel="noopener" id="btnTrialUpgrade"
+    <a href="#plano" onclick="selectNavigationTab('onboarding','Preparação e plano','fa-solid fa-list-check','emerald');return false" id="btnTrialUpgrade"
        class="px-3.5 py-1.5 rounded-xl bg-white text-rose-700 hover:bg-slate-100 font-bold text-xs shadow-sm transition whitespace-nowrap flex items-center gap-1.5 ml-3">
       <i class="fa-solid fa-crown text-amber-500"></i>
       <span>Ativar Assinatura</span>
     </a>
   </div>
 
+${INBOX_ACCOUNT_VIEW_HTML}
+${INBOX_ONBOARDING_VIEW_HTML}
 ${INBOX_CHAT_VIEW_HTML}
 ${INBOX_AGENDA_VIEW_HTML}
 ${INBOX_TRAINING_VIEW_HTML}
@@ -82,6 +85,8 @@ ${INBOX_SETTINGS_VIEW_HTML}
 ${INBOX_SIMULATOR_VIEW_HTML}
 ${INBOX_MODALS_HTML}
   <!-- SCRIPTS MODULARES DA PLATAFORMA (Cloudflare Static Assets) -->
+  <script src="/js/inbox/billing.js?v=${ASSET_VERSION}"></script>
+  <script src="/js/inbox/onboarding.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/core.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/chat.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/professionals.js?v=${ASSET_VERSION}"></script>

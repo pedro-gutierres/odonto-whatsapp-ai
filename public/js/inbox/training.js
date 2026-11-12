@@ -403,6 +403,7 @@
         updateAiStatusUI();
       }
       renderConversationList();
+      if (typeof applyCommercialLocks === "function") applyCommercialLocks();
     }
 
     // 6. QUESTIONÁRIO DE CONFIGURAÇÃO & TREINAMENTO DA IA (ODONTO & ESTÉTICA REFINADO)
@@ -482,10 +483,15 @@
         esteticaContainer.innerHTML = esteticaItems.map(p => createProcedureRowHtml(p, 'estetica')).join('');
       } else {
         // Usa os padrões iniciais de Odonto & Estética
-        odontoContainer.innerHTML = DEFAULT_ODONTO_SERVICES.map(p => createProcedureRowHtml({ ...p, checked: true }, 'odonto')).join('');
-        esteticaContainer.innerHTML = DEFAULT_ESTETICA_SERVICES.map(p => createProcedureRowHtml({ ...p, checked: true }, 'estetica')).join('');
+        odontoContainer.innerHTML = DEFAULT_ODONTO_SERVICES.map(p => createProcedureRowHtml({ ...p, checked: false }, 'odonto')).join('');
+        esteticaContainer.innerHTML = DEFAULT_ESTETICA_SERVICES.map(p => createProcedureRowHtml({ ...p, checked: false }, 'estetica')).join('');
       }
 
+      const sector = currentAccess && currentAccess.profile.sector;
+      const odontoSection = odontoContainer.parentElement;
+      const esteticaSection = esteticaContainer.parentElement;
+      if (sector === 'aesthetics' && !(savedItems || []).some(p => p.category === 'odonto')) odontoSection.classList.add('hidden');
+      if (sector === 'dentistry' && !(savedItems || []).some(p => p.category === 'estetica')) esteticaSection.classList.add('hidden');
       updateTrainingValidationHighlights();
     }
 
@@ -656,6 +662,7 @@
         const data = await res.json();
 
         if (data.success) {
+          await loadOnboarding();
           currentConfig = configPayload;
           if (configPayload.clinic_name) {
             document.getElementById('topClinicNameBadge').innerText = configPayload.clinic_name;

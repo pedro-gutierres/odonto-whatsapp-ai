@@ -114,6 +114,7 @@
       document.getElementById('messageInput').disabled = false;
       document.getElementById('messageInput').placeholder = "Escreva sua mensagem";
       document.getElementById('sendBtn').disabled = false;
+      applyCommercialLocks();
       document.getElementById('btnScheduleThisPatient').disabled = !isCrucialTrainingComplete();
       document.getElementById('btnClearChat').disabled = false;
 
@@ -469,6 +470,7 @@
 
     async function handleSendMessage(e) {
       e.preventDefault();
+      if (currentAccess && !currentAccess.can_operate) return showToast('O atendimento real está desativado.', 'amber');
       const input = document.getElementById('messageInput');
       const text = input.value.trim();
       if (!text || !activePhone) return;

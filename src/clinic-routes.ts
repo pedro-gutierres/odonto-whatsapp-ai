@@ -808,7 +808,7 @@ export async function handleClinicRoutes(
             detail: subCheck.error,
           });
           canSubscribeWebhook = true;
-        } else if (subCheck.subscribed) {
+        } else if (subCheck.subscribed && ((!tenant.commercial_status || tenant.commercial_status === 'legacy') || Boolean(env.META_APP_ID && subCheck.apps.some(app => app.id === env.META_APP_ID)))) {
           const appNames = subCheck.apps.map((a) => a.name || a.id).filter(Boolean).join(", ");
           checks.push({
             key: "waba_webhook",
@@ -821,7 +821,7 @@ export async function handleClinicRoutes(
             key: "waba_webhook",
             label: "Assinatura Webhook no WABA",
             status: "fail",
-            detail: `Nenhum app assinado para receber webhooks do WABA ${tenant.waba_id}. Clique em "Assinar Webhook Agora".`,
+            detail: `Não foi possível confirmar o aplicativo do Aura nos webhooks do WABA ${tenant.waba_id}. Clique em "Assinar Webhook Agora".`,
           });
           canSubscribeWebhook = true;
         }
@@ -837,6 +837,8 @@ export async function handleClinicRoutes(
 
     const hasFail = checks.some((c) => c.status === "fail");
     const hasWarn = checks.some((c) => c.status === "warn");
+    await env.DB.prepare('UPDATE tenants SET whatsapp_diagnosed_at=?2 WHERE id=?1')
+      .bind(tenant.id, !hasFail && !hasWarn ? new Date().toISOString() : null).run();
     const refreshed = await getTenantById(env.DB, dbUser.tenant_id);
 
     return jsonResponse({

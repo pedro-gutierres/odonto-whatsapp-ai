@@ -45,6 +45,7 @@ export const LOGIN_HTML = `<!DOCTYPE html>
         <span id="errorMessage">Email ou senha incorretos.</span>
       </div>
 
+      <div id="googleSignIn"></div><p id="googleSignInNotice" class="text-xs text-emerald-300 my-3" role="status"></p>
       <form onsubmit="handleLogin(event)" class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1.5" for="email">Email Corporativo</label>
@@ -180,5 +181,6 @@ export const LOGIN_HTML = `<!DOCTYPE html>
       }
     }
   </script>
+<script src="/js/google-auth.js?v=3"></script>
 </body>
 </html>`;

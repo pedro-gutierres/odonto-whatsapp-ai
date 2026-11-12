@@ -5,6 +5,65 @@ export const INBOX_TRAINING_VIEW_HTML = `
   <main id="viewConfig" class="flex-1 overflow-y-auto custom-scroll p-4 lg:p-8 hidden bg-slate-50 dark:bg-[#0b0f17]">
     <div class="max-w-5xl mx-auto space-y-6">
 
+      <form id="clinicProfileForm" onsubmit="handleSaveClinicProfile(event)"
+          class="lg:col-span-7 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 text-xs">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i class="fa-solid fa-hospital text-emerald-500"></i>
+                <span>Dados do negócio</span>
+              </h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Informações empresariais, CNPJ e contato administrativo da sua conta.</p>
+            </div>
+          </div>
+
+          <div id="profileStaffReadOnlyNotice" class="hidden p-3 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-2">
+            <i class="fa-solid fa-lock text-amber-500"></i>
+            <span>Somente leitura: apenas administradores da clínica podem alterar os dados cadastrais. Você pode alterar sua própria senha ao lado.</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div class="sm:col-span-2">
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Nome do negócio ou profissional *</label>
+              <input type="text" id="spClinicName" required maxlength="120" placeholder="Ex: Clínica Sorriso & Estética"
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Razão Social</label>
+              <input type="text" id="spLegalName" maxlength="160" placeholder="Ex: Sorriso Odontologia LTDA"
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">CNPJ ou CPF</label>
+              <input type="text" id="spCnpj" maxlength="25" placeholder="00.000.000/0001-00"
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-mono focus:outline-none focus:border-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Responsável pela Conta</label>
+              <input type="text" id="spResponsibleName" maxlength="120" placeholder="Ex: Dra. Fernanda Alves"
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+            </div>
+            <div>
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">WhatsApp / Tel. Administrativo</label>
+              <input type="text" id="spAdminPhone" maxlength="30" placeholder="(11) 99999-9999"
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">E-mail Administrativo / Financeiro</label>
+              <input type="email" id="spContactEmail" maxlength="160" placeholder="financeiro@suaclinica.com.br"
+                class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#008069]">
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+            <button type="submit" id="btnSaveClinicProfile"
+              class="px-5 py-2.5 rounded-xl bg-[#008069] hover:bg-[#006a57] disabled:opacity-50 text-white font-bold shadow-sm transition flex items-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Salvar Dados da Clínica</span>
+            </button>
+          </div>
+        </form>
+
       <!-- FORMULÁRIO COMPLETO DO QUESTIONÁRIO -->
       <form id="clinicConfigForm" onsubmit="event.preventDefault(); saveClinicConfig();" oninput="updateTrainingValidationHighlights()" onchange="updateTrainingValidationHighlights()" class="space-y-6">
 

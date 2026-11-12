@@ -21,8 +21,6 @@
       activeSettingsSubTab = tab;
       const panels = {
         whatsapp: document.getElementById('settingsPanelWhatsapp'),
-        profile: document.getElementById('settingsPanelProfile'),
-        users: document.getElementById('settingsPanelUsers'),
       };
       const buttons = {
         whatsapp: document.getElementById('subTabBtnWhatsapp'),
@@ -698,6 +696,7 @@
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             code,
+            numberScenario:document.getElementById('waNumberScenario').value,
             waba_id: esSessionPayload.waba_id,
             phone_number_id: esSessionPayload.phone_number_id,
             pin: pin || undefined,
@@ -743,6 +742,7 @@
     }
 
     async function launchMetaEmbeddedSignup() {
+      if (!verifyNumberScenario()) return;
       if (!canManageClinicState) return;
       const es = clinicWhatsappState?.embedded_signup;
       if (!es || !es.enabled || !es.app_id || !es.config_id) {
@@ -814,6 +814,7 @@
 
     async function handleSaveManualWhatsApp(e) {
       e.preventDefault();
+      if (!verifyNumberScenario()) return;
       if (!canManageClinicState) return;
 
       const phoneNumberId = document.getElementById('manualPhoneNumberId')?.value.trim() || '';
@@ -828,6 +829,7 @@
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
+            numberScenario:document.getElementById('waNumberScenario').value,
             phoneNumberId,
             wabaId: wabaId || null,
             accessToken: accessToken || null,
@@ -972,3 +974,9 @@
         );
       }
     }
+
+function verifyNumberScenario() {
+  if (!currentAccess || currentAccess.legacy_review_required) return true;
+  if (document.getElementById('waNumberScenario').value === 'new_dedicated') return true;
+  showToast('Escolha um número novo e dedicado. Números existentes aguardam validação do procedimento.','amber');return false;
+}

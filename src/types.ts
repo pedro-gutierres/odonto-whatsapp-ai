@@ -24,6 +24,16 @@ export interface Env {
   SUPERADMIN_EMAILS?: string; // lista separada por vírgula de e-mails autorizados no /admin
   META_APP_ID?: string;       // App ID público da Meta para inicializar o SDK JS (Embedded Signup)
   META_EMBEDDED_CONFIG_ID?: string; // Configuration ID do Facebook Login for Business (WhatsApp Embedded Signup)
+  OPERATIONAL_TRIAL_ENABLED?: string;
+  GOOGLE_CLIENT_ID?: string;
+  PADDLE_ENABLED?: string;
+  PADDLE_ENVIRONMENT?: string;
+  PADDLE_API_KEY?: string;
+  PADDLE_WEBHOOK_SECRET?: string;
+  PADDLE_CLIENT_TOKEN?: string;
+  PADDLE_MONTHLY_PRICE_ID?: string;
+  PADDLE_YEARLY_PRICE_ID?: string;
+  PADDLE_SANDBOX_ENTITLEMENTS?: string;
 }
 
 // Uma mensagem recebida do paciente, já "limpa", que viaja pela fila.
@@ -39,6 +49,25 @@ export interface InboundJob {
 }
 
 export interface Tenant {
+  commercial_status?: 'legacy' | 'free' | 'preparing' | 'trial' | 'active' | 'ended';
+  business_kind?: 'solo' | 'clinic' | null;
+  business_sector?: 'dentistry' | 'aesthetics' | null;
+  existing_system?: string | null;
+  uses_external_schedule?: number | null;
+  trial_started_at?: string | null;
+  training_reviewed_at?: string | null;
+  agenda_ready_at?: string | null;
+  schedule_mode?: 'aura' | 'dedicated' | 'external_manual' | 'request' | null;
+  whatsapp_diagnosed_at?: string | null;
+  operational_enabled?: number;
+  demo_messages_used?: number;
+  demo_messages_limit?: number;
+  subscription_ends_at?: string | null;
+  paddle_customer_id?: string | null;
+  paddle_subscription_id?: string | null;
+  billing_event_at?: string | null;
+  billing_status?: string | null;
+  renewal_canceled_at?: string | null;
   id: string;
   name: string;
   phone_number_id: string;

@@ -11,10 +11,10 @@ export const INBOX_HEADER_HTML = `
         <div class="flex items-center gap-2">
           <span class="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">Aura<span class="text-emerald-500 dark:text-emerald-400">AI</span></span>
           <span id="topClinicNameBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800/60 max-w-[160px] truncate">
-            Clínica Sorriso & Estética
+            Meu negócio
           </span>
         </div>
-        <span class="text-[10px] block font-medium text-slate-500 dark:text-slate-400">Odontologia & Estética Avançada 24h</span>
+        <span id="businessSubtitle" class="text-[10px] block font-medium text-slate-500 dark:text-slate-400">Atendimento a novos interessados</span>
       </div>
     </div>
 
@@ -37,6 +37,8 @@ export const INBOX_HEADER_HTML = `
           Navegação da Plataforma
         </div>
 
+        <button onclick="selectNavigationTab('onboarding','Preparação e plano','fa-solid fa-list-check','emerald')" class="w-full text-left px-3 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-bold">Preparação e plano</button>
+        <button onclick="selectNavigationTab('account','Minha conta e equipe','fa-solid fa-user-gear','amber')" class="w-full text-left px-3 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-bold">Minha conta e equipe</button>
         <!-- Opção 1: Atendimento WhatsApp -->
         <button onclick="selectNavigationTab('chat', 'Atendimento WhatsApp', 'fa-solid fa-comments', 'emerald')" 
           class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
@@ -90,23 +92,23 @@ export const INBOX_HEADER_HTML = `
               <i class="fa-solid fa-sliders"></i>
             </div>
             <div>
-              <span class="text-xs font-bold text-slate-900 dark:text-white block">Treinamento & IA</span>
-              <span class="text-[10px] text-slate-500 dark:text-slate-400">Questionário Estética & Odonto</span>
+              <span class="text-xs font-bold text-slate-900 dark:text-white block">Meu negócio e IA</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400">Dados e treinamento do negócio</span>
             </div>
           </div>
           <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">IA</span>
         </button>
 
-        <!-- Opção 4: Configurações & Perfil da Clínica + WhatsApp -->
-        <button onclick="selectNavigationTab('settings', 'Configurações & Perfil', 'fa-solid fa-gear', 'amber')" 
+        <!-- Opção 4: WhatsApp e consumo da Clínica + WhatsApp -->
+        <button onclick="selectNavigationTab('settings', 'WhatsApp e consumo', 'fa-solid fa-gear', 'amber')"
           class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 text-left transition group">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-sm group-hover:scale-105 transition-transform">
               <i class="fa-solid fa-gear"></i>
             </div>
             <div>
-              <span class="text-xs font-bold text-slate-900 dark:text-white block">Configurações & Perfil</span>
-              <span class="text-[10px] text-slate-500 dark:text-slate-400">Clínica, equipe e WhatsApp Meta</span>
+              <span class="text-xs font-bold text-slate-900 dark:text-white block">WhatsApp e consumo</span>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400">Conexão oficial e diagnóstico</span>
             </div>
           </div>
           <span id="menuWhatsappStatusDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600" title="Status da conexão WhatsApp"></span>
@@ -119,7 +121,7 @@ export const INBOX_HEADER_HTML = `
     <div class="flex items-center gap-2.5">
       
       <!-- WIDGET DE STATUS DO TRIAL E COTA DE MENSAGENS -->
-      <div id="trialStatusWidget" onclick="selectNavigationTab('simulator', 'Test Drive da IA', 'fa-solid fa-flask-vial', 'purple')"
+      <div id="trialStatusWidget" onclick="selectNavigationTab('onboarding', 'Preparação e plano', 'fa-solid fa-list-check', 'emerald')"
         class="hidden items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition shadow-xs cursor-pointer select-none"
         title="Clique para abrir o Test Drive da IA">
         <i id="trialStatusIcon" class="fa-solid fa-clock-rotate-left text-xs text-emerald-500"></i>

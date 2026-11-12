@@ -46,6 +46,8 @@
         }
 
         renderProfessionalsFilter();
+        await loadAgendaBlocks();
+        await loadOnboarding();
         populateAppointmentProfessionalSelects();
         const modalEl = document.getElementById('professionalsModal');
         if (modalEl && !modalEl.classList.contains('hidden')) {
