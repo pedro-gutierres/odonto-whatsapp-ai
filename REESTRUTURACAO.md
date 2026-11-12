@@ -205,3 +205,9 @@ Horários usam sete linhas com habilitação por dia, seletores de 24 horas e mi
 Durações, conselho/UF, atrasos, pagamento/parcelas, convênios e acesso recebem opções estruturadas. Valores antigos fora das opções são mantidos visíveis como opção ou marcação adicional; registro profissional antigo não reconhecido permanece preservado até editar seus seletores. O prompt continua recebendo os campos textuais anteriores. Nenhuma migration ou integração externa é necessária nesta etapa.
 
 Validação cobre grade, perfil, durações personalizadas, valores legados, opções rápidas e persistência isolada; prévia de navegador em desktop e 390 px com dados fictícios. Testes de API não comprovam atendimento real em Meta/Paddle.
+
+## Atualização automática de status — correção
+
+A consulta de /api/onboarding a cada 30 segundos reutilizava o mesmo toast das ações explícitas e exibia diretamente error.message. Uma rejeição de fetch reproduzida nos testes mostrava Failed to fetch sem ação do usuário. Não há registro do episódio original para determinar se o transporte falhou por rede, navegador, proxy ou disponibilidade da infraestrutura.
+
+Agora o polling tem modo background, limite de dez segundos, evita consultas sobrepostas e descarta respostas superadas. Falhas temporárias conservam o estado e os campos em edição, mostram aviso discreto na sidebar e tentam novamente no ciclo seguinte; sucesso limpa o aviso. Sessão expirada ou acesso negado continuam exibindo aviso explícito. Erros inesperados continuam no console. Fora da aba de plano, o polling não repete a consulta de billing. Reinicializar o painel substitui o timer anterior. O salvamento do treinamento e as regras de autorização não foram alterados.

@@ -13,6 +13,7 @@
     let highestActiveMsgId = 0;
     let isPollingBusy = false;
     let pollingInterval = null;
+    let onboardingRefreshInterval = null;
 
     // PROCEDIMENTOS PRÉ-CONFIGURADOS (ODONTO & ESTÉTICA)
     const DEFAULT_ODONTO_SERVICES = [
@@ -157,7 +158,8 @@
       const requestedTab=location.hash.slice(1);
       selectNavigationTab(Object.hasOwn(auraPages, requestedTab) ? requestedTab : 'chat');
       revealAccountEntry();
-      setInterval(() => { if (!document.hidden) loadOnboarding(); }, 30000);
+      if (onboardingRefreshInterval) clearInterval(onboardingRefreshInterval);
+      onboardingRefreshInterval = setInterval(() => { if (!document.hidden) loadOnboarding({ background: true }); }, 30000);
     }
 
     // 7. LOGOUT

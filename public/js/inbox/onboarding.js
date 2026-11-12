@@ -3,17 +3,54 @@ let onboardingBusy = false;
 let lastScheduleMode;
 let lastAgendaReadiness;
 const commercialLabels = { free:'Explore o Simulador e prepare seu atendimento.', preparing:'Sua IA está pré-treinada para seu setor. Experimente no Simulador, personalize sua clínica e conecte o WhatsApp para ativar seus 7 dias grátis.', trial:'Seu teste gratuito está ativo.', active:'Sua assinatura está ativa.', ended:'O atendimento está pausado. Confira seu plano abaixo.', legacy:'Seu atendimento está disponível.' };
-async function loadOnboarding() {
+let onboardingRequestId = 0;
+let onboardingRequests = 0;
+async function loadOnboarding({ background = false } = {}) {
+  if (background && onboardingRequests) return false;
+  const requestId = ++onboardingRequestId;
+  onboardingRequests++;
+  let networkFailure = false, status = 0;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const response = await fetch('/api/onboarding'); const data = await response.json();
+    let response;
+    try { response = await fetch('/api/onboarding', { signal: controller.signal }); }
+    catch (error) { networkFailure = true; throw error; }
+    status = response.status;
+    if (status === 401 || status === 403) {
+      const error = new Error(status === 401 ? 'Sua sessão expirou. Entre novamente para continuar.' : 'Seu acesso à conta está indisponível. Entre novamente para verificar.');
+      throw error;
+    }
+    const data = await response.json();
+    if (requestId !== onboardingRequestId) return false;
     if (!response.ok) throw new Error(data.error);
+    if (!data.access || typeof data.access !== 'object') throw new Error('INVALID_ONBOARDING_RESPONSE');
     const hadHistory = currentAccess && currentAccess.can_read_history;
-    currentAccess = data.access; renderOnboarding(data.trial_enabled); await loadBilling();
+    currentAccess = data.access; renderOnboarding(data.trial_enabled); setOnboardingRefreshNotice('');
+    if (!background || document.body.dataset.view === 'onboarding') await loadBilling({ signal: controller.signal });
     if (!hadHistory && currentAccess.can_read_history && typeof startPolling === 'function') {
       startPolling(); await loadConversations(false);
     }
     return true;
-  } catch (error) { showToast(error.message || 'Não foi possível verificar seu acesso.', 'amber'); return false; }
+  } catch (error) {
+    if (requestId !== onboardingRequestId) return false;
+    const temporary = networkFailure || controller.signal.aborted || status === 429 || status >= 500;
+    if (background && temporary && currentAccess) {
+      setOnboardingRefreshNotice('Atualização automática temporariamente indisponível. Seus dados em edição foram mantidos. Tentaremos novamente.');
+    } else {
+      const message = status === 401 || status === 403 ? error.message : temporary
+        ? 'Não foi possível atualizar o status da conta. Verifique sua conexão e tente novamente.'
+        : 'Não foi possível verificar o status da conta. Recarregue a página para tentar novamente.';
+      showToast(message, 'amber');
+    }
+    if (!temporary && status !== 401 && status !== 403) console.error('[ONBOARDING_REFRESH]', error);
+    else console.warn('[ONBOARDING_REFRESH]', { status, networkFailure });
+    return false;
+  } finally { clearTimeout(timeout); onboardingRequests--; }
+}
+function setOnboardingRefreshNotice(message) {
+  const notice = document.getElementById('onboardingRefreshNotice');
+  if (notice) { notice.textContent = message; notice.classList.toggle('hidden', !message); }
 }
 function renderOnboarding(trialEnabled) {
   const access = currentAccess;

@@ -273,3 +273,35 @@ test('Structured training loads quiz profile, weekly hours, fixed durations and 
  window.loadStructuredTraining({hours:'Terças das 09:15 às 17:45',payment_methods:'Condição antiga',parking:'Entrada lateral',initial_consultation:{duration:'35 min'}});assert.equal(el('cfgHours').value,'Terças das 09:15 às 17:45');assert.equal(el('cfgPaymentMethods').value,'Condição antiga');assert.equal(el('cfgParking').value,'Entrada lateral');
  }finally{await window.happyDOM.close();}
 });
+
+
+test('Automatic status refresh handles transport failures without false save errors and recovers',async()=>{
+ const window=await dom(INBOX_HTML,[]);try{
+ const toasts:string[]=[];window.showToast=(message:string)=>toasts.push(message);window.console.warn=()=>{};
+ window.eval(fs.readFileSync('public/js/inbox/onboarding.js','utf8'));
+ window.renderOnboarding=()=>{};let billingCalls=0;window.loadBilling=async()=>{billingCalls++;};
+ window.fetch=(async()=>new window.Response(JSON.stringify({access:{can_read_history:false},trial_enabled:true}),{status:200})) as any;
+ assert.equal(await window.loadOnboarding(),true);billingCalls=0;
+ const field=window.document.getElementById('cfgClinicName') as any;field.value='Alteração ainda não salva';
+ window.fetch=(async()=>{throw new TypeError('Failed to fetch');}) as any;
+ assert.equal(await window.loadOnboarding({background:true}),false);assert.deepEqual(toasts,[]);
+ assert.ok(window.document.getElementById('onboardingRefreshNotice')!.textContent.includes('temporariamente indisponível'));
+ assert.equal(field.value,'Alteração ainda não salva');
+ for(const status of [429,503]){window.fetch=(async()=>new window.Response('{}',{status})) as any;await window.loadOnboarding({background:true});assert.equal(toasts.length,0);}
+ window.fetch=(async()=>{throw new TypeError('Failed to fetch');}) as any;
+ await window.loadOnboarding();assert.equal(toasts.length,1);assert.ok(toasts[0].includes('Verifique sua conexão'));assert.ok(!toasts[0].includes('Failed to fetch'));
+ for(const status of [401,403]){window.fetch=(async()=>new window.Response('{}',{status})) as any;await window.loadOnboarding({background:true});assert.equal(toasts.length,status===401?2:3);}
+ window.fetch=(async()=>new window.Response(JSON.stringify({access:{can_read_history:false},trial_enabled:true}),{status:200})) as any;
+ assert.equal(await window.loadOnboarding({background:true}),true);assert.ok(window.document.getElementById('onboardingRefreshNotice')!.classList.contains('hidden'));assert.equal(billingCalls,0);
+ let resolve!:(response:any)=>void,calls=0;
+ window.fetch=(()=>{calls++;return new Promise(r=>resolve=r);}) as any;
+ const pending=window.loadOnboarding({background:true});assert.equal(await window.loadOnboarding({background:true}),false);assert.equal(calls,1);
+ resolve(new window.Response(JSON.stringify({access:{can_read_history:false}}),{status:200}));assert.equal(await pending,true);
+ assert.equal(field.value,'Alteração ainda não salva');
+ const timers:(()=>void)[]=[];const originalTimeout=window.setTimeout;
+ window.setTimeout=((callback:()=>void)=>{timers.push(callback);return 1;}) as any;
+ window.fetch=((_url:any,options:any)=>new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new window.DOMException('Aborted','AbortError'))))) as any;
+ const timed=window.loadOnboarding({background:true});timers[0]();assert.equal(await timed,false);window.setTimeout=originalTimeout;
+ assert.equal(toasts.length,3);
+ }finally{await window.happyDOM.close();}
+});

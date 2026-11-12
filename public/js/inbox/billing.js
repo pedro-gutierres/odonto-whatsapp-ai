@@ -1,8 +1,8 @@
 let paddleInitialized = false;
 let checkoutOpening = false;
-async function loadBilling() {
+async function loadBilling({ signal } = {}) {
   try {
-    const response = await fetch('/api/billing'); const data = await response.json(); if (!response.ok) return;
+    const response = await fetch('/api/billing', { signal }); const data = await response.json(); if (!response.ok) return;
     const canManage = currentUser && currentUser.canManageClinic;
     document.getElementById('billingAvailability').textContent = !data.enabled ? 'A contratação automática ainda não está disponível. Seu cadastro não gera cobrança.' : data.environment === 'sandbox' ? 'Ambiente de testes da Paddle. As compras aqui não geram cobrança real.' : 'Escolha um plano. A assinatura é liberada após confirmação do pagamento.';
     const details = document.getElementById('billingDetails');

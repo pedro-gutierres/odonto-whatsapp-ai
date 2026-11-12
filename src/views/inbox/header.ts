@@ -14,7 +14,7 @@ export const INBOX_HEADER_HTML = `
     <button class="aura-nav-item" data-nav-tab="settings" onclick="selectNavigationTab('settings')"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>Conectar WhatsApp</span><span id="menuWhatsappStatusDot" class="w-2 h-2 rounded-full bg-slate-300 ml-auto" title="Verificar conexão"></span></button>
     <button class="aura-nav-item" data-nav-tab="account" onclick="selectNavigationTab('account')"><i class="fa-regular fa-user" aria-hidden="true"></i><span>Dados &amp; Acessos</span></button>
   </nav>
-  <div class="aura-sidebar-footer">
+  <div class="aura-sidebar-footer"><p id="onboardingRefreshNotice" class="hidden aura-field-hint" role="status" aria-live="polite"></p>
     <div class="aura-sidebar-business"><div id="topClinicNameBadge" class="aura-business-name">Meu negócio</div><div id="businessSubtitle" class="aura-business-type">Seu espaço no Aura</div></div>
 <div class="aura-sidebar-controls">
   <div class="aura-topbar-title"><button id="verticalMenuTrigger" class="aura-icon-button aura-menu-toggle" onclick="toggleVerticalMenu(event)" aria-label="Abrir navegação" aria-expanded="false" aria-controls="verticalMenuContainer"><i class="fa-solid fa-bars" aria-hidden="true"></i></button><span id="selectedMenuIcon" hidden></span><h1 id="selectedMenuLabel" class="aura-page-title">Conversas</h1></div>
