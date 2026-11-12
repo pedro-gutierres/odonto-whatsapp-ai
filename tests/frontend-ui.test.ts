@@ -336,7 +336,7 @@ test('Account popover opens upwards using unscaled height and contains the theme
  Object.defineProperty(menu,'offsetHeight',{value:210});Object.defineProperty(menu,'offsetWidth',{value:210});
  trigger.getBoundingClientRect=()=>new window.DOMRect(190,700,36,36);
  menu.getBoundingClientRect=()=>new window.DOMRect(0,0,42,42);
- window.toggleAccountMenu();assert.equal(menu.style.top,'526px');assert.equal(menu.style.left,'238px');assert.ok(parseFloat(menu.style.top)+menu.offsetHeight<=736);
+ window.toggleAccountMenu();assert.equal(menu.style.top,'526px');assert.equal(menu.style.left,'274px');assert.ok(parseFloat(menu.style.top)+menu.offsetHeight<=736);
  assert.ok(menu.querySelector('[onclick*="toggleTheme"]'));assert.ok(!window.document.querySelector('.aura-sidebar-footer [onclick*="toggleTheme"]'));
  window.document.documentElement.classList.remove('dark');window.updateAccountThemeLabel();assert.equal(window.document.getElementById('accountThemeLabel')!.textContent,'Modo escuro');
  window.toggleTheme();window.updateAccountThemeLabel();assert.equal(window.document.getElementById('accountThemeLabel')!.textContent,'Modo claro');
