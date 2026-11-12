@@ -9,7 +9,7 @@ import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "25";
+const ASSET_VERSION = "26";
 
 export const INBOX_HTML = `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">

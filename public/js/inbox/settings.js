@@ -406,7 +406,7 @@
       if (Number.isNaN(date.getTime())) return '-';
       const parts = new Intl.DateTimeFormat('pt-BR', {timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);
       const part = type => parts.find(item => item.type === type)?.value || '';
-      return part('hour') + ':' + part('minute') + ' ' + part('day') + '/' + part('month') + '/' + part('year');
+      return part('hour') + ':' + part('minute') + ' — ' + part('day') + '/' + part('month') + '/' + part('year');
     }
 
     function renderClinicUsersTable() {

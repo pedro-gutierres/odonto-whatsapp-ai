@@ -47,7 +47,7 @@ export const INBOX_ACCOUNT_VIEW_HTML = `
               <i class="fa-solid fa-users text-sky-500"></i>
               <span>Equipe</span>
             </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Gerencie as pessoas com acesso à clínica.</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">As pessoas adicionadas terão acesso somente às funções de conversas e agendamento, sem acesso aos dados do administrador.</p>
           </div>
 
           <button type="button" id="btnOpenNewClinicUser" onclick="openClinicUserModal()"
