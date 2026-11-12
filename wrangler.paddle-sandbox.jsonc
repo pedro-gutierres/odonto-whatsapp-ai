@@ -13,7 +13,8 @@
     "database_id": "898f5577-5cac-4810-a03e-c3f0f1daf6cc",
     "migrations_dir": "migrations"
   }],
-  // No production database, queues, cron, WhatsApp tokens or AI bindings.
+  "triggers": { "crons": ["* * * * *"] },
+  // Billing-only cron. No production database, queues, WhatsApp tokens or AI bindings.
   "vars": {
     "PADDLE_ENABLED": "true",
     "PADDLE_ENVIRONMENT": "sandbox",

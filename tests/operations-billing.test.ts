@@ -7,7 +7,7 @@ import { commercialAccess, finishUsage, reserveUsage } from '../src/access';
 import { getTenantById, isCrucialConfigComplete, checkAppointmentConflict, createAppointment } from '../src/db';
 import { createSessionToken, verifyPassword, hashPassword } from '../src/auth';
 import type { Env } from '../src/types';
-import { verifyPaddleSignature } from '../src/billing';
+import { verifyPaddleSignature, inspectPaddleSignature, processPaddleInbox } from '../src/billing';
 import sandboxWorker from '../src/paddle-sandbox';
 import { REGISTER_HTML } from '../src/views/register';
 import { LOGIN_HTML } from '../src/views/login';
@@ -222,12 +222,15 @@ test('CSV de outro formato, profissionais ambíguos e datas inválidas não são
 function configureBilling(env:Env) {
   Object.assign(env,{PADDLE_ENABLED:'true',PADDLE_ENVIRONMENT:'sandbox',PADDLE_SANDBOX_ENTITLEMENTS:'true',PADDLE_API_KEY:'pdl_sdbx_apikey_mock',PADDLE_WEBHOOK_SECRET:'mock-secret',PADDLE_CLIENT_TOKEN:'test_mock',PADDLE_MONTHLY_PRICE_ID:'pri_monthly',PADDLE_YEARLY_PRICE_ID:'pri_yearly'});
 }
-async function signedEvent(env:Env,event:unknown,overrides:Record<string,string>={}) {
+async function signedEvent(env:Env,event:unknown,overrides:Record<string,string>={},drain=true) {
   const raw=JSON.stringify(event),timestamp=String(Math.floor(Date.now()/1000));
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.PADDLE_WEBHOOK_SECRET!),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const bytes=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(timestamp+':'+raw));
   const signature=Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
-  return worker.fetch(new Request('https://aura.test/api/webhooks/paddle',{method:'POST',headers:{'Paddle-Signature':`ts=${timestamp};h1=${signature}`,...overrides},body:raw}),env);
+  const response=await worker.fetch(new Request('https://aura.test/api/webhooks/paddle',{method:'POST',headers:{'Paddle-Signature':`ts=${timestamp};h1=${signature}`,...overrides},body:raw}),env);
+  // Existing business assertions simulate the subsequent billing-only cron explicitly.
+  if(drain&&response.status===200&&(await response.clone().json() as any).queued)await processPaddleInbox(env);
+  return response;
 }
 async function billingIntent(db:MockD1Database,id:string) {
   const intent=crypto.randomUUID();await db.prepare("INSERT INTO checkout_intents(id,tenant_id,billing_cycle,transaction_id) VALUES (?1,?2,'monthly','txn_test')").bind(intent,id).run();return intent;
@@ -279,7 +282,7 @@ test('Worker sandbox exige ambiente de testes e recusa atendimento, Meta e admin
   const html=await sandboxWorker.fetch(new Request('https://sandbox.test/checkout'),env);
   assert.ok((await html.text()).includes('Ambiente de testes Paddle'));
   env.PADDLE_ENVIRONMENT='live';assert.equal((await sandboxWorker.fetch(new Request('https://sandbox.test/health'),env)).status,503);
-  assert.ok(!('queue' in sandboxWorker));assert.ok(!('scheduled' in sandboxWorker));
+  assert.ok(!('queue' in sandboxWorker));assert.equal(typeof sandboxWorker.scheduled,'function');
 });
 
 test('Página de pagamento é pública, não expõe segredos e não concede acesso por retorno do checkout',async()=>{
@@ -338,8 +341,10 @@ test('Assinatura ativa com Pix ainda não capturado não libera período pago; c
     let tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'preparing');assert.equal(tenant.subscription_ends_at,null);
     assert.equal(tenant.paddle_subscription_id,'sub_test');
     const completed={...completedPayment(user.id,intent),occurred_at:initial.occurred_at};
-    assert.equal((await signedEvent(env,completed)).status,502,'An API propagation delay must request webhook redelivery');
+    assert.equal((await signedEvent(env,completed)).status,200,'Receipt is durable even while the payment API is not ready');
+    assert.equal((await db.prepare('SELECT status FROM paddle_webhook_inbox WHERE event_id=?1').bind(completed.event_id).first<any>()).status,'pending');
     proof.state.payments=[receipt];
+    await processPaddleInbox(env,Date.now()+61000);
     assert.equal((await signedEvent(env,completed)).status,200);assert.equal((await signedEvent(env,completed)).status,200);
     tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'active');assert.equal(tenant.subscription_ends_at,receipt.billing_period.ends_at);
     assert.equal(tenant.operational_enabled,0);assert.equal((await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n,2);
@@ -363,7 +368,7 @@ test('Renovação pendente não estende a vigência sem captura, e falha da API 
     assert.equal((await signedEvent(env,subscriptionEvent(user.id,intent))).status,200);
     let tenant=(await getTenantById(env.DB,user.id))!;assert.notEqual(tenant.commercial_status,'active');assert.equal(tenant.subscription_ends_at,expired);assert.equal(commercialAccess(tenant).can_operate,false);
     const count=(await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n;
-    proof.state.fail=true;assert.equal((await signedEvent(env,subscriptionEvent(user.id,intent))).status,502);
+    proof.state.fail=true;assert.equal((await signedEvent(env,subscriptionEvent(user.id,intent))).status,200);
     assert.equal((await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n,count);
   } finally { proof.restore(); }
 });
@@ -390,7 +395,8 @@ test('Comprovante de outro cliente, contratação, preço ou quantidade não con
 });
 test('Webhook não aceita trocar negócio nem preço pelo custom_data',async()=>{
   const {db,env}=setup();configureBilling(env);const a=await account(env),b=await account(env);const intent=await billingIntent(db,a.id);
-  assert.equal((await signedEvent(env,subscriptionEvent(b.id,intent))).status,409);assert.equal((await signedEvent(env,subscriptionEvent(a.id,intent,{items:[{price:{id:'pri_other'}}]}))).status,409);
+  assert.equal((await signedEvent(env,subscriptionEvent(b.id,intent))).status,409);assert.equal((await signedEvent(env,subscriptionEvent(a.id,intent,{items:[{price:{id:'pri_other'}}]}))).status,200);
+  assert.equal((await db.prepare("SELECT count(*) AS n FROM paddle_webhook_inbox WHERE status='rejected'").first<any>()).n,1);
   assert.equal((await getTenantById(env.DB,a.id))!.commercial_status,'preparing');assert.equal((await getTenantById(env.DB,b.id))!.commercial_status,'preparing');
 });
 
@@ -528,4 +534,80 @@ test('Training persists quiz profile and canonical schedule within the authentic
  assert.equal((await getTenantById(env.DB,b.id))!.business_kind,'solo');
  for(const change of [{business_kind:'invalid'},{business_sector:'invalid'},{schedule_days:[{day:1}]},{schedule_days:schedule_days.map(d=>({...d,endHour:'07'}))}])assert.equal((await api(env,'/api/config',a.cookie,{config:{...payload,...change}})).status,400);
  assert.deepEqual(JSON.parse((await getTenantById(env.DB,a.id))!.bot_config),saved);
+});
+
+
+test('Signature diagnostics preserve the exact five-second window without exposing secrets',async()=>{
+ const raw='{"event_id":"evt_test"}',secret='fixture-secret',now=1700000000000;
+ const sign=async(timestamp:number)=>{
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const bytes=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(timestamp+':'+raw));
+  return 'ts='+timestamp+';h1='+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+ };
+ assert.deepEqual(await inspectPaddleSignature(raw,null,secret,now),{valid:false,reason:'missing_header'});
+ assert.equal((await inspectPaddleSignature(raw,'ts=invalid;h1=bad',secret,now) as any).reason,'malformed_header');
+ for(const seconds of [-5,0,5])assert.equal(await verifyPaddleSignature(raw,await sign(now/1000+seconds),secret,now),true);
+ for(const seconds of [-6,6])assert.equal((await inspectPaddleSignature(raw,await sign(now/1000+seconds),secret,now) as any).reason,'timestamp_outside_tolerance');
+ assert.equal(await verifyPaddleSignature(raw,await sign(now/1000-5),secret,now+1),false);
+ assert.equal((await inspectPaddleSignature(raw+' ',await sign(now/1000),secret,now) as any).reason,'hmac_mismatch');
+});
+
+test('Webhook acknowledges durable receipt without calling Paddle and duplicate deliveries are idempotent',async()=>{
+ const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);
+ const event=subscriptionEvent(user.id,intent);event.data.customer_email='private@example.test';event.data.access_token='private-token';
+ const original=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw new Error('Must not call Paddle at receipt time');};
+ try{
+  for(let n=0;n<2;n++)assert.equal((await signedEvent(env,event,{},false)).status,200);
+  assert.equal(calls,0);assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'preparing');
+  assert.equal((await db.prepare('SELECT count(*) AS n FROM paddle_webhook_inbox').first<any>()).n,1);
+  const queued=await db.prepare('SELECT payload_json,status FROM paddle_webhook_inbox').first<any>();assert.equal(queued.status,'pending');assert.ok(!queued.payload_json.includes('private@example.test'));assert.ok(!queued.payload_json.includes('private-token'));
+  await processPaddleInbox(env);assert.ok(calls>0);assert.equal((await db.prepare('SELECT status FROM paddle_webhook_inbox').first<any>()).status,'pending');
+ }finally{globalThis.fetch=original;}
+ const proof=mockPaddleProof(user.id,intent);
+ try{
+  // A separate invocation recovers the persisted event even though its original signature is now old.
+  await processPaddleInbox({...env},Date.now()+61000);
+  assert.equal((await db.prepare('SELECT status FROM paddle_webhook_inbox').first<any>()).status,'completed');assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'active');
+  await processPaddleInbox(env,Date.now()+7200000);assert.equal((await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n,1);
+ }finally{proof.restore();}
+});
+
+test('Failed durable write is not acknowledged; Paddle can retry delivery',async()=>{
+ const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);
+ const broken={...env,DB:{prepare(sql:string){if(sql.includes('INSERT INTO paddle_webhook_inbox'))throw new Error('fixture outage');return db.prepare(sql);}}} as any;
+ assert.equal((await signedEvent(broken,subscriptionEvent(user.id,intent),{},false)).status,503);
+ assert.equal((await db.prepare('SELECT count(*) AS n FROM paddle_webhook_inbox').first<any>()).n,0);
+});
+
+test('Concurrent consumers and expired leases do not apply a notification twice',async()=>{
+ const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id),event=subscriptionEvent(user.id,intent);
+ await signedEvent(env,event,{},false);
+ await db.prepare("UPDATE paddle_webhook_inbox SET status='processing',lease_token='terminated-worker',lease_until=?1").bind(Date.now()+120000).run();
+ assert.equal((await processPaddleInbox(env)).processed,0);
+ const proof=mockPaddleProof(user.id,intent);
+ try{
+  const now=Date.now()+121000;
+  await Promise.all([processPaddleInbox(env,now),processPaddleInbox(env,now)]);
+  const job=await db.prepare('SELECT status,attempts FROM paddle_webhook_inbox').first<any>();assert.equal(job.status,'completed');assert.equal(job.attempts,1);
+  assert.equal((await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n,1);
+  const before=(await getTenantById(env.DB,user.id))!.commercial_status;
+  const next=subscriptionEvent(user.id,intent,{status:'paused'});await signedEvent(env,next,{},false);
+  await sandboxWorker.scheduled({cron:'* * * * *'} as any,{...env,PADDLE_ENVIRONMENT:'live'});
+  assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,before);
+  await sandboxWorker.scheduled({cron:'* * * * *'} as any,env);
+  assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'ended');
+ }finally{proof.restore();}
+});
+
+
+test('Only the billing cron processes the inbox and a rejected notification can be replayed after correction',async()=>{
+ const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);
+ const event=subscriptionEvent(user.id,intent,{status:'paused',items:[{price:{id:'pri_corrected'}}]});
+ await signedEvent(env,event,{},false);await worker.scheduled({cron:'* * * * *'} as any,env);
+ assert.equal((await db.prepare('SELECT status FROM paddle_webhook_inbox').first<any>()).status,'rejected');
+ env.PADDLE_MONTHLY_PRICE_ID='pri_corrected';await signedEvent(env,event,{},false);
+ assert.equal((await db.prepare('SELECT status FROM paddle_webhook_inbox').first<any>()).status,'pending');
+ await worker.scheduled({cron:'* * * * *'} as any,env);
+ assert.equal((await db.prepare('SELECT status FROM paddle_webhook_inbox').first<any>()).status,'completed');
+ assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'ended');
 });

@@ -109,7 +109,7 @@ Referências: https://developer.paddle.com/webhooks/signature-verification/ ; ht
 - Nenhuma configuração da conta de produção foi alterada. Formas de pagamento, modo de impostos e moeda de repasse não foram modificados.
 - A chave sandbox foi lida do arquivo local ignorado pelo Git e autenticada na API sandbox. API key e secret de assinatura nunca foram impressos ou versionados. Secrets de implantação ficam na Cloudflare do Worker sandbox; arquivos privados auxiliares ficam em `.wrangler/`, ignorada pelo Git.
 - Worker separado: `aura-paddle-sandbox`, configuração `wrangler.paddle-sandbox.jsonc`, em `https://aura-paddle-sandbox.pedrogutierres.workers.dev`. Banco novo `aura-paddle-sandbox-db` (`898f5577-5cac-4810-a03e-c3f0f1daf6cc`), com migrations `0001`–`0014`; banco de produção não foi modificado.
-- O Worker sandbox não tem filas, cron, tokens Meta ou IA. O entry point `src/paddle-sandbox.ts` exige configuração sandbox, bloqueia atendimento real e identifica as páginas como ambiente de testes. O teste operacional real fica desabilitado; pagamento sandbox não inicia o prazo do teste.
+- O Worker sandbox não tem filas, tokens Meta ou IA; o cron acrescentado posteriormente executa somente faturamento. O entry point `src/paddle-sandbox.ts` exige configuração sandbox, bloqueia atendimento real e identifica as páginas como ambiente de testes. O teste operacional real fica desabilitado; pagamento sandbox não inicia o prazo do teste.
 - Produto `Aura`, categoria `saas`, preços recorrentes sem trial adicional, quantidade fixa 1. Nenhuma configuração de impostos, câmbio de repasse ou formas de pagamento foi alterada; preços usam a configuração tributária existente da sandbox.
 
 | Recurso sandbox | Identificador |
@@ -211,3 +211,15 @@ Validação cobre grade, perfil, durações personalizadas, valores legados, op�
 A consulta de /api/onboarding a cada 30 segundos reutilizava o mesmo toast das ações explícitas e exibia diretamente error.message. Uma rejeição de fetch reproduzida nos testes mostrava Failed to fetch sem ação do usuário. Não há registro do episódio original para determinar se o transporte falhou por rede, navegador, proxy ou disponibilidade da infraestrutura.
 
 Agora o polling tem modo background, limite de dez segundos, evita consultas sobrepostas e descarta respostas superadas. Falhas temporárias conservam o estado e os campos em edição, mostram aviso discreto na sidebar e tentam novamente no ciclo seguinte; sucesso limpa o aviso. Sessão expirada ou acesso negado continuam exibindo aviso explícito. Erros inesperados continuam no console. Fora da aba de plano, o polling não repete a consulta de billing. Reinicializar o painel substitui o timer anterior. O salvamento do treinamento e as regras de autorização não foram alterados.
+
+## Webhooks Paddle duráveis e diagnóstico
+
+Migration 0017 adiciona paddle_webhook_inbox sem alterar contas, cotas ou tabelas de atendimento. A assinatura preserva a janela de cinco segundos nos dois sentidos; o booleano verifyPaddleSignature continua compatível e inspectPaddleSignature fornece motivos internos seguros. A resposta pública de assinatura permanece genérica (401).
+
+O receptor não faz consultas externas: grava um snapshot mínimo autenticado e responde 200. O processamento e a conferência de pagamento passam para um cron por minuto com lotes de cinco, lease e token de execução, retries com backoff e recuperação de interrupções. O endpoint não confirma recebimento se a gravação falhar. Não há renovação de trial nem liberação de atendimento real pelo recebimento; todas as conferências de vínculo, preço, captura, idempotência e ordem foram preservadas.
+
+Os crons de produção separam faturamento por minuto e confirmações de véspera às 23h UTC. O entrypoint sandbox mantém seus bloqueios de Meta/IA/atendimento e tem somente cron de faturamento. As alterações do Worker sandbox exigem sua publicação própria; não foi feito deploy manual.
+
+Backups prévios em .wrangler/backups/odonto-before-paddle-inbox-0017-20261112.sql e sandbox-before-paddle-inbox-0017-20261112.sql. Migration aplicada no D1 local de produção e nos bancos remotos de produção e sandbox (neste último, também as aditivas 0015 e 0016 pendentes). Nenhum seed ou reset foi executado.
+
+Validação automatizada usa APIs simuladas: janela temporal nos limites, diagnóstico HMAC, resposta sem chamadas Paddle, persistência, retries após falha, consumidor concorrente, lease expirado, rejeição e replay, cron sandbox e produção. Entrega real da Paddle, latência de produção, credenciais externas e deploy automático não foram comprovados por esses testes.

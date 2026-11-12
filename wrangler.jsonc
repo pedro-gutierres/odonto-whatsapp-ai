@@ -59,6 +59,6 @@
 
   // Agendador: executa confirmações automáticas às 20h de Brasília (23:00 UTC)
   "triggers": {
-    "crons": ["0 23 * * *"]
+    "crons": ["* * * * *", "0 23 * * *"]
   }
 }

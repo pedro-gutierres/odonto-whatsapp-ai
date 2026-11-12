@@ -1,5 +1,5 @@
 import { agendaImport } from "./agenda-import";
-import { handleBilling, paddleWebhook } from "./billing";
+import { handleBilling, paddleWebhook, processPaddleInbox } from "./billing";
 // Ponto de entrada do Cloudflare Worker.
 // Portas de entrada:
 //   fetch     -> Landing Page (/), Login (/login), Painel (/inbox), Webhooks da Meta e APIs REST autenticadas
@@ -1030,6 +1030,7 @@ export default {
   },
 
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    if(_controller.cron==='* * * * *'){await processPaddleInbox(env);return;}
     console.log("[CRON] Executando rotina de confirmações automáticas de véspera às 20h...");
     const result = await runDayBeforeConfirmations(env);
     console.log("[CRON] Confirmações finalizadas:", JSON.stringify(result));

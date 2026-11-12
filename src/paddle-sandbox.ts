@@ -1,10 +1,14 @@
 import worker from './index';
+import { processPaddleInbox } from './billing';
 import type { Env } from './types';
 import { jsonResponse } from './http';
 
 // This entry point is deployed only by wrangler.paddle-sandbox.jsonc.
-// It exports no queue consumer or scheduled job and never runs real attendance.
+// Its scheduled handler processes billing only; it never runs real attendance.
 export default {
+  async scheduled(_controller:ScheduledController,env:Env){
+    if(env.PADDLE_ENVIRONMENT==='sandbox'&&env.PADDLE_SANDBOX_ENTITLEMENTS==='true')await processPaddleInbox(env);
+  },
   async fetch(request: Request, env: Env): Promise<Response> {
     if (env.PADDLE_ENVIRONMENT !== 'sandbox' || env.PADDLE_SANDBOX_ENTITLEMENTS !== 'true') {
       return jsonResponse({ error: 'Este ambiente exige a configuração sandbox.' }, 503);

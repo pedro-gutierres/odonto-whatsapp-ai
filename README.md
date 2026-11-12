@@ -30,6 +30,7 @@ Meta Cloud API ──POST /webhook──► Worker fetch()
                                     └─ Envia via Meta Graph API (token da clínica ou fallback)
 
 Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirmations()
+Cron por minuto -> Worker scheduled() -> processPaddleInbox() (somente faturamento)
    └─ Percorre clínicas ativas elegíveis e envia lembretes para agendamentos do dia seguinte
       ainda em status 'agendado' ou 'pre_agendado'.
 ```
@@ -58,9 +59,9 @@ Cron Diário (23:00 UTC / 20h BRT) -> Worker scheduled() -> runDayBeforeConfirma
 | `src/whatsapp.ts` | Verificação HMAC da Meta (`verifySignature`), extração de mensagens, download de mídia, envio (`sendText`) e Graph API. |
 | `src/types.ts` | Tipagem TypeScript compartilhada (`Env`, `InboundJob`, `Tenant`, `BotConfig`, etc.). |
 | `src/views/` e `public/` | Views HTML (`landing.ts`, `login.ts`, `register.ts`, `checkout.ts`, `admin.ts`, `inbox.ts` + `src/views/inbox/*.ts`) e assets estáticos (`public/css/aura.css`, `public/js/ui.js`, `public/js/checkout.js`, `public/js/inbox/*.js`). |
-| `migrations/` | Migrations D1 `0001`–`0014` (núcleo `tenants`/`messages`, `conversation_states`, `users`/`appointments`, índices, `superadmin`, mídias, `professionals`, equipe/configurações, onboarding comercial, bloqueios, billing, importações e integridade de agenda). |
+| `migrations/` | Migrations D1 `0001`–`0017` (núcleo `tenants`/`messages`, `conversation_states`, `users`/`appointments`, índices, `superadmin`, mídias, `professionals`, equipe/configurações, onboarding comercial, bloqueios, billing, importações e integridade de agenda). |
 | `tests/` | Suítes automatizadas offline (`clinic-whatsapp.test.ts`, `operations-billing.test.ts`, `frontend-ui.test.ts` e `d1-mock.ts`). |
-| `wrangler.jsonc` | Bindings de produção D1 (`DB`), Queue (`INBOX`), R2 (`MEDIA_BUCKET`), Workers AI (`AI`), Cron (`0 23 * * *`) e variáveis não secretas. |
+| `wrangler.jsonc` | Bindings de produção D1 (`DB`), Queue (`INBOX`), R2 (`MEDIA_BUCKET`), Workers AI (`AI`), Crons (`0 23 * * *` para confirmações e `* * * * *` para faturamento) e variáveis não secretas. |
 
 ---
 
@@ -163,3 +164,11 @@ npm run db:migrate:remote  # Aplica migrations no D1 remoto
 - **Migrations D1**: alterações de estrutura devem ser aplicadas via `npm run db:migrate:local` / `npm run db:migrate:remote` (nunca via DDL em runtime).
 - **Janela de 24h da Meta (Lembretes de Véspera)**: o Cron das 20h BRT envia mensagens de texto via Graph API; fora da janela de 24 horas da Meta, é necessário evoluir para Message Templates aprovados.
 - **LGPD**: dados de pacientes e conversas são dados sensíveis de saúde; garanta contrato, termo de consentimento e política de retenção adequados antes da operação comercial.
+
+### Recebimento assíncrono da Paddle
+
+O webhook verifica HMAC e timestamp (tolerância mantida em cinco segundos), valida o vínculo local e grava o snapshot mínimo em `paddle_webhook_inbox` antes de retornar 200. Não consulta a API Paddle nessa requisição. Falha de persistência retorna 503 para permitir reentrega.
+
+O cron por minuto processa até cinco itens por execução. Falhas temporárias voltam a pending com backoff de 60 segundos até uma hora; não há descarte automático após um número de tentativas. Leases de dois minutos permitem recuperar execuções interrompidas. O ledger `billing_events` continua atômico com a alteração do tenant e protege duplicatas e ordem. Eventos permanentemente inválidos ficam rejected e geram log; reentrega assinada permite nova tentativa depois da correção. A liberação do plano pode aguardar o próximo ciclo do cron e a atualização do painel.
+
+Logs seguros: `[PADDLE_SIGNATURE_REJECTED]` identifica ausência/formato de cabeçalho, timestamp fora da tolerância ou HMAC divergente. `[PADDLE_RECEIPT_FAILED]` identifica persistência indisponível. `[PADDLE_PROCESSING]` informa ID do evento, tentativa, status e código de falha. Não registrar secret, assinatura nem payload. Investigar pending com muitas tentativas e rejected; o erro de processamento não altera retroativamente o 200 de recebimento.

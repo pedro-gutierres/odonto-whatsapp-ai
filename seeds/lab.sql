@@ -1,4 +1,5 @@
 -- DESTRUCTIVE: reset explicitly authorized for the account organization rollout. Back up first.
+DELETE FROM paddle_webhook_inbox;
 DELETE FROM usage_reservations;
 DELETE FROM billing_events;
 DELETE FROM checkout_intents;
