@@ -229,3 +229,5 @@ Validação automatizada usa APIs simuladas: janela temporal nos limites, diagn�
 O avanço sai para a esquerda em 200 ms e entra da direita em 260 ms; voltar inverte essas direções. Um lock cobre saída e entrada, desabilita botões e usa inert nos passos em transição. O foco vai ao primeiro input ou opção selecionada apenas ao concluir a entrada; valores permanecem no DOM. Com prefers-reduced-motion a navegação é síncrona.
 
 A entrada do dashboard usa apenas classes temporárias para opacity/filter/transform, removidas após 550 ms para liberar o stacking context. Os testes controlam os timers e cobrem direção, cliques repetidos, foco, movimento reduzido, saída da preparação e consumo do marcador. Fluidez em todos os dispositivos não é garantida por testes de DOM.
+
+No quiz, etapas de escolha recebem foco no título ao entrar; campos de texto continuam recebendo foco no input. Rádio e checkbox não herdam dimensões ou sombra de campos textuais. A navegação por Tab preserva indicador de foco no card, evitando o contorno oval automático no primeiro rádio.
