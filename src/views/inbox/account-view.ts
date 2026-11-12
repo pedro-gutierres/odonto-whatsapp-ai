@@ -1,6 +1,5 @@
 export const INBOX_ACCOUNT_VIEW_HTML = `
 <main id="viewAccount" class="hidden flex-1 overflow-y-auto p-4 lg:p-8"><div class="max-w-5xl mx-auto space-y-6"><h2 class="text-xl font-bold">Conta e equipe</h2><p class="text-sm text-slate-500">Gerencie seu acesso e as pessoas que ajudam no atendimento.</p>
-<p id="googleAccountNotice" class="hidden text-sm text-slate-500">Seu acesso é feito pelo Google. Esta conta não possui uma senha local.</p>
 <form id="ownPasswordForm" onsubmit="handleChangeOwnPassword(event)"
           class="lg:col-span-5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 text-xs self-start">
           <div class="pb-3 border-b border-slate-100 dark:border-slate-800">

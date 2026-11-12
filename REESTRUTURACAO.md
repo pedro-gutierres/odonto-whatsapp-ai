@@ -8,7 +8,7 @@
 - Teste operacional: 168 horas ou 100 respostas automáticas aceitas pela API do WhatsApp, o que ocorrer primeiro. Começa somente após preparação e ativação pelo responsável. Sem cartão e sem conversão automática em assinatura.
 - Envios humanos e lembretes ficam fora dessa cota; são bloqueados junto com a operação. Custos da Meta são separados.
 - Plano mensal R$ 199; anual R$ 2.148 (equivalente a R$ 179/mês), com renovação informada e aceita no checkout.
-- O proprietário ainda não tem as configurações externas: preparar código e documentação, mantendo Google/Paddle desabilitados até configurar e validar.
+- O proprietário ainda não tem as configurações externas: preparar código e documentação, mantendo Paddle desabilitado até configurar e validar (acesso apenas via e-mail e senha; login Google removido).
 
 ## Implementação
 
@@ -22,7 +22,7 @@
 | Disponibilidade por profissional e bloqueios sem pacientes | Implementado |
 | CSV Aura com prévia, confirmação e desfazer lote | Implementado; não representa compatibilidade com sistemas externos |
 | Ativação, prazo e cota do teste | Implementado |
-| Login Google | Implementado e testado com chaves de teste; aguarda Client ID e validação externa |
+| Login por e-mail e senha | Implementado (login Google removido por decisão do proprietário) |
 | Checkout e webhooks Paddle | Implementado e testado com API simulada; aguarda conta sandbox, credenciais e validação externa |
 | Dados comerciais, treinamento, WhatsApp e Minha conta | Separados na navegação |
 | Contas anteriores | Preservadas como `legacy`; não convertidas automaticamente |
@@ -59,18 +59,6 @@ Números existentes, exportações de iClinic/Feegow/Clinicorp/Simples Dental e 
 ## Configurações externas a preencher depois
 
 Em produção: Cloudflare → Workers & Pages → `odonto-whatsapp-ai` → Settings → Variables and Secrets. Adicione chaves privadas como **Secret**, nunca em arquivos versionados. O Worker usa `keep_vars=true` para preservar variáveis cadastradas no painel nas próximas publicações. Localmente, copie `.dev.vars.example` para `.dev.vars` e preencha somente no computador. O exemplo contém apenas marcadores.
-
-### Google
-
-Crie um cliente OAuth do tipo aplicativo Web no Google Cloud. Cadastre a origem HTTPS real do Aura em JavaScript origins; para desenvolvimento use a origem local correspondente. O fluxo usa o botão oficial Google e valida assinatura, audiência, emissor, validade, nonce e origem no servidor. Não solicita acesso ao Gmail.
-
-| Campo | Tipo | Uso |
-|---|---|---|
-| `GOOGLE_CLIENT_ID` | Variável | Client ID do aplicativo Web |
-
-Sem esse campo, o botão Google fica oculto e o cadastro por e-mail continua disponível. Uma conta por senha não é associada ao Google somente por coincidência de e-mail: o acesso existente é preservado.
-
-Referência: https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
 
 ### Meta / conexão rápida
 
@@ -116,7 +104,7 @@ Referências: https://developer.paddle.com/webhooks/signature-verification/ ; ht
 3. Aplicar migrations aditivas `0010` a `0014`. Elas não reiniciam testes nem atribuem pagamento a contas existentes.
 4. Versionar somente arquivos desta entrega, preservando alterações anteriores e excluindo segredos.
 5. Publicar o Worker e os assets juntos. Conferir saúde, páginas, bloqueio sem sessão e inventário remoto.
-6. Manter Google/Paddle desabilitados até suas validações externas. `OPERATIONAL_TRIAL_ENABLED=false` interrompe novas ativações sem apagar cadastros ou reiniciar testes existentes.
+6. Manter Paddle desabilitado até sua validação externa. `OPERATIONAL_TRIAL_ENABLED=false` interrompe novas ativações sem apagar cadastros ou reiniciar testes existentes.
 
 Se necessário, reverter o Worker para a versão anterior; manter as colunas aditivas do banco. Reversão de dados exige analisar as gravações posteriores ao backup, evitando sobrescrever consultas legítimas.
 
@@ -124,7 +112,7 @@ Reservas interrompidas em uma falha abrupta podem permanecer pendentes para revi
 
 ## Pendências que não dependem apenas do código
 
-- Configurar e validar Google, Meta Embedded Signup e Paddle com as contas do proprietário.
+- Configurar e validar Meta Embedded Signup e Paddle com as contas do proprietário.
 - Conferir visualmente cadastro, menus, bloqueios e experiência móvel em navegador autorizado.
 - Classificar individualmente as 15 contas anteriores antes de remover a condição de transição.
 - Validar consequências de números existentes e acesso às métricas financeiras Meta.
@@ -148,7 +136,7 @@ Reservas interrompidas em uma falha abrupta podem permanecer pendentes para revi
 - Seletores de opções, calendário e horário compartilhados, com busca em listas longas, teclado e indicação de campos desabilitados. Campos originais mantêm valores, validação e eventos existentes.
 - Agenda prioriza consultas e disponibilidade. Bloqueios usam dia e horários separados, com término em outro dia explícito; os dados enviados à API mantêm o formato anterior e o horário de Brasília.
 - Treinamento organizado em seções; informações técnicas da conexão recolhidas; ajuda contextual em ações menos evidentes. Salvar treinamento não é descrito como ativar o serviço.
-- Sem migrations, alteração de regras comerciais ou mudança intencional dos dados existentes. Google, Paddle e conexão guiada Meta permanecem indisponíveis sem configuração.
+- Sem migrations, alteração de regras comerciais ou mudança intencional dos dados existentes. Paddle e conexão guiada Meta permanecem indisponíveis sem configuração.
 - Tipagem, 49 testes de backend, 13 testes de frontend e build Cloudflare aprovados. Os testes offline cobrem controles, bloqueios, login, cadastro e inicialização/navegação do painel. Eles não renderizam a página e não validam aparência ou integrações externas.
 - O proprietário aprovou o visual apresentado e solicitou push e deploy deste conjunto. A inspeção visual automatizada em computador e celular permanece pendente por bloqueio da ferramenta de navegador; a aprovação do proprietário não é registrada como essa inspeção.
 - Publicação deste conjunto sem migrations ou operações de escrita nos dados existentes. As próximas melhorias de organização serão tratadas em etapas menores conforme os problemas identificados.

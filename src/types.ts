@@ -25,7 +25,6 @@ export interface Env {
   META_APP_ID?: string;       // App ID público da Meta para inicializar o SDK JS (Embedded Signup)
   META_EMBEDDED_CONFIG_ID?: string; // Configuration ID do Facebook Login for Business (WhatsApp Embedded Signup)
   OPERATIONAL_TRIAL_ENABLED?: string;
-  GOOGLE_CLIENT_ID?: string;
   PADDLE_ENABLED?: string;
   PADDLE_ENVIRONMENT?: string;
   PADDLE_API_KEY?: string;

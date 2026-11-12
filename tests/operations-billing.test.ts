@@ -8,7 +8,6 @@ import { getTenantById, isCrucialConfigComplete, checkAppointmentConflict, creat
 import { createSessionToken, verifyPassword } from '../src/auth';
 import type { Env } from '../src/types';
 import { verifyPaddleSignature } from '../src/billing';
-import { verifyGoogleIdentity } from '../src/google-auth';
 import { REGISTER_HTML } from '../src/views/register';
 import { LOGIN_HTML } from '../src/views/login';
 import { INBOX_HTML } from '../src/views/inbox';
@@ -270,43 +269,9 @@ test('Webhook não aceita trocar negócio nem preço pelo custom_data',async()=>
   assert.equal((await getTenantById(env.DB,a.id))!.commercial_status,'free');assert.equal((await getTenantById(env.DB,b.id))!.commercial_status,'free');
 });
 
-async function googleFixture(env:Env,overrides:any={}) {
-  env.GOOGLE_CLIENT_ID='test-client';const nonce=crypto.randomUUID(),kid=crypto.randomUUID();
-  const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
-  const jwk=await crypto.subtle.exportKey('jwk',pair.publicKey);const original=fetch;
-  globalThis.fetch=async(input)=>{assert.equal(String(input),'https://www.googleapis.com/oauth2/v3/certs');return new Response(JSON.stringify({keys:[{...jwk,kid}]}));};
-  const header=Buffer.from(JSON.stringify({alg:'RS256',kid})).toString('base64url');const now=Math.floor(Date.now()/1000);
-  const payload=Buffer.from(JSON.stringify({iss:'https://accounts.google.com',aud:env.GOOGLE_CLIENT_ID,iat:now,exp:now+600,nonce,sub:'google-'+crypto.randomUUID(),email:'google@test.com',email_verified:true,name:'Nome Google',...overrides})).toString('base64url');
-  const signature=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',pair.privateKey,new TextEncoder().encode(header+'.'+payload));
-  return {token:header+'.'+payload+'.'+Buffer.from(signature).toString('base64url'),cookie:'aura_google_nonce='+nonce,restore(){globalThis.fetch=original;}};
-}
-test('Google fica oculto sem configuração e rejeita token sem origem e nonce corretos',async()=>{
-  const {env}=setup();assert.equal((await (await api(env,'/api/auth/google/options')).json() as any).enabled,false);
-  const google=await googleFixture(env);try{
-    await assert.rejects(verifyGoogleIdentity(new Request('https://aura.test/api/auth/google',{headers:{cookie:google.cookie}}),env,google.token));
-    await assert.rejects(verifyGoogleIdentity(new Request('https://aura.test/api/auth/google',{headers:{origin:'https://aura.test',cookie:'aura_google_nonce=outro'}}),env,google.token));
-    assert.equal((await verifyGoogleIdentity(new Request('https://aura.test/api/auth/google',{headers:{origin:'https://aura.test',cookie:google.cookie}}),env,google.token)).email,'google@test.com');
-  }finally{google.restore();}
-});
-test('Google valida identidade sem criar negócio; cadastro final exige perfil e dispensa senha',async()=>{
-  const {db,env}=setup();const google=await googleFixture(env);try{
-    const send=(url:string,body:any)=>worker.fetch(new Request('https://aura.test'+url,{method:'POST',headers:{origin:'https://aura.test',cookie:google.cookie,'content-type':'application/json'},body:JSON.stringify({...body,credential:google.token})}),env);
-    const identity=await send('/api/auth/google',{});assert.equal(identity.status,200);assert.equal((await identity.json() as any).newAccount,true);assert.equal((await db.prepare('SELECT count(*) AS n FROM tenants').first<any>()).n,0);
-    const register=await send('/api/auth/register',{clinicName:'Negócio',adminName:'Nome',phone:'11999999999',businessKind:'solo',businessSector:'dentistry',usesExternalSchedule:false,email:'falso@test.com'});assert.equal(register.status,201);
-    const user=await db.prepare("SELECT * FROM users WHERE email='google@test.com'").first<any>();assert.ok(user.google_subject);assert.equal(user.password_hash,'!google-only');
-    const login=await send('/api/auth/google',{});assert.equal(login.status,200);assert.ok(login.headers.get('set-cookie')?.includes('auth_session='));
-  }finally{google.restore();}
-});
-test('Google não associa conta por coincidência de e-mail e recusa audiência ou assinatura errada',async()=>{
-  const {env}=setup();await account(env,{email:'google@test.com'});const google=await googleFixture(env);try{
-    const res=await worker.fetch(new Request('https://aura.test/api/auth/google',{method:'POST',headers:{origin:'https://aura.test',cookie:google.cookie},body:JSON.stringify({credential:google.token})}),env);assert.equal(res.status,409);
-    const invalid=google.token.slice(0,-5)+'AAAAA';await assert.rejects(verifyGoogleIdentity(new Request('https://aura.test/api/auth/google',{headers:{origin:'https://aura.test',cookie:google.cookie}}),env,invalid));
-  }finally{google.restore();}
-  const wrong=await googleFixture(env,{aud:'outro-client'});try{await assert.rejects(verifyGoogleIdentity(new Request('https://aura.test/api/auth/google',{headers:{origin:'https://aura.test',cookie:wrong.cookie}}),env,wrong.token));}finally{wrong.restore();}
-});
 test('Scripts públicos e scripts das páginas são JavaScript válido',()=>{
   for(const name of fs.readdirSync('public/js/inbox').filter(name=>name.endsWith('.js')))new vm.Script(fs.readFileSync('public/js/inbox/'+name,'utf8'),{filename:name});
-  new vm.Script(fs.readFileSync('public/js/google-auth.js','utf8'));
+  new vm.Script(fs.readFileSync('public/js/ui.js','utf8'));
   for(const html of [REGISTER_HTML,LOGIN_HTML,INBOX_HTML])for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(match[1].trim())new vm.Script(match[1]);
 });
 

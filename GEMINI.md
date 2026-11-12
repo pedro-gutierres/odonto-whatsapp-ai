@@ -11,7 +11,7 @@ Trabalhar em conjuntos pequenos e completos. Ao concluir um conjunto autorizado 
 
 Pedidos explícitos de somente análise, implementação local ou de não publicar prevalecem sobre a rotina acima. As decisões comerciais aprovadas, a transição das contas e as configurações opcionais estão em `REESTRUTURACAO.md`.
 
-Google e Paddle permanecem desabilitados até configurar e validar as contas externas. Não prometer métricas Meta, coexistência ou compatibilidade com agendas externas sem prova específica. Contas `legacy` devem preservar sua operação até classificação individual.
+Paddle permanece desabilitado até configurar e validar a conta externa; o acesso usa apenas e-mail e senha (login Google removido). Não prometer métricas Meta, coexistência ou compatibilidade com agendas externas sem prova específica. Contas `legacy` devem preservar sua operação até classificação individual.
 
 ---
 
@@ -52,4 +52,4 @@ Este projeto é um **SaaS multi-tenant** em **Cloudflare Workers (TypeScript)** 
 4. **Arquivos-Chave**:
    - `src/index.ts` | `src/clinic-routes.ts` | `src/http.ts` | `src/db.ts` | `src/auth.ts` | `src/prompt.ts` | `src/claude.ts` | `src/whatsapp.ts` | `src/types.ts`
    - Views inline e assets: `src/views/landing.ts` | `src/views/login.ts` | `src/views/inbox.ts` | `src/views/inbox/*.ts` | `public/js/inbox/*.js` | `src/views/admin.ts`
-   - Banco e Infra: `migrations/*.sql` (`0001`–`0008`) | `seeds/lab.sql` | `wrangler.jsonc` | `package.json` | `tests/etapa2.test.ts`
+   - Banco e Infra: `migrations/*.sql` (`0001`–`0014`) | `seeds/lab.sql` | `wrangler.jsonc` | `package.json` | `tests/clinic-whatsapp.test.ts` | `tests/operations-billing.test.ts` | `tests/frontend-ui.test.ts`

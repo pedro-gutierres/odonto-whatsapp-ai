@@ -1,4 +1,3 @@
-import { verifyGoogleIdentity } from "./google-auth";
 import type { Env, Tenant } from './types';
 import { commercialAccess, tenantConfig } from './access';
 import { createSessionToken, getSessionFromRequest, hashPassword, isClinicAdminRole, makeSessionCookie } from './auth';
@@ -10,21 +9,20 @@ export async function registerAccount(request: Request, env: Env) {
     const body = await request.json() as Record<string, unknown>;
     if (!body || typeof body !== 'object' || Array.isArray(body)) return jsonResponse({error:'Cadastro inválido.'},400);
     const field = (key: string) => typeof body[key] === 'string' ? String(body[key]).trim() : '';
-    const google = body.credential ? await verifyGoogleIdentity(request,env,body.credential) : null;
-    const clinicName = field('clinicName'), adminName = field('adminName'), email = google ? google.email : field('email').toLowerCase();
+    const clinicName = field('clinicName'), adminName = field('adminName'), email = field('email').toLowerCase();
     const phone = field('phone'), kind = field('businessKind'), sector = field('businessSector');
     const external = body.usesExternalSchedule, system = field('existingSystem');
     const password = typeof body.password === 'string' ? body.password : '';
     if (!clinicName || clinicName.length > 120 || !adminName || adminName.length > 120
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254
-      || (!google && (password.length < 8 || password.length > 256)) || !/^\d{10,15}$/.test(phone.replace(/\D/g, ''))
+      || password.length < 8 || password.length > 256 || !/^\d{10,15}$/.test(phone.replace(/\D/g, ''))
       || !['solo','clinic'].includes(kind) || !['dentistry','aesthetics'].includes(sector)
       || typeof external !== 'boolean' || (external && !system) || system.length > 120) {
       return jsonResponse({ error: 'Preencha o perfil, os dados de contato, a agenda utilizada e uma senha com pelo menos 8 caracteres.' }, 400);
     }
     if (await getUserByEmail(env.DB, email)) return jsonResponse({ error: 'Este e-mail já está cadastrado. Acesse sua conta.' }, 409);
     const id = `negocio-${crypto.randomUUID()}`;
-    const hash = google ? '!google-only' : await hashPassword(password);
+    const hash = await hashPassword(password);
     // No fictitious registration, prices, opening hours or professional credentials.
     const config = JSON.stringify({ clinic_name: clinicName, doctor_name: adminName, procedure_items: [], initial_consultation: {}, hours: '' });
     await env.DB.batch([
@@ -33,8 +31,8 @@ export async function registerAccount(request: Request, env: Env) {
         trial_ends_at,trial_messages_used,trial_messages_limit,billing_cycle)
         VALUES (?1,?2,?3,?4,?5,?6,?7,1,'free',?8,?9,?10,?11,NULL,0,100,NULL)`)
         .bind(id, clinicName, `unconfigured:${id}`, email, phone, adminName, config, kind, sector, external ? 1 : 0, external ? system : null),
-      env.DB.prepare("INSERT INTO users (tenant_id,email,password_hash,name,role,active,google_subject) VALUES (?1,?2,?3,?4,'admin',1,?5)")
-        .bind(id, email, hash, adminName, google?.subject ?? null),
+      env.DB.prepare("INSERT INTO users (tenant_id,email,password_hash,name,role,active) VALUES (?1,?2,?3,?4,'admin',1)")
+        .bind(id, email, hash, adminName),
     ]);
     const user = await getUserByEmail(env.DB, email);
     if (!user) throw new Error('REGISTER_USER_MISSING');

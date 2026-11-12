@@ -6,13 +6,13 @@ O cadastro gratuito não inicia o teste. O negócio informa autônomo/clínica e
 
 O teste real começa por ativação explícita após treinamento revisado, agenda preparada e WhatsApp diagnosticado: 168 horas ou 100 respostas automáticas, sem cartão ou cobrança automática. A matriz de acesso vale para APIs, fila e lembretes. Contas anteriores permanecem em transição (`legacy`), sem conversão automática ou alteração de seus dados.
 
-As configurações, a matriz, os critérios de publicação e as limitações estão em [REESTRUTURACAO.md](REESTRUTURACAO.md). Google e Paddle estão preparados e aguardam configuração/validação externa. A integração financeira Meta e compatibilidade com agendas de outros sistemas continuam pendentes de comprovação.
+As configurações, a matriz, os critérios de publicação e as limitações estão em [REESTRUTURACAO.md](REESTRUTURACAO.md). O acesso usa exclusivamente e-mail e senha (login Google removido). Paddle está preparado e aguarda configuração/validação externa. A integração financeira Meta e compatibilidade com agendas de outros sistemas continuam pendentes de comprovação.
 
-Novos módulos: `src/access.ts`, `src/onboarding.ts`, `src/simulator.ts`, `src/billing.ts`, `src/google-auth.ts`, `src/agenda-blocks.ts`, `src/agenda-import.ts`. Migrations aditivas `0010`–`0014`. Navegação: Início, Conversas, Agenda, Meu negócio e IA, Test Drive, WhatsApp, Conta e equipe.
+Novos módulos: `src/access.ts`, `src/onboarding.ts`, `src/simulator.ts`, `src/billing.ts`, `src/agenda-blocks.ts`, `src/agenda-import.ts`. Migrations aditivas `0010`–`0014`. Navegação: Início, Conversas, Agenda, Meu negócio e IA, Test Drive, WhatsApp, Conta e equipe.
 
 A revisão de interface usa estilos compartilhados em `public/css/aura.css` e seletores em `public/js/ui.js`, preservando os campos e eventos dos formulários. O bloqueio da agenda permite informar dia, início, fim e término em outro dia. Detalhes técnicos de conexão ficam recolhidos; a ajuda aparece junto às ações que precisam de explicação. `npm run test:frontend` verifica controles e formulários em DOM offline, sem substituir a conferência visual no navegador.
 
-Novas APIs: `/api/onboarding/*`, `/api/billing/*`, `/api/webhooks/paddle`, `/api/auth/google`, `/api/auth/google/options`, `/api/agenda/blocks`, `/api/agenda/import/{preview,commit,undo}`. O CSV aceita somente o modelo Aura com prévia; não representa sincronização com sistemas externos.
+Novas APIs: `/api/onboarding/*`, `/api/billing/*`, `/api/webhooks/paddle`, `/api/agenda/blocks`, `/api/agenda/import/{preview,commit,undo}`. O CSV aceita somente o modelo Aura com prévia; não representa sincronização com sistemas externos.
 
 Plataforma SaaS para clínicas odontológicas e de estética avançada no Brasil, executada 100% na edge da Cloudflare (**Workers + D1 + Queues + R2 + Workers AI + Cron Triggers**), conectada à **API Oficial do WhatsApp Cloud (Meta)** e à **Anthropic Claude API** (com Prompt Caching e Visão).
 
@@ -158,7 +158,7 @@ Para habilitar o botão **Meta Embedded Signup** na tela **Configurações & Per
 ### 4. Comandos de Desenvolvimento e Deploy
 ```bash
 npm run typecheck          # Verifica tipagem TypeScript (tsc --noEmit)
-npm test                   # Executa suíte automatizada de testes (tests/etapa2.test.ts)
+npm test                   # Executa suíte automatizada de testes (tests/clinic-whatsapp.test.ts, tests/operations-billing.test.ts e tests/frontend-ui.test.ts)
 npm run dev                # Servidor local com Wrangler
 npm run deploy             # Publica o Worker na Cloudflare (npx wrangler deploy)
 npm run logs               # Logs em tempo real (npx wrangler tail)

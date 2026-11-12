@@ -121,8 +121,6 @@
         const data = await res.json();
         if (data && data.user) {
           currentUser = data.user;
-          document.getElementById('ownPasswordForm').classList.toggle('hidden',!!data.user.googleOnly);
-          document.getElementById('googleAccountNotice').classList.toggle('hidden',!data.user.googleOnly);
           const nameEl = document.getElementById('topUserName');
           const emailEl = document.getElementById('topUserEmail');
           const adminBtn = document.getElementById('superAdminNavBtn');

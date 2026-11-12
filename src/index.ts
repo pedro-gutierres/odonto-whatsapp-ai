@@ -1,5 +1,4 @@
 import { agendaImport } from "./agenda-import";
-import { handleGoogleAuth } from "./google-auth";
 import { handleBilling, paddleWebhook } from "./billing";
 // Ponto de entrada do Cloudflare Worker.
 // Portas de entrada:
@@ -127,7 +126,6 @@ export default {
     const url = new URL(request.url);
     const isSecure = url.protocol === "https:";
     if (url.pathname === '/api/webhooks/paddle') return paddleWebhook(request,env);
-    if (url.pathname === '/api/auth/google' || url.pathname === '/api/auth/google/options') return handleGoogleAuth(request,env);
     // One access policy protects direct API calls as well as the UI.
     if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/')
       && !url.pathname.startsWith('/api/admin/') && url.pathname !== '/api/time') {
@@ -283,7 +281,6 @@ export default {
           role: dbUser.role,
           isSuperAdmin,
           canManageClinic,
-          googleOnly: dbUser.password_hash === "!google-only",
         },
         ...(trial ? { trial } : {}),
         ...(tenant ? { access: commercialAccess(tenant) } : {}),

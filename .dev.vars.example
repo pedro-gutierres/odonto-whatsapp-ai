@@ -9,7 +9,6 @@ WA_LAB_TOKEN=cole_o_token_da_meta
 # Produção: Cloudflare > Worker > Settings > Variables and Secrets.
 # Guia completo: REESTRUTURACAO.md. Não envie secrets pelo chat.
 OPERATIONAL_TRIAL_ENABLED=true
-# GOOGLE_CLIENT_ID=seu_cliente_web.apps.googleusercontent.com
 # META_APP_ID=seu_app_id_meta
 # META_EMBEDDED_CONFIG_ID=sua_configuracao_embedded_signup
 # META_APP_SECRET=secret_do_mesmo_aplicativo_meta
