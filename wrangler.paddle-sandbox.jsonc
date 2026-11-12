@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aura-paddle-sandbox",
+  "main": "src/paddle-sandbox.ts",
+  "compatibility_date": "2026-10-01",
+  "keep_vars": true,
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "aura-paddle-sandbox-db",
+    "database_id": "898f5577-5cac-4810-a03e-c3f0f1daf6cc",
+    "migrations_dir": "migrations"
+  }],
+  // No production database, queues, cron, WhatsApp tokens or AI bindings.
+  "vars": {
+    "PADDLE_ENABLED": "true",
+    "PADDLE_ENVIRONMENT": "sandbox",
+    "PADDLE_SANDBOX_ENTITLEMENTS": "true",
+    "PADDLE_MONTHLY_PRICE_ID": "pri_01m76xyrdy3c4zhyf97am83bsd",
+    "PADDLE_YEARLY_PRICE_ID": "pri_01m76xyrmqs8w1kd01bgxzy1at",
+    "OPERATIONAL_TRIAL_ENABLED": "false",
+    "GRAPH_VERSION": "v26.0",
+    "CLAUDE_MODEL": "claude-haiku-5-5",
+    "CLAUDE_EFFORT": "low"
+  }
+}

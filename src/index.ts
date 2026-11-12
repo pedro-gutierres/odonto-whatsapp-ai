@@ -78,6 +78,7 @@ import { LOGIN_HTML } from "./views/login";
 import { REGISTER_HTML } from "./views/register";
 import { INBOX_HTML } from "./views/inbox";
 import { ADMIN_HTML } from "./views/admin";
+import { checkoutHtml } from "./views/checkout";
 
 const MSG_MIDIA_NAO_SUPORTADA = "Por enquanto consigo atender por texto, áudio ou foto. Pode escrever ou enviar um áudio com sua dúvida? 😊";
 const MSG_FALHA_IA = "Vou encaminhar sua mensagem para a nossa equipe, que responde assim que possível. Obrigada pela paciência!";
@@ -157,6 +158,13 @@ export default {
 
     if (url.pathname === "/health") {
       return new Response("ok", { headers: SECURITY_HEADERS });
+    }
+
+    if (url.pathname === '/checkout' && request.method === 'GET') {
+      const response = htmlResponse(checkoutHtml(env));
+      response.headers.set('Cache-Control', 'no-store');
+      response.headers.set('Referrer-Policy', 'no-referrer');
+      return response;
     }
 
     // 1) PÁGINA INICIAL / LANDING INSTITUCIONAL

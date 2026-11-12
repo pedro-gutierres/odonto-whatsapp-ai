@@ -7,6 +7,8 @@ import { INBOX_BLOCKS_VIEW_HTML } from '../src/views/inbox/blocks-view';
 import { REGISTER_HTML } from '../src/views/register';
 import { LOGIN_HTML } from '../src/views/login';
 import { LANDING_HTML } from '../src/views/landing';
+import { checkoutHtml } from '../src/views/checkout';
+import type { Env } from '../src/types';
 
 // DOM-only tests: no browser, network, external scripts, screenshots or layout rendering.
 async function dom(html:string, scripts:string[]=['public/js/ui.js']) {
@@ -24,6 +26,37 @@ async function dom(html:string, scripts:string[]=['public/js/ui.js']) {
 }
 const source='public/js/ui.js';
 function trigger(window:Window,id:string){return window.document.querySelector(`[data-for="${id}"] .aura-control-trigger`) as any;}
+
+test('Payment link stays inactive without configuration or a valid transaction',async()=>{
+  for(const config of [null,{token:'test_example',environment:'sandbox'}]){
+    const window=await dom('<p id="checkoutStatus"></p><button id="retryCheckout" class="hidden"></button>',[]);
+    try{
+      const script=window.document.createElement('script');script.type='application/json';script.id='paddlePublicConfig';script.textContent=JSON.stringify(config);window.document.body.append(script);
+      window.eval(fs.readFileSync('public/js/checkout.js','utf8'));await window.happyDOM.whenAsyncComplete();
+      assert.equal(window.document.querySelectorAll('script[src]').length,0);
+      assert.ok(window.document.getElementById('checkoutStatus')!.textContent.includes(config?'link completo':'ainda não está disponível'));
+    }finally{await window.happyDOM.close();}
+  }
+});
+
+test('Payment email link initializes once, supports reopening and waits for server confirmation',async()=>{
+  const window=await dom('<p id="checkoutStatus"></p><button id="retryCheckout" class="hidden"></button>',[]);
+  try{
+    const transaction='txn_01234567890123456789012345';window.history.replaceState(null,'','/checkout?_ptxn='+transaction);
+    const script=window.document.createElement('script');script.type='application/json';script.id='paddlePublicConfig';script.textContent=JSON.stringify({token:'test_example',environment:'sandbox'});window.document.body.append(script);
+    let initialized=0,opened=0,options:any;const environments:string[]=[];
+    window.Paddle={Environment:{set:(value:string)=>environments.push(value)},Initialize:(value:any)=>{initialized++;options=value;},Checkout:{open:(value:any)=>{assert.equal(value.transactionId,transaction);opened++;}}};
+    window.eval(fs.readFileSync('public/js/checkout.js','utf8'));await window.happyDOM.whenAsyncComplete();
+    assert.equal(initialized,1);assert.equal(opened,0,'Paddle handles _ptxn automatically on initialization');assert.deepEqual(environments,['sandbox']);
+    options.eventCallback({name:'checkout.closed'});(window.document.getElementById('retryCheckout') as any).click();await window.happyDOM.whenAsyncComplete();assert.equal(initialized,1);assert.equal(opened,1);
+    options.eventCallback({name:'checkout.completed'});assert.ok(window.document.getElementById('checkoutStatus')!.textContent.includes('confirmação do seu plano'));assert.ok(window.document.getElementById('retryCheckout')!.classList.contains('hidden'));
+  }finally{await window.happyDOM.close();}
+});
+
+test('Checkout public configuration escapes HTML and excludes private credentials',()=>{
+  const html=checkoutHtml({PADDLE_ENABLED:'true',PADDLE_ENVIRONMENT:'sandbox',PADDLE_API_KEY:'pdl_sdbx_apikey_private',PADDLE_WEBHOOK_SECRET:'private-signature',PADDLE_CLIENT_TOKEN:'test_</script><img src=x>',PADDLE_MONTHLY_PRICE_ID:'pri_monthly',PADDLE_YEARLY_PRICE_ID:'pri_yearly'} as Env);
+  assert.ok(!html.includes('<img src=x>'));assert.ok(!html.includes('pdl_sdbx_apikey_private'));assert.ok(!html.includes('private-signature'));assert.ok(html.includes('\\u003c'));
+});
 test('Dropdown changes the native value and emits the existing change event once',async()=>{
   const window=await dom('<label for="choice">Profissional</label><select id="choice"><option value="a">Ana</option><option value="b">Bia</option><option value="c" disabled>Indisponível</option></select>');
   try{let changes=0;const select=window.document.getElementById('choice') as any;select.addEventListener('change',()=>changes++);trigger(window,'choice').click();

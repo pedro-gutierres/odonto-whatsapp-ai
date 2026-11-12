@@ -6,7 +6,7 @@ O cadastro gratuito não inicia o teste. O negócio informa autônomo/clínica e
 
 O teste real começa por ativação explícita após treinamento revisado, agenda preparada e WhatsApp diagnosticado: 168 horas ou 100 respostas automáticas, sem cartão ou cobrança automática. A matriz de acesso vale para APIs, fila e lembretes. Contas anteriores permanecem em transição (`legacy`), sem conversão automática ou alteração de seus dados.
 
-As configurações, a matriz, os critérios de publicação e as limitações estão em [REESTRUTURACAO.md](REESTRUTURACAO.md). O acesso usa exclusivamente e-mail e senha (login Google removido). Paddle está preparado e aguarda configuração/validação externa. A integração financeira Meta e compatibilidade com agendas de outros sistemas continuam pendentes de comprovação.
+As configurações, a matriz, os critérios de publicação e as limitações estão em [REESTRUTURACAO.md](REESTRUTURACAO.md). O acesso usa exclusivamente e-mail e senha (login Google removido). Paddle está integrado em ambiente sandbox isolado: Pix, confirmação por webhook, portal e cancelamentos foram validados; produção continua desabilitada. A integração financeira Meta e compatibilidade com agendas de outros sistemas continuam pendentes de comprovação.
 
 Novos módulos: `src/access.ts`, `src/onboarding.ts`, `src/simulator.ts`, `src/billing.ts`, `src/agenda-blocks.ts`, `src/agenda-import.ts`. Migrations aditivas `0010`–`0014`. Navegação: Início, Conversas, Agenda, Meu negócio e IA, Test Drive, WhatsApp, Conta e equipe.
 

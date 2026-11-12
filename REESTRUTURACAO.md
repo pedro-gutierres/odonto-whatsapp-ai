@@ -82,7 +82,7 @@ Comece com uma conta **sandbox** e preços recorrentes sem trial adicional: mens
 |---|---|---|
 | `PADDLE_ENABLED` | Variável | `false` inicialmente; `true` depois de configurar o ambiente |
 | `PADDLE_ENVIRONMENT` | Variável | `sandbox` ou `live`, sem misturar credenciais |
-| `PADDLE_API_KEY` | Secret | API key com leitura de preços, criação/edição de transações e criação de sessões do portal |
+| `PADDLE_API_KEY` | Secret | API key com `price.read`, `transaction.read/write`, `subscription.read` e `customer_portal_session.write` |
 | `PADDLE_CLIENT_TOKEN` | Variável | Token público do Paddle.js |
 | `PADDLE_WEBHOOK_SECRET` | Secret | Secret do destino de notificações |
 | `PADDLE_MONTHLY_PRICE_ID` | Variável | Price ID mensal |
@@ -91,11 +91,46 @@ Comece com uma conta **sandbox** e preços recorrentes sem trial adicional: mens
 
 Configure o destino de notificações como `https://SEU-DOMINIO/api/webhooks/paddle`, com eventos de assinatura (`subscription.created`, `activated`, `updated`, `resumed`, `past_due`, `paused`, `canceled`). Configure também o domínio de checkout na Paddle.
 
-O servidor cria a transação e seu vínculo com o negócio. A confirmação no navegador não libera acesso. Somente o webhook assinado, reconhecido e com preço autorizado atualiza a vigência; duplicados e eventos antigos não revertem o estado. Cancelar a renovação mantém o período pago até seu fim; cancelamento efetivo/inadimplência suspendem a operação.
+O servidor cria a transação e seu vínculo com o negócio. A confirmação no navegador não libera acesso. Webhooks assinados conferem o vínculo e o preço; a vigência paga só avança com transação `completed` confirmada na API Paddle, com cliente, assinatura, contratação, preço, quantidade e período compatíveis. `transaction.completed` também consulta a assinatura atual para funcionar independentemente da ordem dos eventos. Duplicados e eventos antigos não revertem o estado. Falhas ou atraso na consulta pedem reenvio (não retornam sucesso sem persistência). Cancelar a renovação mantém o período pago até seu fim; cancelamento efetivo/inadimplência suspendem a operação.
 
 Sem configuração, os botões ficam desabilitados. Sandbox não concede acesso operacional por padrão. Antes de ativar `live`, conferir checkout, webhooks, portal, renovação e cancelamento na sandbox e aprovação do domínio/negócio na Paddle.
 
+A página pública `/checkout` é o destino preparado para o **Default payment link** da Paddle. Ela carrega somente o token público, reconhece `_ptxn`, permite reabrir um pagamento fechado e mantém o acesso dependente do webhook. Não usa cache e não inclui API key ou secret de assinatura. Configure o link no domínio do ambiente correspondente; não aponte a sandbox para um serviço de produção com outro conjunto de credenciais.
+
+O checkout recusa pares de credenciais incompatíveis: sandbox exige token `test_` e chave `pdl_sdbx_apikey_`; produção exige token `live_` e chave `pdl_live_apikey_`. Variáveis exportadas em outro terminal não ficam automaticamente disponíveis para o agente ou para o Worker. Na máquina local, use `.dev.vars`; na publicação, use Variables and Secrets da Cloudflare.
+
 Referências: https://developer.paddle.com/webhooks/signature-verification/ ; https://developer.paddle.com/api-reference/transactions/create-transaction/ ; https://developer.paddle.com/api-reference/customer-portals/create-customer-portal-session/
+
+### Integração Paddle sandbox — 12/11/2026
+
+- O proprietário escolheu configurar e testar na **sandbox primeiro**. Preços e renovação seguem as regras aprovadas; não foi criado trial adicional na Paddle.
+- A conexão do plugin disponível é `paddle-live`, autenticada por OAuth, apenas com permissões de leitura. Ela não fornece uma credencial de servidor para o Aura nem acesso à sandbox.
+- Auditoria somente de leitura em produção: nenhum produto/preço ativo ou token público retornado; nenhum domínio ou link padrão de pagamento configurado. A consulta de destinos não retornou registros, embora a estimativa de paginação indique dois; confirmar no painel antes de criar destinos em produção. A verificação do negócio não pôde ser consultada por falta de `verification.read`.
+- Nenhuma configuração da conta de produção foi alterada. Formas de pagamento, modo de impostos e moeda de repasse não foram modificados.
+- A chave sandbox foi lida do arquivo local ignorado pelo Git e autenticada na API sandbox. API key e secret de assinatura nunca foram impressos ou versionados. Secrets de implantação ficam na Cloudflare do Worker sandbox; arquivos privados auxiliares ficam em `.wrangler/`, ignorada pelo Git.
+- Worker separado: `aura-paddle-sandbox`, configuração `wrangler.paddle-sandbox.jsonc`, em `https://aura-paddle-sandbox.pedrogutierres.workers.dev`. Banco novo `aura-paddle-sandbox-db` (`898f5577-5cac-4810-a03e-c3f0f1daf6cc`), com migrations `0001`–`0014`; banco de produção não foi modificado.
+- O Worker sandbox não tem filas, cron, tokens Meta ou IA. O entry point `src/paddle-sandbox.ts` exige configuração sandbox, bloqueia atendimento real e identifica as páginas como ambiente de testes. O teste operacional real fica desabilitado; pagamento sandbox não inicia o prazo do teste.
+- Produto `Aura`, categoria `saas`, preços recorrentes sem trial adicional, quantidade fixa 1. Nenhuma configuração de impostos, câmbio de repasse ou formas de pagamento foi alterada; preços usam a configuração tributária existente da sandbox.
+
+| Recurso sandbox | Identificador |
+|---|---|
+| Produto Aura | `pro_01m76xyq9xd2w8g4ya93kd66th` |
+| Mensal BRL 19900 | `pri_01m76xyrdy3c4zhyf97am83bsd` |
+| Anual BRL 214800 | `pri_01m76xyrmqs8w1kd01bgxzy1at` |
+| Notificações | `ntfset_01m76xysetgmkgcsg3s3pmw964` |
+| Link padrão de pagamento | `https://aura-paddle-sandbox.pedrogutierres.workers.dev/checkout` |
+
+- Notificações configuradas para `subscription.created`, `activated`, `updated`, `resumed`, `past_due`, `paused`, `canceled` e `transaction.completed`, com tráfego de plataforma e simulação.
+- Validação externa: o proprietário concluiu o pagamento sandbox por Pix, transação `txn_01m76y31bvdgnmf1hthgfrvdz5`, BRL 19900, capturada e `completed`; assinatura `sub_01m76y7g7xatptycsrrevntkkt`. Webhooks entregues com sucesso e primeira tentativa. Cadastro permaneceu sem início de trial e sem operação real.
+- Portal sandbox gerado pela API autenticada. Reenvio de `transaction.completed` entregue com sucesso após a conferência de captura. Cancelamento agendado manteve o período pago; cancelamento imediato efetivo foi refletido no Aura e bloqueou o acesso. A assinatura de teste terminou cancelada, sem novas renovações sandbox.
+- A primeira simulação genérica enviada pela Paddle sem `custom_data` foi recusada como contratação desconhecida (409). Simulações vinculadas verificaram a entrega; a compra Pix e os cancelamentos acima foram verificados contra entidades reais **da sandbox**, não apenas payloads inventados.
+- Tipagem, 70 testes locais e builds Cloudflare aprovados. Menu/calendário e retorno do checkout têm testes offline; isso não é inspeção visual do formulário hospedado da Paddle. O cartão de teste informado não foi aceito na tentativa do proprietário; o fluxo de cartão continua pendente de reprodução/validação.
+- Renovação futura com captura real ainda não foi observada. Segundo a documentação Paddle, Pix Automático pode capturar renovações dias após o vencimento. A regra atual não estende acesso sem período pago confirmado; uma eventual tolerância precisa ser decidida antes de oferecer Pix em produção. Não foram adicionadas tolerância, troca de plano paga ou cobranças proporcionais.
+- Próxima etapa de produção: concluir verificação do negócio e domínio, preparar catálogo/credenciais próprios de produção, confirmar políticas públicas e validar os meios de pagamento. A conta Paddle de produção e a cobrança real permanecem inalteradas/desabilitadas.
+
+Publicar somente a sandbox: `npx wrangler deploy --config wrangler.paddle-sandbox.jsonc`. Secrets já configurados no Worker são preservados. Migrations de sandbox devem sempre usar esse arquivo de configuração e o nome `aura-paddle-sandbox-db`; nunca o banco de produção. Não copie os IDs ou os secrets sandbox para produção.
+
+Referência de Pix e captura: https://developer.paddle.com/concepts/payment-methods/pix/ .
 
 ## Publicação e recuperação
 

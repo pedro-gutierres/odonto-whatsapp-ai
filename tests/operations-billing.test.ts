@@ -8,6 +8,7 @@ import { getTenantById, isCrucialConfigComplete, checkAppointmentConflict, creat
 import { createSessionToken, verifyPassword } from '../src/auth';
 import type { Env } from '../src/types';
 import { verifyPaddleSignature } from '../src/billing';
+import sandboxWorker from '../src/paddle-sandbox';
 import { REGISTER_HTML } from '../src/views/register';
 import { LOGIN_HTML } from '../src/views/login';
 import { INBOX_HTML } from '../src/views/inbox';
@@ -214,7 +215,7 @@ test('CSV de outro formato, profissionais ambíguos e datas inválidas não são
 });
 
 function configureBilling(env:Env) {
-  Object.assign(env,{PADDLE_ENABLED:'true',PADDLE_ENVIRONMENT:'sandbox',PADDLE_SANDBOX_ENTITLEMENTS:'true',PADDLE_API_KEY:'mock-api',PADDLE_WEBHOOK_SECRET:'mock-secret',PADDLE_CLIENT_TOKEN:'test_mock',PADDLE_MONTHLY_PRICE_ID:'pri_monthly',PADDLE_YEARLY_PRICE_ID:'pri_yearly'});
+  Object.assign(env,{PADDLE_ENABLED:'true',PADDLE_ENVIRONMENT:'sandbox',PADDLE_SANDBOX_ENTITLEMENTS:'true',PADDLE_API_KEY:'pdl_sdbx_apikey_mock',PADDLE_WEBHOOK_SECRET:'mock-secret',PADDLE_CLIENT_TOKEN:'test_mock',PADDLE_MONTHLY_PRICE_ID:'pri_monthly',PADDLE_YEARLY_PRICE_ID:'pri_yearly'});
 }
 async function signedEvent(env:Env,event:unknown,overrides:Record<string,string>={}) {
   const raw=JSON.stringify(event),timestamp=String(Math.floor(Date.now()/1000));
@@ -229,9 +230,63 @@ async function billingIntent(db:MockD1Database,id:string) {
 function subscriptionEvent(id:string,intent:string,overrides:any={}) {
   return {event_id:'evt_'+crypto.randomUUID(),event_type:'subscription.updated',occurred_at:new Date().toISOString(),data:{id:'sub_test',customer_id:'ctm_test',status:'active',custom_data:{tenant_id:id,checkout_intent:intent},items:[{price:{id:'pri_monthly'}}],current_billing_period:{ends_at:new Date(Date.now()+30*86400000).toISOString()},...overrides}};
 }
+function mockPaddleProof(id:string,intent:string) {
+  const original=globalThis.fetch;
+  const state={subscription:subscriptionEvent(id,intent).data,payments:[{
+    id:'txn_test',status:'completed',customer_id:'ctm_test',subscription_id:'sub_test',
+    custom_data:{tenant_id:id,checkout_intent:intent},items:[{price:{id:'pri_monthly'},quantity:1}],
+    billing_period:{starts_at:new Date().toISOString(),ends_at:new Date(Date.now()+30*86400000).toISOString()}
+  }] as any[],fail:false};
+  globalThis.fetch=async(input)=>{
+    if(state.fail)throw Error('Paddle unavailable');
+    if(String(input).includes('/transactions?'))return new Response(JSON.stringify({data:state.payments}));
+    if(String(input).endsWith('/subscriptions/sub_test'))return new Response(JSON.stringify({data:state.subscription}));
+    throw Error('Unexpected Paddle request');
+  };
+  return {state,restore:()=>{globalThis.fetch=original;}};
+}
+function completedPayment(id:string,intent:string) {
+  return {...subscriptionEvent(id,intent),event_type:'transaction.completed',data:{id:'txn_test',status:'completed',subscription_id:'sub_test',custom_data:{tenant_id:id,checkout_intent:intent}}};
+}
 test('Cobrança permanece desabilitada sem configuração e checkout exige aceite',async()=>{
   const {env}=setup();const user=await account(env);assert.equal((await api(env,'/api/billing/checkout',user.cookie,{cycle:'monthly',renewalAccepted:true})).status,503);configureBilling(env);
   assert.equal((await api(env,'/api/billing/checkout',user.cookie,{cycle:'monthly'})).status,400);
+});
+
+test('Credenciais de sandbox e produção não podem ser misturadas para abrir contratação',async()=>{
+  const {env}=setup();const user=await account(env);configureBilling(env);
+  for(const patch of [{PADDLE_CLIENT_TOKEN:'live_wrong'},{PADDLE_API_KEY:'pdl_live_apikey_wrong'},{PADDLE_ENVIRONMENT:'live'}]){
+    configureBilling(env);Object.assign(env,patch);
+    const response=await api(env,'/api/billing',user.cookie);assert.equal((await response.json() as any).enabled,false);
+    assert.equal((await api(env,'/api/billing/checkout',user.cookie,{cycle:'monthly',renewalAccepted:true})).status,503);
+  }
+});
+
+test('Worker sandbox exige ambiente de testes e recusa atendimento, Meta e administração de contas',async()=>{
+  const {env}=setup();
+  assert.equal((await sandboxWorker.fetch(new Request('https://sandbox.test/health'),env)).status,503);
+  configureBilling(env);
+  const health=await sandboxWorker.fetch(new Request('https://sandbox.test/health'),env);
+  assert.equal(health.status,200);assert.equal(health.headers.get('x-robots-tag'),'noindex, nofollow');
+  for(const path of ['/webhook','/api/send','/api/toggle-ai','/api/appointments','/api/clinic/whatsapp/manual','/api/admin/overview','/api/simulator/chat']){
+    assert.equal((await sandboxWorker.fetch(new Request('https://sandbox.test'+path,{method:'POST'}),env)).status,403,path);
+  }
+  const html=await sandboxWorker.fetch(new Request('https://sandbox.test/checkout'),env);
+  assert.ok((await html.text()).includes('Ambiente de testes Paddle'));
+  env.PADDLE_ENVIRONMENT='live';assert.equal((await sandboxWorker.fetch(new Request('https://sandbox.test/health'),env)).status,503);
+  assert.ok(!('queue' in sandboxWorker));assert.ok(!('scheduled' in sandboxWorker));
+});
+
+test('Página de pagamento é pública, não expõe segredos e não concede acesso por retorno do checkout',async()=>{
+  const {env}=setup();
+  let response=await worker.fetch(new Request('https://aura.test/checkout'),env);
+  assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.ok((await response.text()).includes('type="application/json">null</script>'));
+  configureBilling(env);
+  response=await worker.fetch(new Request('https://aura.test/checkout?_ptxn=txn_01234567890123456789012345'),env);
+  const html=await response.text();assert.ok(html.includes('test_mock'));
+  assert.ok(!html.includes(env.PADDLE_API_KEY!));assert.ok(!html.includes(env.PADDLE_WEBHOOK_SECRET!));
+  assert.equal(response.headers.get('referrer-policy'),'no-referrer');
 });
 test('Checkout usa preço e vínculo criados no servidor; não libera assinatura pelo navegador',async()=>{
   const {env}=setup();configureBilling(env);const user=await account(env);const original=fetch;let sent:any;
@@ -253,15 +308,80 @@ test('Webhook rejeita assinatura falsa, alteração do corpo e timestamp antigo'
 });
 test('Webhook reconhecido ativa vigência sem ligar atendimento despreparado; duplicados e eventos antigos são ignorados',async()=>{
   const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id),event=subscriptionEvent(user.id,intent);
+  const proof=mockPaddleProof(user.id,intent);
+  try {
   assert.equal((await signedEvent(env,event)).status,200);assert.equal((await signedEvent(env,event)).status,200);
   let tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'active');assert.equal(tenant.operational_enabled,0);assert.equal(commercialAccess(tenant).can_operate,false);
   const stale={...subscriptionEvent(user.id,intent,{status:'canceled'}),occurred_at:new Date(Date.now()-3600000).toISOString()};assert.equal((await signedEvent(env,stale)).status,200);
   tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'active');assert.equal((await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n,2);
+  } finally { proof.restore(); }
 });
 test('Cancelamento de renovação mantém período pago; cancelamento efetivo encerra a operação',async()=>{
   const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);const event=subscriptionEvent(user.id,intent,{scheduled_change:{action:'cancel',effective_at:new Date(Date.now()+86400000).toISOString()}});
+  const proof=mockPaddleProof(user.id,intent);
+  try {
   await signedEvent(env,event);assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'active');assert.ok((await getTenantById(env.DB,user.id))!.renewal_canceled_at);
   const canceled={...subscriptionEvent(user.id,intent,{status:'canceled',current_billing_period:null}),occurred_at:new Date(Date.now()+1000).toISOString()};await signedEvent(env,canceled);assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'ended');
+  } finally { proof.restore(); }
+});
+
+test('Assinatura ativa com Pix ainda não capturado não libera período pago; completed confirma pela API',async()=>{
+  const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);
+  const proof=mockPaddleProof(user.id,intent);const receipt=proof.state.payments[0];proof.state.payments=[];
+  try {
+    const initial=subscriptionEvent(user.id,intent);assert.equal((await signedEvent(env,initial)).status,200);
+    let tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'free');assert.equal(tenant.subscription_ends_at,null);
+    assert.equal(tenant.paddle_subscription_id,'sub_test');
+    const completed={...completedPayment(user.id,intent),occurred_at:initial.occurred_at};
+    assert.equal((await signedEvent(env,completed)).status,502,'An API propagation delay must request webhook redelivery');
+    proof.state.payments=[receipt];
+    assert.equal((await signedEvent(env,completed)).status,200);assert.equal((await signedEvent(env,completed)).status,200);
+    tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'active');assert.equal(tenant.subscription_ends_at,receipt.billing_period.ends_at);
+    assert.equal(tenant.operational_enabled,0);assert.equal((await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n,2);
+  } finally { proof.restore(); }
+});
+
+test('Confirmação de pagamento pode chegar antes da assinatura sem depender da ordem dos webhooks',async()=>{
+  const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);const proof=mockPaddleProof(user.id,intent);
+  try {
+    const completed=completedPayment(user.id,intent);assert.equal((await signedEvent(env,completed)).status,200);
+    assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'active');
+    const stale={...subscriptionEvent(user.id,intent,{status:'paused'}),occurred_at:new Date(Date.now()-60000).toISOString()};assert.equal((await signedEvent(env,stale)).status,200);
+    assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'active');
+  } finally { proof.restore(); }
+});
+
+test('Renovação pendente não estende a vigência sem captura, e falha da API mantém o evento para reenvio',async()=>{
+  const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);const proof=mockPaddleProof(user.id,intent);
+  try {
+    const expired=new Date(Date.now()-1000).toISOString();proof.state.payments[0].billing_period={starts_at:new Date(Date.now()-30*86400000).toISOString(),ends_at:expired};
+    assert.equal((await signedEvent(env,subscriptionEvent(user.id,intent))).status,200);
+    let tenant=(await getTenantById(env.DB,user.id))!;assert.notEqual(tenant.commercial_status,'active');assert.equal(tenant.subscription_ends_at,expired);assert.equal(commercialAccess(tenant).can_operate,false);
+    const count=(await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n;
+    proof.state.fail=true;assert.equal((await signedEvent(env,subscriptionEvent(user.id,intent))).status,502);
+    assert.equal((await db.prepare('SELECT count(*) AS n FROM billing_events').first<any>()).n,count);
+  } finally { proof.restore(); }
+});
+
+test('Confirmação atrasada não reativa uma assinatura que já foi cancelada',async()=>{
+  const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);const proof=mockPaddleProof(user.id,intent);
+  try {
+    const canceled={...subscriptionEvent(user.id,intent,{status:'canceled',current_billing_period:null}),occurred_at:new Date(Date.now()+1000).toISOString()};
+    assert.equal((await signedEvent(env,canceled)).status,200);
+    assert.equal((await signedEvent(env,completedPayment(user.id,intent))).status,200);
+    assert.equal((await getTenantById(env.DB,user.id))!.commercial_status,'ended');
+  } finally { proof.restore(); }
+});
+
+test('Comprovante de outro cliente, contratação, preço ou quantidade não concede acesso pago',async()=>{
+  const {db,env}=setup();configureBilling(env);const user=await account(env);const intent=await billingIntent(db,user.id);const proof=mockPaddleProof(user.id,intent);
+  const receipt=proof.state.payments[0];
+  try {
+    for(const patch of [{customer_id:'ctm_other'},{custom_data:{tenant_id:user.id,checkout_intent:'other'}},{items:[{price:{id:'pri_other'},quantity:1}]},{items:[{price:{id:'pri_monthly'},quantity:2}]}]){
+      proof.state.payments=[{...receipt,...patch}];assert.equal((await signedEvent(env,subscriptionEvent(user.id,intent))).status,200);
+      const tenant=(await getTenantById(env.DB,user.id))!;assert.equal(tenant.commercial_status,'free');assert.equal(tenant.subscription_ends_at,null);
+    }
+  } finally { proof.restore(); }
 });
 test('Webhook não aceita trocar negócio nem preço pelo custom_data',async()=>{
   const {db,env}=setup();configureBilling(env);const a=await account(env),b=await account(env);const intent=await billingIntent(db,a.id);

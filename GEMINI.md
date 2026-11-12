@@ -11,7 +11,7 @@ Trabalhar em conjuntos pequenos e completos. Ao concluir um conjunto autorizado 
 
 Pedidos explícitos de somente análise, implementação local ou de não publicar prevalecem sobre a rotina acima. As decisões comerciais aprovadas, a transição das contas e as configurações opcionais estão em `REESTRUTURACAO.md`.
 
-Paddle permanece desabilitado até configurar e validar a conta externa; o acesso usa apenas e-mail e senha (login Google removido). Não prometer métricas Meta, coexistência ou compatibilidade com agendas externas sem prova específica. Contas `legacy` devem preservar sua operação até classificação individual.
+Paddle de produção permanece desabilitado até configurar e validar a conta externa. A integração sandbox usa exclusivamente `wrangler.paddle-sandbox.jsonc` e seu banco isolado; os testes Pix, webhook, portal e cancelamentos estão registrados em `REESTRUTURACAO.md`. Nunca publicar secrets ou IDs sandbox na configuração de produção. O acesso usa apenas e-mail e senha (login Google removido). Não prometer métricas Meta, coexistência ou compatibilidade com agendas externas sem prova específica. Contas `legacy` devem preservar sua operação até classificação individual.
 
 ---
 

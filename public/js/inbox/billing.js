@@ -6,7 +6,8 @@ async function loadBilling() {
     const canManage = currentUser && currentUser.canManageClinic;
     document.getElementById('billingAvailability').textContent = !data.enabled ? 'A contratação automática ainda não está disponível. Seu cadastro não gera cobrança.' : data.environment === 'sandbox' ? 'Ambiente de testes da Paddle. As compras aqui não geram cobrança real.' : 'Escolha um plano. A assinatura é liberada após confirmação do pagamento.';
     const details = document.getElementById('billingDetails');
-    details.textContent = data.has_subscription ? 'Situação: ' + data.status + (data.ends_at ? ' · Vigência até ' + new Date(data.ends_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : '') + (data.renewal_canceled_at ? ' · Renovação cancelada para o próximo período.' : '') : '';
+    const labels={active:'Assinatura ativa',past_due:'Pagamento pendente',paused:'Assinatura pausada',canceled:'Assinatura cancelada',trialing:'Em período de teste'};
+    details.textContent = data.has_subscription ? (data.status==='active' && !data.ends_at ? 'Aguardando confirmação do pagamento' : labels[data.status] || 'Conferindo assinatura') + (data.ends_at ? ' · Período pago até ' + new Date(data.ends_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : '') + (data.renewal_canceled_at ? ' · Renovação cancelada para o próximo período.' : '') : '';
     for (const id of ['checkoutMonthly','checkoutYearly']) document.getElementById(id).disabled = !data.enabled || !canManage || (data.has_subscription && data.status !== 'canceled');
     document.getElementById('billingPortal').disabled = !data.enabled || !canManage || !data.has_subscription;
   } catch { /* Keep the disabled state when billing cannot be verified. */ }
