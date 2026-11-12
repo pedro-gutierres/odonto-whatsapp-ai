@@ -95,6 +95,7 @@
 
         renderClinicProfileCard();
         renderWhatsappSettingsCard();
+        applyCommercialLocks();
         updateWhatsappHeaderDot(data.whatsapp);
       } catch (err) {
         console.error('Erro ao carregar perfil da clínica:', err);
@@ -713,6 +714,7 @@
         if (data.whatsapp) {
           clinicWhatsappState = data.whatsapp;
           renderWhatsappSettingsCard();
+        applyCommercialLocks();
           updateWhatsappHeaderDot(data.whatsapp);
         }
 
@@ -844,6 +846,7 @@
         if (data.whatsapp) {
           clinicWhatsappState = data.whatsapp;
           renderWhatsappSettingsCard();
+        applyCommercialLocks();
           updateWhatsappHeaderDot(data.whatsapp);
         }
         document.getElementById('manualAccessToken').value = '';
@@ -872,6 +875,7 @@
         if (data.whatsapp) {
           clinicWhatsappState = data.whatsapp;
           renderWhatsappSettingsCard();
+        applyCommercialLocks();
           updateWhatsappHeaderDot(data.whatsapp);
         }
         const diagEl = document.getElementById('waDiagnosticsResults');
@@ -907,6 +911,7 @@
         if (data.whatsapp) {
           clinicWhatsappState = data.whatsapp;
           renderWhatsappSettingsCard();
+        applyCommercialLocks();
           updateWhatsappHeaderDot(data.whatsapp);
         }
 

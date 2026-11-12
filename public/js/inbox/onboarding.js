@@ -5,7 +5,12 @@ async function loadOnboarding() {
   try {
     const response = await fetch('/api/onboarding'); const data = await response.json();
     if (!response.ok) throw new Error(data.error);
-    currentAccess = data.access; renderOnboarding(data.trial_enabled); await loadBilling(); return true;
+    const hadHistory = currentAccess && currentAccess.can_read_history;
+    currentAccess = data.access; renderOnboarding(data.trial_enabled); await loadBilling();
+    if (!hadHistory && currentAccess.can_read_history && typeof startPolling === 'function') {
+      startPolling(); await loadConversations(false);
+    }
+    return true;
   } catch (error) { showToast(error.message || 'Não foi possível verificar seu acesso.', 'amber'); return false; }
 }
 function renderOnboarding(trialEnabled) {
@@ -44,7 +49,7 @@ function applyCommercialLocks() {
   const real = currentAccess.can_operate;
   for (const id of ['messageInput','sendBtn','toggleAiBtn']) {
     const element = document.getElementById(id);
-    if (element && !real) element.disabled = true;
+    if (element) element.disabled = !real || !activePhone;
   }
   const notice = document.getElementById('agendaAccessNotice');
   if (notice) notice.textContent = currentAccess.status === 'free' ? 'Demonstração da agenda. Inicie a preparação para cadastrar profissionais e bloqueios; consultas reais exigem ativação.' : !real ? 'Você pode consultar esta agenda. Novas consultas exigem atendimento ativo.' : '';
@@ -53,6 +58,11 @@ function applyCommercialLocks() {
   for (const button of document.querySelectorAll('#viewAgenda button[onclick]')) {
     if (/handleConclude|handleDeleteAppointment/.test(button.getAttribute('onclick'))) button.disabled = !real;
   }
+  for (const element of document.querySelectorAll('#appointmentDetailsModal select,#appointmentDetailsModal textarea,#btnSaveAppointmentDetails,#appointmentDetailsModal button[onclick*="handleDelete"]')) element.disabled = !real;
+  for (const element of document.querySelectorAll('#professionalsModal input,#professionalsModal select,#btnSaveProfessional')) element.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
+  for (const element of document.querySelectorAll('#settingsPanelWhatsapp form input,#settingsPanelWhatsapp form button[type="submit"],#settingsPanelWhatsapp button[onclick*="launchMetaEmbeddedSignup"]')) element.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
+  const scenario = document.getElementById('waNumberScenario');
+  if (scenario) scenario.disabled = !currentAccess.can_prepare || !currentUser.canManageClinic;
 }
 async function onboardingAction(action, body) {
   if (onboardingBusy) return; onboardingBusy = true;

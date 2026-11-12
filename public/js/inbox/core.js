@@ -202,6 +202,7 @@
       updateCrucialTrainingLockUI();
       if (currentAccess && currentAccess.can_read_history) startPolling();
       if (currentAccess && !currentAccess.legacy_review_required) selectNavigationTab('onboarding','Preparação e plano','fa-solid fa-list-check','emerald');
+      setInterval(() => { if (!document.hidden) loadOnboarding(); }, 30000);
     }
 
     // 7. LOGOUT

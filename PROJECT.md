@@ -111,4 +111,4 @@ Este registro da Etapa 3 acima é histórico. O comportamento atual e as decisõ
 - Google e Paddle: CÓDIGO PREPARADO; aguardando contas/configurações e validação externa. Proprietário pediu para preencher os tokens posteriormente.
 - Métricas Meta, números existentes/coexistência e compatibilidade de outros sistemas: PENDENTES DE COMPROVAÇÃO.
 - Verificação local: tipagem e 49 testes aprovados; verificação visual bloqueada pela ferramenta de navegador.
-- Migração remota: CONCLUÍDA, com backup e inventário preservado (15 contas, 16 usuários, 3 consultas, 56 mensagens). Publicação: EM PREPARAÇÃO.
+- Migração remota: CONCLUÍDA, com backup e inventário preservado (15 contas, 16 usuários, 3 consultas, 56 mensagens). Publicação: CONCLUÍDA; versão ativa conferida pela API Cloudflare. Verificação HTTP pública bloqueada pelo erro Cloudflare 1010.

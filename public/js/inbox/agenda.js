@@ -803,6 +803,7 @@
       }
 
       document.getElementById('appointmentDetailsModal').classList.remove('hidden');
+      applyCommercialLocks();
     }
 
     function closeAppointmentDetailsModal() {

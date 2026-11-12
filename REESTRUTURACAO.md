@@ -130,3 +130,13 @@ Reservas interrompidas em uma falha abrupta podem permanecer pendentes para revi
 - Validar consequências de números existentes e acesso às métricas financeiras Meta.
 - Validar arquivos de cada sistema externo e uma política sustentável de manutenção das agendas.
 - Definir retenção/exportação e eventual política de uso do plano pago antes de ampliar a oferta.
+
+
+## Registro de publicação — 11/11/2026
+
+- Backup anterior à migração: `.wrangler/backups/aura-before-restructure-20261111.sql` (não versionado).
+- Migrations `0010`–`0014` aplicadas no D1 remoto. Inventário comparado com o backup: 15 contas, 16 usuários, 3 consultas, 56 mensagens e contador anterior total de 14 usos, preservados.
+- Worker e assets publicados. Metadados da versão ativa conferidos na API Cloudflare.
+- `npm run typecheck` e 49 testes aprovados. Bundle Cloudflare gerado com sucesso.
+- As requisições HTTP automatizadas ao domínio público foram bloqueadas pela Cloudflare (403 / erro 1010), antes do código do aplicativo. Não foi alterada a proteção nem contornado o bloqueio.
+- A ferramenta de navegador também negou acesso à origem local. Validação visual e validação com contas externas permanecem pendentes; não são equivalentes aos testes simulados aprovados.
