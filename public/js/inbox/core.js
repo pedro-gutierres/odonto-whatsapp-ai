@@ -151,6 +151,8 @@
           const sidebarName = document.getElementById('sidebarAccountName');
           if (sidebarName) sidebarName.textContent = (data.user.name || 'Recepção').trim().split(/\s+/).slice(0, 2).join(' ').toLocaleUpperCase('pt-BR');
           if (emailEl) emailEl.innerText = data.user.email || '';
+          const accountEmail = document.getElementById('accountEmail');
+          if (accountEmail) accountEmail.value = data.user.email || '';
 
         }
         if (data && data.trial && typeof updateTrialWidget === 'function') {

@@ -315,6 +315,29 @@
       }
     }
 
+    function togglePasswordFields() {
+      const fields = document.getElementById('passwordFields');
+      fields.hidden = !fields.hidden;
+      document.getElementById('togglePasswordFields').setAttribute('aria-expanded', String(!fields.hidden));
+      if (!fields.hidden) document.getElementById('spCurrentPassword').focus();
+    }
+    async function editAccountEmail() {
+      const input = document.getElementById('accountEmail'), button = document.getElementById('accountEmailEdit');
+      if (input.readOnly) { input.readOnly = false; button.textContent = 'Salvar'; input.focus(); return; }
+      if (!input.reportValidity()) return;
+      button.disabled = true;
+      try {
+        const res = await fetch('/api/clinic/email', {method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({email:input.value})});
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Erro ao atualizar e-mail.', 'rose'); return; }
+        input.value = data.email; input.readOnly = true; button.textContent = 'Editar';
+        if (currentUser) currentUser.email = data.email;
+        const label = document.getElementById('topUserEmail'); if (label) label.textContent = data.email;
+        showToast('E-mail atualizado.', 'emerald');
+      } catch { showToast('Erro de conexão ao atualizar e-mail.', 'rose'); }
+      finally { button.disabled = false; }
+    }
+
     async function handleChangeOwnPassword(e) {
       e.preventDefault();
       const currentPassword = document.getElementById('spCurrentPassword')?.value || '';
@@ -348,6 +371,8 @@
         document.getElementById('spCurrentPassword').value = '';
         document.getElementById('spNewPassword').value = '';
         document.getElementById('spConfirmPassword').value = '';
+        document.getElementById('passwordFields').hidden = true;
+        document.getElementById('togglePasswordFields').setAttribute('aria-expanded', 'false');
         showToast('Senha atualizada.', 'emerald');
       } catch {
         showToast('Erro de conexão ao alterar senha', 'rose');
@@ -375,6 +400,15 @@
       }
     }
 
+    function formatClinicUserCreatedAt(value) {
+      if (!value) return '-';
+      const date = new Date(String(value).includes('T') ? value : String(value).replace(' ', 'T') + 'Z');
+      if (Number.isNaN(date.getTime())) return '-';
+      const parts = new Intl.DateTimeFormat('pt-BR', {timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);
+      const part = type => parts.find(item => item.type === type)?.value || '';
+      return part('hour') + ':' + part('minute') + ' ' + part('day') + '/' + part('month') + '/' + part('year');
+    }
+
     function renderClinicUsersTable() {
       const tbody = document.getElementById('clinicUsersTableBody');
       const countBadge = document.getElementById('settingsUsersCountBadge');
@@ -396,7 +430,7 @@
 
         let roleBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[10px]">Atendente</span>';
         if (u.role === 'admin') {
-          roleBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">Responsável pela operação</span>';
+          roleBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">Administrador</span>';
         }
 
         const statusBadge = isActive
@@ -422,8 +456,8 @@
           '<td class="py-3.5 px-4 font-bold text-slate-900 dark:text-white">' + escapeHtml(u.name) + (isSelf ? ' <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold">Você</span>' : '') + '</td>' +
           '<td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">' + escapeHtml(u.email) + '</td>' +
           '<td class="py-3.5 px-4">' + roleBadge + '</td>' +
-          '<td class="py-3.5 px-4">' + statusBadge + '</td>' +
-          '<td class="py-3.5 px-4 text-slate-400">' + escapeHtml(u.created_at || '-') + '</td>' +
+          '<td class="py-3.5 px-4" aria-label="Senha protegida">••••••••</td>' +
+          '<td class="py-3.5 px-4 text-slate-400">' + escapeHtml(formatClinicUserCreatedAt(u.created_at)) + '</td>' +
           '<td class="py-3.5 px-4 text-right whitespace-nowrap">' + actionsHtml + '</td>' +
         '</tr>';
       }).join('');

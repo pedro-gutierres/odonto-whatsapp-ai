@@ -168,6 +168,22 @@ test("Clinic profile & own password update (PBKDF2) + bot_config sync", async ()
   await loginAndGetCookie(env, "recepcao@alpha.com", "newpassword123");
 });
 
+test("Account email update validates identity and preserves tenant isolation", async () => {
+  const db = new MockD1Database(); db.applyMigrations(path.resolve("migrations"));
+  await seedClinicAndUsers(db); const env = createTestEnv(db);
+  const admin = await loginAndGetCookie(env, "admin@alpha.com", "secret123");
+  const staff = await loginAndGetCookie(env, "recepcao@alpha.com", "staff123");
+  const update = (cookie: string, email: string) => worker.fetch(new Request("https://aura.test/api/clinic/email", {
+    method: "PATCH", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ email })
+  }), env);
+  assert.equal((await update(staff, "staff-new@example.com")).status, 403);
+  assert.equal((await update(admin, "bad-email")).status, 400);
+  assert.equal((await update(admin, "admin@beta.com")).status, 409);
+  assert.equal((await update(admin, " New@Example.com ")).status, 200);
+  await loginAndGetCookie(env, "new@example.com", "secret123");
+  assert.equal((await db.prepare("SELECT email FROM users WHERE tenant_id='clinica-b' AND role='admin'").first<any>())?.email, "admin@beta.com");
+});
+
 test("Clinic team management: strict tenant isolation, pausing blocks auth, last-admin guardrail", async () => {
   const db = new MockD1Database();
   db.applyMigrations(path.resolve("migrations"));

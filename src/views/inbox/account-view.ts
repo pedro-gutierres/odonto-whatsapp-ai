@@ -1,15 +1,20 @@
 export const INBOX_ACCOUNT_VIEW_HTML = `
 <main id="viewAccount" class="hidden flex-1 overflow-y-auto p-4 lg:p-8"><div class="max-w-5xl mx-auto space-y-6">
+<section class="aura-card text-xs">
+  <label for="accountEmail" class="block font-semibold mb-1">E-mail de acesso</label>
+  <div class="flex items-center gap-3"><input id="accountEmail" type="email" readonly class="w-full px-3 py-2"><button type="button" id="accountEmailEdit" class="aura-secondary" onclick="editAccountEmail()">Editar</button></div>
+</section>
 <form id="ownPasswordForm" onsubmit="handleChangeOwnPassword(event)"
           class="lg:col-span-5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 text-xs self-start">
           <div class="pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <i class="fa-solid fa-shield-halved text-purple-500"></i>
-              <span>Alterar senha</span>
+              <span>Senha</span>
             </h3>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400">Escolha uma senha exclusiva para sua conta.</p>
+            <div class="flex items-center gap-3 mt-3"><input type="password" value="password" disabled aria-label="Senha protegida" class="w-full px-3 py-2"><button type="button" class="aura-secondary whitespace-nowrap" onclick="togglePasswordFields()" aria-expanded="false" aria-controls="passwordFields" id="togglePasswordFields">Alterar senha</button></div>
           </div>
 
+          <div id="passwordFields" hidden>
           <div>
             <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Senha Atual *</label>
             <input type="password" id="spCurrentPassword" required autocomplete="current-password" placeholder="••••••••"
@@ -33,15 +38,16 @@ export const INBOX_ACCOUNT_VIEW_HTML = `
               <span>Atualizar Minha Senha</span>
             </button>
           </div>
+          </div>
         </form>
 <section id="settingsPanelUsers" class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <i class="fa-solid fa-users text-sky-500"></i>
-              <span>Pessoas adicionais da equipe</span>
+              <span>Equipe</span>
             </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Cadastre recepcionistas, atendentes ou administradores com acesso exclusivo a esta clínica.</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Gerencie as pessoas com acesso à clínica.</p>
           </div>
 
           <button type="button" id="btnOpenNewClinicUser" onclick="openClinicUserModal()"
@@ -58,7 +64,7 @@ export const INBOX_ACCOUNT_VIEW_HTML = `
                 <th class="py-3 px-4 font-bold">Nome</th>
                 <th class="py-3 px-4 font-bold">E-mail de Acesso</th>
                 <th class="py-3 px-4 font-bold">Cargo</th>
-                <th class="py-3 px-4 font-bold">Status</th>
+                <th class="py-3 px-4 font-bold">Senha</th>
                 <th class="py-3 px-4 font-bold">Criado em</th>
                 <th class="py-3 px-4 font-bold text-right">Ações</th>
               </tr>

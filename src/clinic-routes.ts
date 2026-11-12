@@ -228,6 +228,23 @@ export async function handleClinicRoutes(
     return jsonResponse({ error: "Método não permitido" }, 405);
   }
 
+  if (url.pathname === "/api/clinic/email" && request.method === "PATCH") {
+    const check = await requireActiveClinicUser(request, env, true, isSecure);
+    if ("response" in check) return check.response;
+    try {
+      const body = await request.json() as { email?: unknown };
+      const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        return jsonResponse({ error: "Informe um e-mail válido." }, 400);
+      await env.DB.prepare("UPDATE users SET email = ?1 WHERE id = ?2 AND tenant_id = ?3")
+        .bind(email, check.auth.dbUser.id, check.auth.dbUser.tenant_id).run();
+      return jsonResponse({ success: true, email });
+    } catch (err) {
+      if (String(err).includes("UNIQUE")) return jsonResponse({ error: "Este e-mail já está cadastrado." }, 409);
+      return jsonResponse({ error: "Não foi possível atualizar o e-mail." }, 500);
+    }
+  }
+
   // 2) ALTERAR PRÓPRIA SENHA (PBKDF2)
   if (url.pathname === "/api/clinic/password" && request.method === "POST") {
     const check = await requireActiveClinicUser(request, env, false, isSecure);
