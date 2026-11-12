@@ -156,6 +156,7 @@
       if (currentAccess && currentAccess.can_read_history) startPolling();
       const requestedTab=location.hash.slice(1);
       selectNavigationTab(Object.hasOwn(auraPages, requestedTab) ? requestedTab : 'chat');
+      revealAccountEntry();
       setInterval(() => { if (!document.hidden) loadOnboarding(); }, 30000);
     }
 
@@ -417,3 +418,13 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
     }
+
+function revealAccountEntry() {
+  const root=document.documentElement;
+  const finish=()=>{root.classList.remove('aura-entry-pending','aura-entry-revealing');try{sessionStorage.removeItem('aura_entry_reveal');}catch{}};
+  if(!root.classList.contains('aura-entry-pending')){finish();return;}
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    root.classList.remove('aura-entry-pending');root.classList.add('aura-entry-revealing');
+    setTimeout(finish,850);
+  }));
+}

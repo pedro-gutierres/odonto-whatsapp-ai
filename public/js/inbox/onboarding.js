@@ -17,7 +17,7 @@ async function loadOnboarding() {
 }
 function renderOnboarding(trialEnabled) {
   const access = currentAccess;
-  const profile = (access.profile.kind === 'solo' ? 'Profissional autônomo' : access.profile.kind === 'clinic' ? 'Clínica' : 'Negócio') + (access.profile.sector === 'aesthetics' ? ' · Estética' : access.profile.sector === 'dentistry' ? ' · Odontologia' : '');
+  const profile = (access.profile.kind === 'solo' ? 'Profissional autônomo' : access.profile.kind === 'clinic' ? 'Clínica' : 'Negócio') + (access.profile.sector === 'both' ? ' · Odontologia e Estética' : access.profile.sector === 'aesthetics' ? ' · Estética' : access.profile.sector === 'dentistry' ? ' · Odontologia' : '');
   document.getElementById('businessProfileLabel').textContent = profile;
   document.getElementById('businessSubtitle').textContent = profile;
   document.getElementById('onboardingStatus').textContent = commercialLabels[access.status] || '';

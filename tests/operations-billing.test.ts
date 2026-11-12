@@ -71,7 +71,7 @@ test('As quatro combinações de perfil são persistidas',async()=>{
 });
 test('Cadastro incompleto, JSON inválido e duplicidade não deixam negócios pela metade',async()=>{
   const {db,env}=setup();assert.equal((await api(env,'/api/auth/register','',{email:'incompleto@test.com'})).status,400);
-  await account(env,{email:'unico@test.com'});assert.equal((await api(env,'/api/auth/register','',{clinicName:'N',adminName:'R',email:'UNICO@test.com',password:'segredo123',phone:'11999999999',businessKind:'clinic',businessSector:'dentistry',usesExternalSchedule:false})).status,409);
+  await account(env,{email:'unico@test.com'});assert.equal((await api(env,'/api/auth/register','',{clinicName:'N',adminName:'Responsável',email:'UNICO@test.com',password:'segredo123',phone:'11999999999',businessKind:'clinic',businessSector:'dentistry',usesExternalSchedule:false})).status,409);
   assert.equal((await db.prepare('SELECT count(*) AS n FROM tenants').first<any>()).n,1);
 });
 test('Conta em preparação recusa operações reais mesmo por chamada direta',async()=>{
@@ -496,4 +496,23 @@ test('Owner login is isolated to read-only reports; clean official seed has no p
  assert.equal((await api(env,'/api/admin/overview',customerCookie)).status,403);
  for(const table of ['messages','conversation_states','appointments','appointment_blocks','usage_reservations'])assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM '+table).first<any>()).n,0);
  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM professionals WHERE active=1').first<any>()).n,2);
+});
+
+
+test('Lean quiz registration supports both areas and preserves legacy sector constraints',async()=>{
+ const {db,env}=setup();
+ for(const sectors of ['both',['dentistry','aesthetics'],['dentistry'],['aesthetics']]){
+ const response=await api(env,'/api/auth/register','',{adminName:'Mariana Costa',email:crypto.randomUUID()+'@quiz.test',businessKind:'clinic',businessSectors:sectors,password:'quiz-password',confirmPassword:'quiz-password'});
+ assert.equal(response.status,201);const data=await response.json() as any;const tenant=(await getTenantById(env.DB,data.tenantId))!;
+ const expected=Array.isArray(sectors)?sectors.length===2?'both':sectors[0]:sectors;
+ assert.equal(tenant.business_sectors,expected);assert.equal(tenant.business_sector,expected==='both'?'dentistry':expected);assert.equal(commercialAccess(tenant).profile.sector,expected);
+ assert.equal(tenant.name,'Clínica Mariana');assert.equal(tenant.admin_phone,null);assert.equal(tenant.schedule_mode,'aura');assert.ok(tenant.agenda_ready_at);assert.ok(tenant.training_reviewed_at);assert.equal(commercialAccess(tenant).can_operate,false);
+ const cfg=JSON.parse(tenant.bot_config);assert.equal(cfg.procedure_items.length,expected==='both'?6:3);assert.equal(isCrucialConfigComplete(cfg),true);
+ if(expected==='both'){assert.deepEqual([...new Set(cfg.procedure_items.map((p:any)=>p.category))],['odonto','estetica']);const professional=await db.prepare('SELECT specialty FROM professionals WHERE tenant_id=?1').bind(tenant.id).first<any>();assert.equal(professional.specialty,'Odontologia e Estética');}
+ }
+ const before=(await db.prepare('SELECT COUNT(*) AS n FROM tenants').first<any>()).n;
+ for(const patch of [{adminName:'A'},{confirmPassword:'errada'},{businessSectors:[]},{businessSectors:[['dentistry']]},{businessSectors:['dentistry','invalido']},{phone:'123'},{businessKind:'invalido'}]){
+ assert.equal((await api(env,'/api/auth/register','',{adminName:'Titular Quiz',email:crypto.randomUUID()+'@quiz.test',businessKind:'solo',businessSector:'dentistry',password:'quiz-password',...patch})).status,400);
+ }
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM tenants').first<any>()).n,before);
 });

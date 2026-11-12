@@ -50,6 +50,7 @@ export interface InboundJob {
 export interface Tenant {
   commercial_status?: 'legacy' | 'free' | 'preparing' | 'trial' | 'active' | 'ended';
   business_kind?: 'solo' | 'clinic' | null;
+  business_sectors?: 'dentistry' | 'aesthetics' | 'both' | null;
   business_sector?: 'dentistry' | 'aesthetics' | null;
   existing_system?: string | null;
   uses_external_schedule?: number | null;

@@ -185,3 +185,13 @@ Migration 0015 adiciona is_test/test_label, restritos à apresentação administ
 seeds/lab.sql é um reset destrutivo explícito, não uma migration nem seed automático. Exige backup antes de reaplicar. Cria três tenants e três acessos com PBKDF2; as duas operações de teste começam sem atividade de pacientes e com treinamento/profissional/agenda inicial. Credenciais de implantação são fornecidas pelo proprietário, não documentadas em texto aberto. Backups ficam em .wrangler/backups, ignorados pelo Git.
 
 O inbox não tem header desktop: operação, titular, plano, tema e saída ficam no rodapé lateral. Mobile preserva o acionador compacto de navegação. Integrações Meta/Paddle não foram validadas por esse reset.
+
+## Quiz e áreas combinadas — 12/11/2026
+
+/register e /cadastro exibem o mesmo quiz de cinco etapas: titular, e-mail, perfil, áreas e senha confirmada. Telefone e nome da operação são opcionais na API; o nome é derivado do titular quando omitido. O endpoint mantém compatibilidade com cadastros anteriores e não inicia operação real.
+
+Migration 0016 adiciona business_sectors e faz backfill, sem reconstruir tenants ou alterar suas triggers. Leituras priorizam a nova coluna. Cadastros de ambas as áreas gravam dentistry na coluna legada e both na nova, com seis procedimentos iniciais e especialidade combinada.
+
+Após resposta 201, o quiz desfoca e apresenta três mensagens durante quatro segundos. Um marcador de sessionStorage inicia a revelação horizontal do dashboard após init, em 850 ms, com limpeza do marcador e fallback de 12 segundos. Movimento reduzido desativa o deslocamento e a animação. Não há pré-carga de mensagens nem acesso automático ao WhatsApp.
+
+Validação: suíte automatizada de cadastro, escolhas, confirmação de senha, temporização e revelação; prévias do quiz conferidas em navegador desktop e 390 px. A fluidez de 60 fps não foi medida em dispositivos reais.

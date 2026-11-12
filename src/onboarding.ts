@@ -9,41 +9,45 @@ export async function registerAccount(request: Request, env: Env) {
     const body = await request.json() as Record<string, unknown>;
     if (!body || typeof body !== 'object' || Array.isArray(body)) return jsonResponse({error:'Cadastro inválido.'},400);
     const field = (key: string) => typeof body[key] === 'string' ? String(body[key]).trim() : '';
-    const clinicName = field('clinicName'), adminName = field('adminName'), email = field('email').toLowerCase();
-    const phone = field('phone'), kind = field('businessKind'), sector = field('businessSector');
-    const external = body.usesExternalSchedule, system = field('existingSystem');
+    const adminName = field('adminName'), email = field('email').toLowerCase();
+    const kind = field('businessKind'), phone = field('phone');
+    const rawSector = body.businessSectors ?? body.businessSector;
+    const selected = Array.isArray(rawSector) ? [...new Set(rawSector)] : [rawSector];
+    const sector = selected.length === 2 && selected.includes('dentistry') && selected.includes('aesthetics') ? 'both' : selected.length === 1 ? selected[0] : '';
+    const clinicName = field('clinicName') || (kind === 'solo' ? adminName : ('Clínica ' + adminName.split(' ')[0]).slice(0,120));
+    const external = body.usesExternalSchedule ?? false, system = field('existingSystem');
     const password = typeof body.password === 'string' ? body.password : '';
-    if (!clinicName || clinicName.length > 120 || !adminName || adminName.length > 120
+    if (adminName.length < 2 || adminName.length > 120 || clinicName.length > 120
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254
-      || password.length < 8 || password.length > 256 || !/^\d{10,15}$/.test(phone.replace(/\D/g, ''))
-      || !['solo','clinic'].includes(kind) || !['dentistry','aesthetics'].includes(sector)
+      || password.length < 8 || password.length > 256 || (body.confirmPassword !== undefined && body.confirmPassword !== password)
+      || (phone && !/^\d{10,15}$/.test(phone.replace(/\D/g,'')))
+      || !['solo','clinic'].includes(kind) || typeof sector !== 'string' || !['dentistry','aesthetics','both'].includes(sector)
       || typeof external !== 'boolean' || (external && !system) || system.length > 120) {
-      return jsonResponse({ error: 'Preencha o perfil, os dados de contato, a agenda utilizada e uma senha com pelo menos 8 caracteres.' }, 400);
+      return jsonResponse({error:'Revise seu nome, e-mail, perfil, área de atuação e confirmação da senha.'},400);
     }
     if (await getUserByEmail(env.DB, email)) return jsonResponse({ error: 'Este e-mail já está cadastrado. Acesse sua conta.' }, 409);
     const id = `negocio-${crypto.randomUUID()}`;
     const hash = await hashPassword(password);
     const now = new Date().toISOString();
-    const procedures = sector === 'dentistry'
-      ? ['Limpeza e Profilaxia', 'Clareamento Dental', 'Avaliação de Implante']
-      : ['Toxina Botulínica (Botox)', 'Preenchimento Labial', 'Bioestimulador de Colágeno'];
-    const config = JSON.stringify({ clinic_name: clinicName, doctor_name: adminName,
-      hours: 'Segunda a Sexta, das 08:00 às 18:00',
-      initial_consultation: { duration: '30 min', price: 'A confirmar na clínica', details: 'Avaliação inicial completa' },
-      procedures, procedure_items: procedures.map(name => ({ name, checked: true,
-        category: sector === 'dentistry' ? 'odonto' : 'estetica', duration: '45 min' })) });
+    const dentistry = ['Limpeza e Profilaxia','Clareamento Dental','Avaliação de Implante'];
+    const aesthetics = ['Toxina Botulínica (Botox)','Preenchimento Labial','Bioestimulador de Colágeno'];
+    const items = [...(sector !== 'aesthetics' ? dentistry.map(name=>({name,category:'odonto'})) : []),
+      ...(sector !== 'dentistry' ? aesthetics.map(name=>({name,category:'estetica'})) : [])];
+    const config = JSON.stringify({clinic_name:clinicName,doctor_name:adminName,hours:'Segunda a Sexta, das 08:00 às 18:00',
+      initial_consultation:{duration:'30 min',price:'A confirmar na clínica',details:'Avaliação inicial completa'},
+      procedures:items.map(p=>p.name),procedure_items:items.map(p=>({...p,checked:true,duration:'45 min'}))});
     await env.DB.batch([
       env.DB.prepare(`INSERT INTO tenants (id,name,phone_number_id,contact_email,admin_phone,responsible_name,
         bot_config,active,commercial_status,business_kind,business_sector,uses_external_schedule,existing_system,
-        trial_ends_at,trial_messages_used,trial_messages_limit,billing_cycle,training_reviewed_at,schedule_mode,agenda_ready_at)
-        VALUES (?1,?2,?3,?4,?5,?6,?7,1,'preparing',?8,?9,?10,?11,NULL,0,100,NULL,?12,?13,?14)`)
-        .bind(id, clinicName, `unconfigured:${id}`, email, phone, adminName, config, kind, sector, external ? 1 : 0, external ? system : null,
-          now, external ? 'external_manual' : 'aura', external ? null : now),
+        trial_ends_at,trial_messages_used,trial_messages_limit,billing_cycle,training_reviewed_at,schedule_mode,agenda_ready_at,business_sectors)
+        VALUES (?1,?2,?3,?4,?5,?6,?7,1,'preparing',?8,?9,?10,?11,NULL,0,100,NULL,?12,?13,?14,?15)`)
+        .bind(id, clinicName, `unconfigured:${id}`, email, phone || null, adminName, config, kind, sector === 'both' ? 'dentistry' : sector, external ? 1 : 0, external ? system : null,
+          now, external ? 'external_manual' : 'aura', external ? null : now, sector),
       env.DB.prepare("INSERT INTO users (tenant_id,email,password_hash,name,role,active) VALUES (?1,?2,?3,?4,'admin',1)")
         .bind(id, email, hash, adminName),
       env.DB.prepare(`INSERT INTO professionals (tenant_id,name,specialty,working_days,start_hour,end_hour,break_start,break_end,procedures_json,color,active)
         VALUES (?1,?2,?3,'[1,2,3,4,5]','08:00','18:00','12:00','13:00','[]','#10b981',1)`)
-        .bind(id, adminName, sector === 'dentistry' ? 'Odontologia Geral' : 'Estética Avançada'),
+        .bind(id, adminName, sector === 'both' ? 'Odontologia e Estética' : sector === 'dentistry' ? 'Odontologia Geral' : 'Estética Avançada'),
       // Restore readiness after the professional_added trigger, only for Aura schedules.
       ...(!external ? [env.DB.prepare('UPDATE tenants SET agenda_ready_at=?2 WHERE id=?1').bind(id, now)] : []),
     ]);

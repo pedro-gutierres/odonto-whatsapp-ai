@@ -8,7 +8,7 @@ import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "9";
+const ASSET_VERSION = "10";
 
 export const INBOX_HTML = `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -16,6 +16,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Seu atendimento | Aura</title>
+  <script>try{if(sessionStorage.getItem('aura_entry_reveal')==='1'){if(!localStorage.getItem('aura_theme'))localStorage.setItem('aura_theme','light');document.documentElement.classList.toggle('dark',localStorage.getItem('aura_theme')!=='light');if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('aura-entry-pending');setTimeout(()=>{document.documentElement.classList.remove('aura-entry-pending','aura-entry-revealing');sessionStorage.removeItem('aura_entry_reveal');},12000);}}catch{}</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -37,7 +38,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/aura.css?v=9">
+  <link rel="stylesheet" href="/css/aura.css?v=10">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .wa-bg-light {

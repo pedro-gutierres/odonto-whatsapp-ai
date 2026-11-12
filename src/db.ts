@@ -1120,7 +1120,7 @@ export function isCrucialConfigComplete(cfg: BotConfig | null | undefined): bool
 // SUPER ADMIN (VISÃO GLOBAL DO SAAS E GESTÃO DE CLÍNICAS/USUÁRIOS)
 // -----------------------------------------------------------------------------
 export async function listAdminOverview(db: D1Database) {
-  const {results} = await db.prepare(`SELECT t.id,t.name,t.business_kind,t.business_sector,t.commercial_status,t.schedule_mode,
+  const {results} = await db.prepare(`SELECT t.id,t.name,t.business_kind,COALESCE(t.business_sectors,t.business_sector) AS business_sector,t.commercial_status,t.schedule_mode,
     t.demo_messages_used,t.demo_messages_limit,t.trial_messages_used,t.trial_messages_limit,t.is_test,t.test_label,t.created_at,
     t.bot_config,t.phone_number_id,
     (SELECT u.name FROM users u WHERE u.tenant_id=t.id AND u.role='admin' ORDER BY u.id LIMIT 1) AS owner_name,

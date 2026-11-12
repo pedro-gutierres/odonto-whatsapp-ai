@@ -443,6 +443,8 @@
       const sector = currentAccess && currentAccess.profile.sector;
       const odontoSection = odontoContainer.parentElement;
       const esteticaSection = esteticaContainer.parentElement;
+      odontoSection.classList.remove('hidden');
+      esteticaSection.classList.remove('hidden');
       if (sector === 'aesthetics' && !(savedItems || []).some(p => p.category === 'odonto')) odontoSection.classList.add('hidden');
       if (sector === 'dentistry' && !(savedItems || []).some(p => p.category === 'estetica')) esteticaSection.classList.add('hidden');
       updateTrainingValidationHighlights();

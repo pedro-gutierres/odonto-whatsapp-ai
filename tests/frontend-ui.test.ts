@@ -116,25 +116,36 @@ test('Pages no longer publish demo credentials or imply signup starts the trial'
   assert.ok(LANDING_HTML.includes('até 100 respostas da IA'));
 });
 
-test('Registration keeps the business profile and reports server errors without losing the form',async()=>{
-  const window=await dom(REGISTER_HTML);let request:any;
-  try{
-    for(const script of REGISTER_HTML.matchAll(/<script>([\s\S]*?)<\/script>/g))window.eval(script[1]);
-    const values={businessKind:'solo',businessSector:'aesthetics',clinicName:'Meu negócio',adminName:'Pessoa',phone:'11999999999',usesExternalSchedule:'yes',existingSystem:'Agenda em papel',email:'pessoa@example.test',password:'senha-de-teste'};
-    for(const [id,value] of Object.entries(values))(window.document.getElementById(id) as any).value=value;
-    window.updateExternalSystemField();assert.equal((window.document.getElementById('existingSystem') as any).required,true);
-    window.fetch=(async(url:any,options:any)=>{assert.equal(url,'/api/auth/register');request=JSON.parse(options.body);return new window.Response(JSON.stringify({error:'E-mail já cadastrado.'}),{status:409});}) as any;
-    assert.equal(typeof window.togglePasswordVisibility,'function');
-    window.togglePasswordVisibility();assert.equal((window.document.getElementById('password') as any).type,'text');
-    window.togglePasswordVisibility();assert.equal((window.document.getElementById('password') as any).type,'password');
-    await window.handleRegister({preventDefault(){}});
-    assert.equal(window.document.getElementById('submitBtn')!.textContent,'Criar conta e simular minha IA');
-    assert.equal(request.businessKind,'solo');assert.equal(request.businessSector,'aesthetics');assert.equal(request.usesExternalSchedule,true);assert.equal(request.existingSystem,'Agenda em papel');
-    assert.equal(window.document.getElementById('errorMessage')!.textContent,'E-mail já cadastrado.');assert.equal((window.document.getElementById('submitBtn') as any).disabled,false);assert.equal((window.document.getElementById('clinicName') as any).value,'Meu negócio');
-    window.fetch=(async()=>new window.Response(JSON.stringify({success:true,redirect:'/inbox#simulator'}),{status:201})) as any;
-    await window.handleRegister({preventDefault(){}});
-    assert.equal(window.location.pathname,'/inbox');assert.equal(window.location.hash,'#simulator');
-  }finally{await window.happyDOM.close();}
+test('Registration quiz validates five steps, choices, retry and four-second preparation',async()=>{
+ const window=await dom(REGISTER_HTML,[]);try{
+ for(const script of REGISTER_HTML.matchAll(/<script>([\s\S]*?)<\/script>/g))window.eval(script[1]);
+ const field=(id:string)=>window.document.getElementById(id) as any;
+ const visible=()=>[...window.document.querySelectorAll('[data-quiz-step]')].filter(el=>!(el as any).hidden);
+ assert.equal(visible().length,1);assert.equal(visible()[0].getAttribute('data-quiz-step'),'1');
+ window.nextQuizStep();assert.equal(field('quizStepLabel').textContent,'Etapa 1 de 5');
+ field('adminName').value='Mariana Costa';field('adminName').dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+ assert.equal(field('quizStepLabel').textContent,'Etapa 2 de 5');
+ field('email').value='inválido';window.nextQuizStep();assert.equal(visible()[0].getAttribute('data-quiz-step'),'2');
+ field('email').value='mariana@example.test';window.nextQuizStep();window.nextQuizStep();assert.equal(visible()[0].getAttribute('data-quiz-step'),'3');
+ const solo=window.document.querySelector('[name="businessKind"][value="solo"]') as any,clinic=window.document.querySelector('[name="businessKind"][value="clinic"]') as any;
+ solo.checked=true;window.syncQuizChoices();assert.equal(field('businessKind').value,'solo');
+ clinic.checked=true;window.syncQuizChoices();assert.equal(solo.checked,false);assert.equal(field('businessKind').value,'clinic');window.nextQuizStep();
+ window.nextQuizStep();assert.equal(visible()[0].getAttribute('data-quiz-step'),'4');
+ const odonto=window.document.querySelector('[name="sectorChoice"][value="dentistry"]') as any,estetica=window.document.querySelector('[name="sectorChoice"][value="aesthetics"]') as any;
+ odonto.checked=true;window.syncQuizChoices();assert.equal(field('businessSector').value,'dentistry');
+ odonto.checked=false;estetica.checked=true;window.syncQuizChoices();assert.equal(field('businessSector').value,'aesthetics');
+ odonto.checked=true;window.syncQuizChoices();assert.equal(field('businessSector').value,'both');window.nextQuizStep();
+ window.previousQuizStep();assert.equal(odonto.checked,true);window.nextQuizStep();assert.equal(visible().length,1);
+ let requests=0,request:any;window.fetch=(async(_url:any,options:any)=>{requests++;request=JSON.parse(options.body);return new window.Response(JSON.stringify({error:'E-mail já cadastrado.'}),{status:409});}) as any;
+ field('password').value='curta';await window.handleRegister({preventDefault(){}});assert.equal(requests,0);
+ field('password').value='senha-do-quiz';field('confirmPassword').value='outra';await window.handleRegister({preventDefault(){}});assert.equal(requests,0);assert.ok(field('errorMessage').textContent.includes('não coincidem'));
+ field('confirmPassword').value='senha-do-quiz';window.togglePasswordVisibility();assert.equal(field('password').type,'text');window.togglePasswordVisibility();
+ await window.handleRegister({preventDefault(){}});assert.equal(request.businessSectors,'both');assert.equal(request.businessKind,'clinic');assert.equal(field('submitBtn').disabled,false);assert.equal(field('submitBtn').textContent,'Finalizar cadastro');assert.equal(field('adminName').value,'Mariana Costa');
+ const timers:{callback:()=>void,delay:number}[]=[];window.setTimeout=((callback:()=>void,delay:number)=>{timers.push({callback,delay});return timers.length;}) as any;
+ window.fetch=(async()=>new window.Response(JSON.stringify({success:true}),{status:201})) as any;
+ await window.handleRegister({preventDefault(){}});assert.equal(field('accountPreparation').hidden,false);assert.ok(field('registerQuiz').classList.contains('is-preparing'));assert.equal(window.location.hash,'');
+ assert.deepEqual(timers.map(t=>t.delay),[1400,2800,4000]);timers[0].callback();assert.ok(field('preparationMessage').textContent.includes('treinamento'));timers[1].callback();assert.ok(field('preparationMessage').textContent.includes('ambiente'));timers[2].callback();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),'1');assert.equal(window.location.hash,'#simulator');
+ }finally{await window.happyDOM.close();}
 });
 
 test('Login reports invalid credentials and restores its submit button',async()=>{
@@ -211,5 +222,21 @@ test('Client sidebar separates operation and account controls without an adminis
  for(const id of ['topClinicNameBadge','businessSubtitle','trialStatusWidget','trialDaysBadge','trialMessagesBadge','topUserName','topUserEmail','themeIcon'])assert.ok(footer.querySelector('#'+id),id);
  assert.ok(footer.querySelector('[onclick="handleLogout()"]'));assert.ok(footer.querySelector('[onclick="toggleTheme()"]'));
  assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,7);
+ }finally{await window.happyDOM.close();}
+});
+
+
+test('Dashboard entry reveal consumes its one-shot marker and respects reduced motion',async()=>{
+ const window=await dom(INBOX_HTML,[]);try{
+ const timers:{callback:()=>void,delay:number}[]=[];
+ window.setTimeout=((callback:()=>void,delay:number)=>{timers.push({callback,delay});return timers.length;}) as any;
+ window.requestAnimationFrame=((callback:()=>void)=>{callback();return 1;}) as any;
+ window.eval(fs.readFileSync('public/js/inbox/core.js','utf8'));
+ window.sessionStorage.setItem('aura_entry_reveal','1');window.document.documentElement.classList.add('aura-entry-pending');
+ window.revealAccountEntry();assert.ok(window.document.documentElement.classList.contains('aura-entry-revealing'));
+ assert.equal(timers[0].delay,850);timers[0].callback();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),null);assert.ok(!window.document.documentElement.classList.contains('aura-entry-revealing'));
+ window.matchMedia=(()=>({matches:true})) as any;window.sessionStorage.setItem('aura_entry_reveal','1');
+ const bootstrap=[...INBOX_HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].find(m=>m[1].includes('aura_entry_reveal'))![1];window.eval(bootstrap);
+ assert.ok(!window.document.documentElement.classList.contains('aura-entry-pending'));window.revealAccountEntry();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),null);
  }finally{await window.happyDOM.close();}
 });
