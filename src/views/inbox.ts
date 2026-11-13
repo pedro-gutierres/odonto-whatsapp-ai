@@ -2,7 +2,7 @@ import { inboxPlanView } from "./inbox/plan-view";
 import type { PlanOffer } from "../plans";
 import { INBOX_ACCOUNT_VIEW_HTML } from "./inbox/account-view";
 import { INBOX_ONBOARDING_VIEW_HTML } from "./inbox/onboarding-view";
-import { INBOX_HEADER_HTML } from "./inbox/header";
+import { INBOX_ACCOUNT_ACTIONS_HTML, INBOX_HEADER_HTML } from "./inbox/header";
 import { INBOX_CHAT_VIEW_HTML } from "./inbox/chat-view";
 import { INBOX_AGENDA_VIEW_HTML } from "./inbox/agenda-view";
 import { INBOX_TRAINING_VIEW_HTML } from "./inbox/training-view";
@@ -10,7 +10,7 @@ import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "39";
+const ASSET_VERSION = "40";
 
 export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -40,7 +40,7 @@ export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/aura.css?v=33">
+  <link rel="stylesheet" href="/css/aura.css?v=34">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .wa-bg-light {
@@ -61,7 +61,7 @@ export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE 
 </head>
 <body class="aura-dashboard bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 h-screen flex flex-col overflow-hidden selection:bg-[#008069] selection:text-white">
 ${INBOX_HEADER_HTML}
-  <header class="aura-dashboard-page-header"><h1 id="dashboardPageHeader">Conversas</h1></header>
+  <header class="aura-dashboard-page-header"><h1 id="dashboardPageHeader">Conversas</h1>${INBOX_ACCOUNT_ACTIONS_HTML}</header>
 
   <!-- BANNER GLOBAL DE TRIAL EXPIRADO OU LIMITE ATINGIDO -->
   <div id="globalTrialExpiredBanner" class="hidden bg-gradient-to-r from-amber-600 via-rose-600 to-amber-700 text-white px-4 py-2.5 text-xs shadow-md shrink-0 flex items-center justify-between z-20 transition-all">

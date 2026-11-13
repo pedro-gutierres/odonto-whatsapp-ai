@@ -140,18 +140,8 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 @media(max-width:1100px){.aura-onboarding-hub .aura-setup-grid{grid-template-columns:1fr}.aura-onboarding-hub .aura-step-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 20px;padding-left:66px;position:relative}.aura-onboarding-hub .aura-step-index{position:absolute;left:22px;top:24px}.aura-onboarding-hub .aura-step-heading{grid-column:1;justify-content:flex-start}.aura-onboarding-hub .aura-step-card>.aura-description{grid-column:1}.aura-onboarding-hub .aura-step-actions{grid-column:2;grid-row:1/span 2;align-self:center;padding-top:0;margin-top:0;flex-direction:column}}
 @media(max-width:860px){.aura-onboarding-hub .aura-welcome{grid-template-columns:minmax(0,1fr);gap:20px}.aura-hub-pricing{grid-template-columns:minmax(0,1fr)}.aura-hub-pricing .aura-pricing-detail{min-height:0}.aura-agenda-mode>summary{padding:18px 20px}.aura-agenda-mode .aura-disclosure-content{padding:20px}.aura-simulator-actions{width:100%}}
 @media(max-width:600px){.aura-onboarding-hub .aura-step-card{display:flex;padding-left:20px}.aura-onboarding-hub .aura-step-index{position:static;margin-bottom:14px}.aura-onboarding-hub .aura-step-actions{align-self:stretch;align-items:stretch;margin-top:0;padding-top:18px}.aura-onboarding-hub .aura-step-actions>.aura-text-button{align-self:flex-start}.aura-step-heading{justify-content:space-between}.aura-welcome-actions{align-items:stretch}.aura-welcome-actions>.aura-primary{width:100%}.aura-activation-actions{align-items:stretch;flex-direction:column}.aura-hub-pricing .aura-pricing-card{padding:20px}.aura-hub-pricing .aura-price-value{font-size:34px}.aura-simulator-actions>button{flex:1 1 140px}.aura-agenda-mode>summary{align-items:flex-start}}
-/* Operation and personal access live in the sidebar; mobile keeps only navigation. */
-.aura-sidebar-controls .aura-topbar-title{display:none}
-.aura-sidebar-controls .aura-topbar-actions{display:flex;flex-wrap:wrap;gap:12px}
-.aura-sidebar-controls .aura-user{border:0;padding:12px 0 0;width:100%;display:flex;flex-wrap:wrap;border-top:1px solid var(--aura-line)}
-.aura-sidebar-controls .aura-user-details{display:block;min-width:0;width:100%}
-.aura-sidebar-controls .aura-user-email{white-space:normal;overflow-wrap:anywhere;max-width:100%}
-.aura-sidebar-controls .aura-plan-badge{width:100%;text-align:left}
-.aura-sidebar-controls .aura-plan-badge #trialMessagesBadge{display:block!important;font-size:10px;margin-top:4px}
-.aura-sidebar-controls .aura-plan-badge{display:block}
-.aura-sidebar-footer .aura-sidebar-business{padding:0 0 12px}
-.aura-sidebar-footer{margin-top:24px}
-@media(max-width:860px){.aura-sidebar-controls .aura-topbar-title{display:flex;position:fixed;top:8px;left:calc(100% + 12px);background:var(--aura-panel);border:1px solid var(--aura-line);padding:6px;border-radius:10px;white-space:nowrap;z-index:46}.aura-sidebar{overflow:visible}.aura-sidebar-controls .aura-topbar-title h1{font-size:12px}.aura-nav-open .aura-sidebar-controls .aura-topbar-title{left:12px}.aura-nav-open .aura-sidebar{padding-top:68px;overflow-y:auto}.aura-dashboard>main{margin-top:60px}.aura-sidebar-footer{padding-bottom:20px}}
+.aura-sidebar .aura-topbar-title{display:none}
+@media(max-width:860px){.aura-sidebar .aura-topbar-title{display:flex;position:fixed;top:8px;left:calc(100% + 12px);background:var(--aura-panel);border:1px solid var(--aura-line);padding:6px;border-radius:10px;white-space:nowrap;z-index:46}.aura-sidebar{overflow:visible}.aura-sidebar .aura-topbar-title h1{font-size:12px}.aura-nav-open .aura-sidebar .aura-topbar-title{left:12px}.aura-nav-open .aura-sidebar{padding-top:68px;overflow-y:auto}}
 .aura-quiz-layout{max-width:640px;margin:48px auto 80px;padding:0 24px}.aura-quiz-card{position:relative;padding:40px;min-height:390px}.aura-quiz-card h1{font-size:30px;line-height:1.3;letter-spacing:-1px;margin:24px 0 12px;font-weight:650;outline:none}.aura-quiz-card section>p{font-size:14px;color:var(--aura-muted);line-height:1.8;margin:0 0 28px}.aura-quiz-card input:not([type=radio]):not([type=checkbox]):not([type=hidden]){width:100%;padding:12px;min-height:48px}.aura-quiz-card .aura-field{margin:18px 0 8px}.aura-quiz-name{display:flex;align-items:center;gap:12px}.aura-quiz-name input{min-width:0}.aura-quiz-name button{min-width:48px;min-height:48px;font-size:22px}.aura-quiz-options{border:0;padding:0;margin:0;display:grid;gap:12px}.aura-quiz-option{display:flex;align-items:flex-start;gap:14px;padding:20px;border:1px solid var(--aura-line);border-radius:12px;cursor:pointer}.aura-quiz-option:has(input:checked){border-color:var(--aura-accent);background:var(--aura-accent-soft)}.aura-quiz-option input{margin:4px 0 0;accent-color:var(--aura-accent);flex-shrink:0}.aura-quiz-option strong{font-size:14px}.aura-quiz-option small{display:block;color:var(--aura-muted);font-size:12px;line-height:1.8;margin-top:6px}.aura-quiz-navigation{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:32px}.aura-quiz-page [hidden]{display:none!important}.aura-quiz-note{text-align:center;color:var(--aura-muted);font-size:11px;line-height:1.9;margin-top:24px}.aura-sr-only{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}.aura-quiz-card form{transition:filter 450ms ease,opacity 450ms ease,transform 450ms ease}.aura-quiz-card form.is-preparing{filter:blur(10px);opacity:0;transform:scale(.98);pointer-events:none}.aura-account-preparation{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:32px;animation:aura-preparation-in 450ms ease}.aura-account-preparation h2{font-size:19px;line-height:1.6;max-width:360px;margin:30px 0 8px}.aura-account-preparation>p{color:var(--aura-muted);font-size:12px}.aura-preparation-mark{position:relative;width:66px;height:66px;display:grid;place-items:center;color:var(--aura-accent);font-size:40px;font-weight:700}.aura-preparation-mark:before,.aura-preparation-mark:after{content:'';position:absolute;inset:-6px;border:1px solid var(--aura-accent);border-radius:50%;animation:aura-ring 2.4s ease-in-out infinite}.aura-preparation-mark:after{inset:-17px;animation-delay:.6s;opacity:.4}@keyframes aura-ring{50%{transform:scale(1.12);opacity:.2}}@keyframes aura-preparation-in{from{opacity:0}to{opacity:1}}html.aura-entry-pending{background:var(--aura-bg)}html.aura-entry-pending body.aura-dashboard{opacity:0;filter:blur(14px);transform:scale(1.01)}html.aura-entry-revealing body.aura-dashboard{opacity:1;filter:blur(0);transform:scale(1);transition:opacity 550ms cubic-bezier(.22,1,.36,1),filter 550ms cubic-bezier(.22,1,.36,1),transform 550ms cubic-bezier(.22,1,.36,1)}@media(max-width:600px){.aura-quiz-layout{margin:24px auto 40px;padding:0 20px}.aura-quiz-card{padding:24px;min-height:380px}.aura-quiz-card h1{font-size:26px}}@media(prefers-reduced-motion:reduce){html.aura-entry-pending body.aura-dashboard,html.aura-entry-revealing body.aura-dashboard{opacity:1;filter:none;transform:none;transition:none}.aura-quiz-card form.is-preparing{transform:none;filter:none}.aura-preparation-mark:before,.aura-preparation-mark:after{animation:none}}
 .aura-training-profile{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:20px}.aura-training-profile fieldset{border:1px solid var(--aura-line);border-radius:12px;padding:16px;display:flex;flex-wrap:wrap;gap:14px}.aura-training-profile legend{font-size:12px;font-weight:600;padding:0 5px}.aura-training-profile label{font-size:12px;display:flex;align-items:center;gap:7px}.aura-training-day{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid var(--aura-line)}.aura-training-day.is-disabled{opacity:.45}.aura-day-label{min-width:140px;font-size:12px;display:flex;gap:9px;align-items:center}.aura-day-times{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px}.aura-day-times[hidden]{display:none!important}.aura-day-times .aura-control{width:68px}.aura-day-times select{max-width:68px}.aura-day-times .aura-control-trigger{padding:8px}.aura-council-fields{display:grid;grid-template-columns:1fr 80px 1fr;gap:10px}.aura-council-fields label{display:flex;flex-direction:column;gap:7px;font-size:11px}.aura-quick-choice{display:flex;gap:9px;align-items:flex-start;margin:10px 0;font-size:12px;line-height:1.6}.aura-quick-choice input{margin-top:3px}#trainingSchedule{width:100%}#trainingInsurance label{display:block;margin:12px 0}#trainingInsurance label[hidden]{display:none}#viewConfig .proc-duration{width:100%;min-height:36px;border:1px solid var(--aura-line);border-radius:8px;background:var(--aura-panel);color:var(--aura-text)}@media(max-width:600px){.aura-training-profile{grid-template-columns:1fr}.aura-council-fields{grid-template-columns:1fr 70px}.aura-council-fields label:last-child{grid-column:1/-1}.aura-day-times{gap:4px}.aura-day-times .aura-control{width:57px}.aura-day-times .aura-control-trigger{font-size:11px;padding:7px 5px}.aura-training-day{gap:10px}.aura-day-label{width:100%}}
 .aura-training-hours-column{grid-column:1/-1}.aura-council-fields label[hidden]{display:none!important}@media(max-width:600px){.aura-day-times .aura-control{width:48px}.aura-day-times .aura-control-trigger svg{width:10px}.aura-day-times select{max-width:48px}}
@@ -173,14 +163,10 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 
 .aura-quiz-option input{width:16px;height:16px;min-height:0;flex-shrink:0}.aura-quiz-option:has(input:focus-visible){outline:2px solid var(--aura-accent);outline-offset:3px}
 
-.aura-sidebar-footer{margin-top:auto}.aura-sidebar-footer #trialStatusWidget{display:none!important}.aura-account-menu{position:fixed;z-index:250;width:210px;padding:7px;background:var(--aura-panel);border:1px solid var(--aura-line);border-radius:14px;box-shadow:var(--aura-shadow)}.aura-account-menu button{display:block;width:100%;padding:12px;text-align:left;border:0;border-radius:8px;background:transparent;color:var(--aura-text);font-size:13px}.aura-account-menu button:hover,.aura-account-menu button:focus-visible{background:var(--aura-soft)}
+#trialStatusWidget{display:none!important}.aura-account-menu{position:fixed;overflow-y:auto;max-width:calc(100% - 16px);z-index:250;width:210px;padding:7px;background:var(--aura-panel);border:1px solid var(--aura-line);border-radius:14px;box-shadow:var(--aura-shadow)}.aura-account-menu button{display:block;width:100%;padding:12px;text-align:left;border:0;border-radius:8px;background:transparent;color:var(--aura-text);font-size:13px}.aura-account-menu button:hover,.aura-account-menu button:focus-visible{background:var(--aura-soft)}
 
-/* The account menu grows from its edge-aligned trigger. */
-.aura-sidebar-controls .aura-topbar-actions{width:100%;flex-direction:row-reverse;justify-content:space-between}
-.aura-sidebar-controls #accountMenuTrigger{margin-right:-8px}
 #accountMenuTrigger[aria-expanded=true]{background:var(--aura-soft);color:var(--aura-accent);border-color:var(--aura-accent);box-shadow:0 0 0 3px var(--aura-accent-soft)}
-.aura-account-menu{transform-origin:var(--account-origin-x,0) var(--account-anchor-y,50%);animation:aura-account-unfold 240ms cubic-bezier(.22,1,.36,1) both;overflow:visible}
-.aura-account-menu.is-connected:before{content:'';position:absolute;right:100%;top:calc(var(--account-anchor-y) - 1px);width:var(--account-connector-width,14px);height:2px;background:var(--aura-accent);pointer-events:none}
+.aura-account-menu{transform-origin:top right;animation:aura-account-unfold 240ms cubic-bezier(.22,1,.36,1) both}
 .aura-account-menu button{display:flex;align-items:center;gap:12px}
 .aura-account-menu button i{width:18px;text-align:center;color:var(--aura-muted);flex-shrink:0}
 .aura-account-menu button:last-child{border-top:1px solid var(--aura-line);border-radius:0 0 8px 8px;margin-top:4px}
@@ -215,54 +201,40 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
     transition:padding-left var(--aura-sidebar-transition),background-color .2s,color .2s;
   }
   .aura-sidebar{width:var(--aura-sidebar-width);transition:width var(--aura-sidebar-transition);overflow-x:hidden}
-  .aura-sidebar-collapse{display:grid;margin:0 0 8px auto}
+  .aura-sidebar-collapse{display:grid;margin-left:4px}
   .aura-sidebar .aura-brand{transition:padding .55s cubic-bezier(.22,1,.36,1)}
   .aura-sidebar .aura-brand-mark{flex-shrink:0}
   .aura-sidebar .aura-nav-item{overflow:hidden;transition:width .55s cubic-bezier(.22,1,.36,1),padding .55s cubic-bezier(.22,1,.36,1),gap .55s cubic-bezier(.22,1,.36,1),background .15s,color .15s}
   .aura-sidebar .aura-nav-item span{flex-shrink:0}
   .aura-sidebar .aura-nav-label{max-height:48px;overflow:hidden;white-space:nowrap;transition:max-height .55s cubic-bezier(.22,1,.36,1),padding .55s cubic-bezier(.22,1,.36,1),opacity .3s ease,visibility 0s linear .3s}
-  .aura-sidebar-collapse,.aura-sidebar-controls #accountMenuTrigger{transition:margin .55s cubic-bezier(.22,1,.36,1),background .15s,color .15s}
-  .aura-sidebar-controls #accountMenuTrigger{margin-right:0}
   .aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item span{transition:opacity .3s ease,visibility 0s linear;white-space:nowrap}
   /* Hover expands the fixed sidebar over the space already allocated to the page. */
   .aura-dashboard.aura-sidebar-collapsed{padding-left:var(--aura-sidebar-collapsed-width)}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek){width:var(--aura-sidebar-collapsed-width)}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand{padding-left:5px;padding-right:0}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand-name,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item span,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-label,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-business,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) #onboardingRefreshNotice{opacity:0;visibility:hidden}
+  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand-name,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item span,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-label,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) #onboardingRefreshNotice{opacity:0;visibility:hidden}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand-name,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item span{transition-delay:0s,.3s}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-label{max-height:18px;padding:0;transition-delay:0s,0s,0s,.3s}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item{width:44px;gap:0;padding:11px 13px;overflow:hidden}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-controls .aura-topbar-actions{justify-content:flex-start}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-controls #accountMenuTrigger{margin-right:4px}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-collapse{margin-left:auto;margin-right:4px}
 }
-@media(prefers-reduced-motion:reduce){.aura-dashboard,.aura-sidebar,.aura-sidebar .aura-brand,.aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item,.aura-sidebar .aura-nav-item span,.aura-sidebar .aura-nav-label,.aura-sidebar-collapse,.aura-sidebar-controls #accountMenuTrigger{transition:none!important}}
 
-/* Account identity follows the sidebar's visible width. */
-.aura-account-name{display:none}
-@media(min-width:861px){
-  .aura-sidebar-controls .aura-topbar-actions{flex-direction:row;justify-content:flex-start}
-  .aura-sidebar-controls #accountMenuTrigger{display:flex;width:100%;height:36px;border:0;gap:10px;text-align:left;overflow:hidden;margin:0;background:transparent;box-shadow:none}
-  .aura-account-icon{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border:1px solid var(--aura-line);border-radius:9px}
-  #accountMenuTrigger:hover .aura-account-icon,#accountMenuTrigger[aria-expanded=true] .aura-account-icon{background:var(--aura-soft);color:var(--aura-accent)}
-  .aura-account-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:700;opacity:1;transition:opacity .3s ease,visibility 0s linear}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-controls .aura-topbar-actions{justify-content:flex-start}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-controls #accountMenuTrigger{width:36px;margin-left:4px;margin-right:0}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-account-name{opacity:0;visibility:hidden;transition-delay:0s,.3s}
+.aura-dashboard-page-header{position:relative;height:48px;flex-shrink:0;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;border-bottom:1px solid var(--aura-line);background:var(--aura-panel);color:var(--aura-text);font-size:14px;font-weight:650}
+#dashboardPageHeader{grid-column:2}
+.aura-header-account{justify-self:end;display:flex;align-items:center;gap:8px;padding-right:12px;max-width:100%;min-width:0}
+#accountMenuTrigger{display:flex;justify-content:center;gap:8px;width:auto;min-width:36px;max-width:100%;padding:0 8px}
+.aura-account-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:700}
+.aura-account-name:empty{display:none}
+@media(max-width:860px){
+  .aura-dashboard-page-header{margin-top:60px}
+  .aura-dashboard>main{margin-top:0}
+  .aura-header-account{position:fixed;top:15px;right:12px;padding:0;z-index:46}
+  .aura-account-name{display:none}
+  .aura-sidebar-footer{display:none}
 }
-@media(prefers-reduced-motion:reduce){.aura-account-name{transition:none!important}}
-
-@media(min-width:861px){.aura-sidebar-collapse{margin-left:0;margin-right:auto}.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-collapse{margin-left:4px;margin-right:auto}}
-
-.aura-dashboard-page-header{height:48px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--aura-line);background:var(--aura-panel);color:var(--aura-text);font-size:14px;font-weight:650}
-@media(max-width:860px){.aura-dashboard-page-header{margin-top:60px}.aura-dashboard>main{margin-top:0}}
 
 .aura-staff .aura-nav-item:not([data-nav-tab="chat"]):not([data-nav-tab="agenda"]),.aura-staff .aura-nav-settings-label{display:none}
 .aura-staff #accountMenuTrigger{cursor:default}
 .aura-staff #staffLogout:not([hidden]){display:inline-grid;flex-shrink:0}
-.aura-staff .aura-topbar-actions{display:flex;flex-wrap:wrap;gap:8px}
-.aura-staff #staffLogout{order:2}
-.aura-staff.aura-sidebar-collapsed #staffLogout{margin:auto}
 
 #staffLogout[hidden]{display:none!important}
 

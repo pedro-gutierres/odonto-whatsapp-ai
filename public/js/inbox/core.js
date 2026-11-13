@@ -83,8 +83,10 @@
       closeAccountMenu();
     }
     const sidebar = document.getElementById('verticalMenuContainer');
-    sidebar?.addEventListener('pointerenter', event => {
-      if (event.pointerType === 'mouse' && document.body.classList.contains('aura-sidebar-collapsed')) sidebar.classList.add('aura-sidebar-peek');
+    sidebar?.addEventListener('pointerover', event => {
+      if (event.pointerType === 'mouse' && document.body.classList.contains('aura-sidebar-collapsed')) {
+        sidebar.classList.toggle('aura-sidebar-peek', !event.target.closest('#sidebarCollapseTrigger'));
+      }
     });
     sidebar?.addEventListener('pointerleave', event => {
       if (event.pointerType === 'mouse') sidebar.classList.remove('aura-sidebar-peek');
@@ -154,8 +156,8 @@
           const emailEl = document.getElementById('topUserEmail');
 
           if (nameEl) nameEl.innerText = data.user.name || 'Recepção';
-          const sidebarName = document.getElementById('sidebarAccountName');
-          if (sidebarName) sidebarName.textContent = (data.user.name || 'Recepção').trim().split(/\s+/).slice(0, 2).join(' ').toLocaleUpperCase('pt-BR');
+          const accountName = document.getElementById('headerAccountName');
+          if (accountName) accountName.textContent = (data.user.name || 'Recepção').trim().split(/\s+/).slice(0, 2).join(' ').toLocaleUpperCase('pt-BR');
           if (emailEl) emailEl.innerText = data.user.email || '';
           const accountEmail = document.getElementById('accountEmail');
           if (accountEmail) accountEmail.value = data.user.email || '';
@@ -468,22 +470,10 @@ function toggleAccountMenu(){
  if(!menu.classList.contains('hidden')){closeAccountMenu();return;}
  updateAccountThemeLabel();
  const rect=trigger.getBoundingClientRect();menu.classList.remove('hidden');
- menu.style.maxHeight=Math.max(0,innerHeight-16)+'px';
- menu.style.overflowY=menu.scrollHeight>innerHeight-16?'auto':'visible';
- // Layout dimensions exclude the opening animation's scale.
- const width=menu.offsetWidth||210,height=menu.offsetHeight;
- const sidebarRect=document.getElementById('verticalMenuContainer').getBoundingClientRect();
- const name=document.getElementById('sidebarAccountName');
- const nameRect=name?.getBoundingClientRect();
- const anchorRight=nameRect && nameRect.width > 0 && getComputedStyle(name).visibility !== 'hidden' ? nameRect.right : rect.left+Math.min(rect.width,36);
- const left=Math.max(8,Math.min(Math.max(sidebarRect.right,rect.right)+24,innerWidth-width-8));
- const top=Math.max(8,Math.min(rect.bottom-height,innerHeight-height-8));
- const anchorY=Math.max(16,Math.min(rect.top+rect.height/2-top,height-16));
- menu.style.left=left+'px';menu.style.top=top+'px';
- menu.style.setProperty('--account-anchor-y',anchorY+'px');
- menu.style.setProperty('--account-connector-width',Math.max(0,left-anchorRight-6)+'px');
- menu.style.setProperty('--account-origin-x',(rect.left+rect.width/2-left)+'px');
- menu.classList.toggle('is-connected',left>anchorRight+6);
+ const top=rect.bottom+8;
+ menu.style.maxHeight=Math.max(0,innerHeight-top-8)+'px';
+ menu.style.right=Math.max(8,innerWidth-rect.right)+'px';
+ menu.style.top=top+'px';
  trigger.setAttribute('aria-expanded','true');menu.querySelector('button').focus({preventScroll:true});
 }
 function accountMenuNavigate(tab,plan=false){selectNavigationTab(tab);if(plan)document.getElementById('plano').scrollIntoView({behavior:'smooth',block:'start'});}

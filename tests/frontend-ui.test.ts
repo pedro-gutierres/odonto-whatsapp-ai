@@ -221,8 +221,21 @@ test('Client sidebar separates operation and account controls without an adminis
  const window=await dom(INBOX_HTML,[]);try{
  assert.equal(window.document.getElementById('superAdminNavBtn'),null);assert.equal(window.document.querySelector('.aura-topbar'),null);
  const footer=window.document.querySelector('.aura-sidebar-footer')!;
- for(const id of ['topClinicNameBadge','businessSubtitle','trialStatusWidget','trialDaysBadge','trialMessagesBadge','topUserName','topUserEmail'])assert.ok(footer.querySelector('#'+id),id);
- assert.ok(footer.querySelector('[onclick="handleLogout()"]'));assert.ok(window.document.querySelector('#accountQuickMenu #themeIcon'));assert.ok(!footer.querySelector('[onclick*="toggleTheme"]'));
+ assert.deepEqual([...footer.querySelectorAll('button')].map(button=>button.id),['sidebarCollapseTrigger']);
+ const header=window.document.querySelector('.aura-dashboard-page-header')!;
+ for(const id of ['accountMenuTrigger','staffLogout','headerAccountName','trialStatusWidget','trialDaysBadge','trialMessagesBadge','topUserName','topUserEmail'])assert.ok(header.querySelector('#'+id),id);
+ assert.ok(window.document.querySelector('#accountQuickMenu #themeIcon'));
+ window.eval(fs.readFileSync('public/js/inbox/core.js','utf8'));
+ const sidebar=window.document.getElementById('verticalMenuContainer')!;
+ const toggle=footer.querySelector('button')!;
+ window.toggleSidebarCollapse();
+ sidebar.querySelector('[data-nav-tab="agenda"]')!.dispatchEvent(new window.PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
+ assert.ok(sidebar.classList.contains('aura-sidebar-peek'));
+ toggle.firstElementChild!.dispatchEvent(new window.PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
+ assert.ok(!sidebar.classList.contains('aura-sidebar-peek'));
+ assert.ok(window.document.body.classList.contains('aura-sidebar-collapsed'));
+ window.toggleSidebarCollapse();
+ assert.ok(!window.document.body.classList.contains('aura-sidebar-collapsed'));
  assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,8);
  }finally{await window.happyDOM.close();}
 });
@@ -330,14 +343,12 @@ test('Quiz transitions follow direction, ignore repeated navigation and focus af
 });
 
 
-test('Account popover opens upwards using unscaled height and contains the theme control',async()=>{
+test('Account popover opens below the header button and contains the theme control',async()=>{
  const window=await dom(INBOX_HTML,[]);try{
  window.eval(fs.readFileSync('public/js/inbox/core.js','utf8'));
  const menu=window.document.getElementById('accountQuickMenu') as any,trigger=window.document.getElementById('accountMenuTrigger') as any;
- Object.defineProperty(menu,'offsetHeight',{value:210});Object.defineProperty(menu,'offsetWidth',{value:210});
- trigger.getBoundingClientRect=()=>new window.DOMRect(190,700,36,36);
- menu.getBoundingClientRect=()=>new window.DOMRect(0,0,42,42);
- window.toggleAccountMenu();assert.equal(menu.style.top,'526px');assert.equal(menu.style.left,'274px');assert.ok(parseFloat(menu.style.top)+menu.offsetHeight<=736);
+ trigger.getBoundingClientRect=()=>new window.DOMRect(window.innerWidth-60,6,48,36);
+ window.toggleAccountMenu();assert.equal(menu.style.top,'50px');assert.equal(menu.style.right,'12px');assert.equal(menu.style.maxHeight,(window.innerHeight-58)+'px');
  assert.ok(menu.querySelector('[onclick*="toggleTheme"]'));assert.ok(!window.document.querySelector('.aura-sidebar-footer [onclick*="toggleTheme"]'));
  window.document.documentElement.classList.remove('dark');window.updateAccountThemeLabel();assert.equal(window.document.getElementById('accountThemeLabel')!.textContent,'Modo escuro');
  window.toggleTheme();window.updateAccountThemeLabel();assert.equal(window.document.getElementById('accountThemeLabel')!.textContent,'Modo claro');
