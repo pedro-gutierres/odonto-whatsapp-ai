@@ -69,7 +69,7 @@
       plan: { title:'Plano', view:'viewPlan' },
       onboarding: { title:'Início', view:'viewOnboarding' }, chat: { title:'Conversas', view:'viewChat' },
       agenda: { title:'Agenda', view:'viewAgenda' }, config: { title:'Parâmetros de atendimento', view:'viewConfig' },
-      settings: { title:'Seu número', view:'viewSettings' }, simulator: { title:'Simulador da IA', view:'viewSimulator' },
+      settings: { title:'Seu número', view:'viewSettings' }, support: { title:'Suporte', view:'viewSupport' },
       account: { title:'Conta', view:'viewAccount' }
     };
     function toggleSidebarCollapse() {
@@ -106,8 +106,10 @@
       }
     });
     function selectNavigationTab(tabId) {
+      const simulate = (tabId === 'simulator' || tabId === 'support-simular') && currentUser?.canManageClinic !== false;
+      if (tabId === 'simulator' || tabId === 'support-simular') tabId = 'support';
       if (!Object.hasOwn(auraPages, tabId)) return;
-      if (currentUser && currentUser.canManageClinic === false && !['chat','agenda'].includes(tabId)) tabId = 'chat';
+      if (currentUser?.canManageClinic === false && !['chat','agenda','support'].includes(tabId)) tabId = 'chat';
       const page = auraPages[tabId];
       closeAccountMenu();closeVerticalMenu(); window.auraUI?.close();
       document.getElementById('selectedMenuLabel').textContent=page.title;
@@ -118,14 +120,15 @@
       for (const item of document.querySelectorAll('[data-nav-tab]')) {
         if (item.dataset.navTab===tabId) item.setAttribute('aria-current','page'); else item.removeAttribute('aria-current');
       }
-      if (location.hash !== '#'+tabId) history.replaceState(null,'','#'+tabId);
+      const hash = simulate ? '#support-simular' : '#'+tabId;
+      if (location.hash !== hash) history.replaceState(null,'',hash);
       if (tabId==='plan') loadBilling();
       else if (tabId==='onboarding') loadOnboarding();
       else if (tabId==='account') loadClinicSettingsView();
       else if (tabId==='agenda') {loadProfessionals();loadAppointments();}
       else if (tabId==='config') {loadClinicConfig().then(updateTrainingValidationHighlights);loadClinicProfileAndWhatsapp();}
       else if (tabId==='settings') loadClinicSettingsView();
-      else if (tabId==='simulator') initSimulatorView();
+      else if (tabId==='support') initSupportView(simulate ? 'simulation' : 'support');
       else if (tabId==='chat') {
         if(currentAccess?.can_read_history)loadConversations(false);
         else {
@@ -163,9 +166,6 @@
           if (accountEmail) accountEmail.value = data.user.email || '';
 
         }
-        if (data && data.trial && typeof updateTrialWidget === 'function') {
-          updateTrialWidget(data.trial);
-        }
         return true;
       } catch (err) {
         console.error("Erro ao carregar usuário logado:", err);
@@ -189,7 +189,8 @@
       updateCrucialTrainingLockUI();
       if (currentAccess && currentAccess.can_read_history) startPolling();
       const requestedTab=location.hash.slice(1);
-      selectNavigationTab(Object.hasOwn(auraPages, requestedTab) ? requestedTab : 'chat');
+      const route = Object.hasOwn(auraPages, requestedTab) || ['simulator', 'support-simular'].includes(requestedTab);
+      selectNavigationTab(route ? requestedTab : 'chat');
       revealAccountEntry();
       if (onboardingRefreshInterval) clearInterval(onboardingRefreshInterval);
       onboardingRefreshInterval = setInterval(() => { if (!document.hidden) loadOnboarding({ background: true }); }, 30000);

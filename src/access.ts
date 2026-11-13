@@ -45,7 +45,6 @@ export function commercialAccess(tenant: Tenant, now = Date.now()) {
       started_at: tenant.trial_started_at ?? null, ends_at: tenant.trial_ends_at ?? null,
       used: tenant.trial_messages_used ?? 0, limit: tenant.trial_messages_limit ?? 100,
     },
-    demo: { used: tenant.demo_messages_used ?? 0, limit: tenant.demo_messages_limit ?? 30 },
   };
 }
 
@@ -57,7 +56,7 @@ export async function canStillOperate(env: Env, tenantId: string, reservedTrial 
     ? { ...tenant, trial_messages_used: Math.max(0, (tenant.trial_messages_used ?? 0) - 1) } : tenant).can_operate;
 }
 
-export async function reserveUsage(env: Env, tenantId: string, scope: 'demo' | 'trial', requestId: string) {
+export async function reserveUsage(env: Env, tenantId: string, scope: 'trial', requestId: string) {
   const existing = await env.DB.prepare('SELECT status,result_json FROM usage_reservations WHERE tenant_id=?1 AND scope=?2 AND request_id=?3')
     .bind(tenantId, scope, requestId).first<{ status: string; result_json: string | null }>();
   if (existing && existing.status !== 'released') return { kind: existing.status === 'completed' ? 'replay' : 'pending', result: existing.result_json };
@@ -70,13 +69,13 @@ export async function reserveUsage(env: Env, tenantId: string, scope: 'demo' | '
       .bind(tenantId, scope, requestId).run();
     return { kind: 'reserved', result: null };
   } catch (error) {
-    if (/DEMO_LIMIT|TRIAL_LIMIT|ACCOUNT_INACTIVE/.test(String(error))) return { kind: 'limit', result: null };
+    if (/TRIAL_LIMIT|ACCOUNT_INACTIVE/.test(String(error))) return { kind: 'limit', result: null };
     if (String(error).includes('UNIQUE')) return { kind: 'pending', result: null };
     throw error;
   }
 }
 
-export async function finishUsage(env: Env, tenantId: string, scope: 'demo' | 'trial', requestId: string, result: unknown, release = false) {
+export async function finishUsage(env: Env, tenantId: string, scope: 'trial', requestId: string, result: unknown, release = false) {
   await env.DB.prepare("UPDATE usage_reservations SET status=?4,result_json=?5 WHERE tenant_id=?1 AND scope=?2 AND request_id=?3 AND status='reserved'")
     .bind(tenantId, scope, requestId, release ? 'released' : 'completed', JSON.stringify(result)).run();
 }

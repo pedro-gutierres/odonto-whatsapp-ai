@@ -636,7 +636,7 @@
           updateTrainingValidationHighlights();
 
           if (isCrucialTrainingComplete() && !hasInvalidCheckedProc) {
-            showToast("Treinamento salvo e revisado. Teste as respostas no Simulador.", "emerald");
+            showToast("Treinamento salvo e revisado. Simule o atendimento em Suporte.", "emerald");
           } else {
             showToast("Salvo! Preencha os campos em vermelho para liberar o Chat e a Agenda.", "amber");
             const mainConfig = document.getElementById('viewConfig');

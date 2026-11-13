@@ -13,6 +13,9 @@ export interface Env {
   META_APP_SECRET?: string; // app secret específico para troca OAuth do Embedded Signup (fallback: primeiro item de META_APP_SECRETS)
   WA_VERIFY_TOKEN: string;  // frase que você inventa; a Meta devolve na verificação do webhook
   ANTHROPIC_API_KEY: string;
+  ANTHROPIC_SUPPORT_API_KEY?: string;
+  SUPPORT_CLAUDE_MODEL?: string;
+  SUPPORT_SIMULATION_MODEL?: string;
   WA_LAB_TOKEN?: string;    // token fallback / laboratório da Meta (quando a clínica não tem access_token_enc)
   AUTH_SECRET?: string;     // segredo HMAC para sessões (configure via wrangler secret put AUTH_SECRET)
   TOKEN_ENCRYPTION_KEY?: string; // chave opcional para criptografia AES-GCM de tokens por clínica (fallback: AUTH_SECRET)

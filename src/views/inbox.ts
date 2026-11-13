@@ -8,10 +8,10 @@ import { INBOX_CHAT_VIEW_HTML } from "./inbox/chat-view";
 import { INBOX_AGENDA_VIEW_HTML } from "./inbox/agenda-view";
 import { INBOX_TRAINING_VIEW_HTML } from "./inbox/training-view";
 import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
-import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
+import { INBOX_SUPPORT_VIEW_HTML } from "./inbox/support-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "41";
+const ASSET_VERSION = "42";
 
 export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -59,7 +59,7 @@ ${INBOX_CHAT_VIEW_HTML}
 ${INBOX_AGENDA_VIEW_HTML}
 ${INBOX_TRAINING_VIEW_HTML}
 ${INBOX_SETTINGS_VIEW_HTML}
-${INBOX_SIMULATOR_VIEW_HTML}
+${INBOX_SUPPORT_VIEW_HTML}
 ${INBOX_MODALS_HTML}
   <script src="/js/ui.js?v=5"></script>
   <!-- SCRIPTS MODULARES DA PLATAFORMA (Cloudflare Static Assets) -->
@@ -71,7 +71,7 @@ ${INBOX_MODALS_HTML}
   <script src="/js/inbox/agenda.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/training.js?v=${ASSET_VERSION}"></script>
   <script src="/js/inbox/settings.js?v=${ASSET_VERSION}"></script>
-  <script src="/js/inbox/simulator.js?v=${ASSET_VERSION}"></script>
+  <script src="/js/inbox/support.js?v=${ASSET_VERSION}"></script>
 </body>
 </html>
 `; }

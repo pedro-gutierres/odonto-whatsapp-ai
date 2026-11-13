@@ -364,10 +364,10 @@ export const INBOX_TRAINING_VIEW_HTML = `
             <span class="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Ao salvar os campos essenciais completos, a revisão é automática.</span>
           </div>
           <div class="flex items-center gap-3">
-            <button type="button" onclick="selectNavigationTab('simulator', 'Test Drive da IA', 'fa-solid fa-flask-vial', 'purple')"
+            <button type="button" onclick="selectNavigationTab('support-simular')"
               class="px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950/60 hover:bg-neutral-100 dark:hover:bg-neutral-900/60 text-neutral-700 dark:text-neutral-300 font-bold text-xs flex items-center gap-2 transition border border-neutral-200 dark:border-neutral-800/60 shadow-sm">
               <i class="fa-solid fa-flask-vial"></i>
-              <span>Testar IA no Simulador</span>
+              <span>Simular atendimento</span>
             </button>
             <button type="submit" id="btnSaveConfig" class="px-6 py-2.5 rounded-xl aura-filled font-bold text-xs shadow-lg shadow-neutral-500/25 flex items-center gap-2 transition">
               <i class="fa-solid fa-floppy-disk"></i>

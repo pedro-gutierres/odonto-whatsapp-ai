@@ -102,18 +102,19 @@ test('Block editor keeps day/time values and validates overnight periods',async(
 });
 test('Dashboard has unique field IDs and preserves every view and critical action',async()=>{
   const window=await dom(INBOX_HTML);
-  try{const ids=[...window.document.querySelectorAll('[id]')].map(element=>element.id);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs make actions target the wrong field');for(const id of ['viewChat','viewAgenda','viewConfig','viewSettings','viewSimulator','viewOnboarding','viewPlan','viewAccount','businessProfileLabel','onboardingStatus','operationalQuota','readyTraining','readyWhatsapp','readyAgenda','scheduleExplanation','maintenanceAcknowledgedLabel','activationSection','activationSummary','trialTerms','activationAcknowledged','activationAcknowledgmentText','activationAvailability','plano','billingAvailability','billingValidity','checkoutFree','checkoutPro','checkoutUltra','billingPortal','chatCount','profCountBadge','prepareTrialBtn','reviewTrainingBtn','saveAgendaReadinessBtn','scheduleMode','maintenanceAcknowledged','activateTrialBtn','btnSaveClinicProfile','cfgClinicName','btnSaveConfigText','blockStart','blockEnd','appDate','appHourSelect','appMinuteSelect'])assert.ok(window.document.getElementById(id),id);assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,8);
+  try{const ids=[...window.document.querySelectorAll('[id]')].map(element=>element.id);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs make actions target the wrong field');for(const id of ['viewChat','viewAgenda','viewConfig','viewSettings','viewSupport','viewOnboarding','viewPlan','viewAccount','businessProfileLabel','onboardingStatus','operationalQuota','readyTraining','readyWhatsapp','readyAgenda','scheduleExplanation','maintenanceAcknowledgedLabel','activationSection','activationSummary','trialTerms','activationAcknowledged','activationAcknowledgmentText','activationAvailability','plano','billingAvailability','billingValidity','checkoutFree','checkoutPro','checkoutUltra','billingPortal','chatCount','profCountBadge','prepareTrialBtn','reviewTrainingBtn','saveAgendaReadinessBtn','scheduleMode','maintenanceAcknowledged','activateTrialBtn','btnSaveClinicProfile','cfgClinicName','btnSaveConfigText','blockStart','blockEnd','appDate','appHourSelect','appMinuteSelect'])assert.ok(window.document.getElementById(id),id);assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,8);
   }finally{await window.happyDOM.close();}
 });
 test('Pages no longer publish demo credentials or imply signup starts the trial',()=>{
-  assert.ok(!LOGIN_HTML.includes('admin123'));assert.ok(!LOGIN_HTML.includes('admin@clinica.com'));assert.ok(!REGISTER_HTML.includes('Iniciar Teste Grátis'));assert.ok(LANDING_HTML.includes('Ative o atendimento no WhatsApp quando estiver tudo pronto'));assert.ok(!INBOX_HTML.includes('type="datetime-local"'));
+  assert.ok(!LOGIN_HTML.includes('admin123'));assert.ok(!LOGIN_HTML.includes('admin@clinica.com'));assert.ok(!REGISTER_HTML.includes('Iniciar Teste Grátis'));assert.ok(LANDING_HTML.includes('Ative o WhatsApp quando estiver tudo pronto'));assert.ok(!INBOX_HTML.includes('type="datetime-local"'));
   for(const section of ['como-funciona','recursos','planos','duvidas']){
     assert.ok(LANDING_HTML.includes('id="'+section+'"'));assert.ok(LANDING_HTML.includes('href="#'+section+'"'));
   }
   assert.ok(LANDING_HTML.includes('R$ 1.188 por ano'));assert.ok(LANDING_HTML.includes('R$ 2.388 por ano'));
   assert.ok(LANDING_HTML.includes('Plano Free'));assert.ok(LANDING_HTML.includes('R$ 129/mês'));assert.ok(LANDING_HTML.includes('R$ 249/mês'));
   assert.ok(LANDING_HTML.includes('href="/register"'));
-  assert.ok(LANDING_HTML.includes('30 mensagens no Simulador'));
+  assert.ok(LANDING_HTML.includes('Todas as contas incluem suporte e simulação de atendimento.'));
+  for (const page of [LANDING_HTML, REGISTER_HTML, INBOX_HTML]) assert.doesNotMatch(page, /30 (mensagens|respostas)|Test Drive|Simulador da IA/i);
   assert.ok(LANDING_HTML.includes('até 50 respostas automáticas com IA por mês'));
 });
 
@@ -146,7 +147,7 @@ test('Registration quiz validates five steps, choices, retry and four-second pre
  const timers:{callback:()=>void,delay:number}[]=[];window.setTimeout=((callback:()=>void,delay:number)=>{timers.push({callback,delay});return timers.length;}) as any;
  window.fetch=(async()=>new window.Response(JSON.stringify({success:true}),{status:201})) as any;
  await window.handleRegister({preventDefault(){}});assert.equal(field('accountPreparation').hidden,false);assert.ok(field('registerQuiz').classList.contains('is-preparing'));assert.equal(window.location.hash,'');
- assert.deepEqual(timers.map(t=>t.delay),[1400,2800,4000]);timers[0].callback();assert.ok(field('preparationMessage').textContent.includes('treinamento'));timers[1].callback();assert.ok(field('preparationMessage').textContent.includes('ambiente'));timers[2].callback();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),'1');assert.equal(window.location.hash,'#simulator');
+ assert.deepEqual(timers.map(t=>t.delay),[1400,2800,4000]);timers[0].callback();assert.ok(field('preparationMessage').textContent.includes('treinamento'));timers[1].callback();assert.ok(field('preparationMessage').textContent.includes('ambiente'));timers[2].callback();assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),'1');assert.equal(window.location.hash,'#support-simular');
  }finally{await window.happyDOM.close();}
 });
 
@@ -164,22 +165,23 @@ test('The actual dashboard initializes and navigates all eight pages with offlin
   const window=await dom(INBOX_HTML,[]);const errors:string[]=[];
   window.console.error=(...values:any[])=>errors.push(values.map(value=>value?.stack || String(value)).join(' '));window.setInterval=(()=>0) as any;
   const whatsapp={configured:false,raw_phone_number_id:'unconfigured:test',phone_number_id:null,waba_id:null,has_custom_token:false,token_source:'none',display_phone_number:null,verified_name:null,connected_at:null,webhook_url:'https://unit.invalid/webhook',embedded_signup:{enabled:false,missing_env:['META_APP_ID'],app_id:null,config_id:null,graph_version:'v26.0'}};
-  const access={status:'free',legacy_review_required:false,can_operate:false,can_prepare:false,can_read_history:false,profile:{kind:'solo',sector:'aesthetics'},readiness:{training:false,whatsapp:false,agenda:false},trial:{started_at:null,ends_at:null,used:0,limit:100},demo:{used:0,limit:30}};
+  const access={status:'free',legacy_review_required:false,can_operate:false,can_prepare:false,can_read_history:false,profile:{kind:'solo',sector:'aesthetics'},readiness:{training:false,whatsapp:false,agenda:false},trial:{started_at:null,ends_at:null,used:0,limit:100}};
   const fixtures:Record<string,unknown>={
     '/api/auth/me':{user:{name:'Pessoa',email:'pessoa@example.test',tenantId:'test',canManageClinic:true}},
     '/api/onboarding':{access,trial_enabled:true},'/api/billing':{enabled:false,has_subscription:false},
     '/api/professionals':{professionals:[]},'/api/appointments':{appointments:[]},'/api/agenda/blocks':{blocks:[]},
     '/api/config':{config:{clinic_name:'Negócio',hours:'',procedure_items:[],initial_consultation:{}}},
     '/api/clinic/profile':{clinic:{id:'test',name:'Negócio'},whatsapp,canManageClinic:true},
-    '/api/clinic/users':{users:[],canManageClinic:true},'/api/clinic/whatsapp/status':{whatsapp,canManageClinic:true},'/api/time':{server_time:Date.now()}
+    '/api/clinic/users':{users:[],canManageClinic:true},'/api/clinic/whatsapp/status':{whatsapp,canManageClinic:true},'/api/time':{server_time:Date.now()},
+    '/api/support':{threadId:null,messages:[],ticket:null,hours:{open:false,nextOpening:null},canSimulate:true,simulationReady:true}
   };
   window.fetch=(async(input:any)=>{const path=String(input).split('?')[0];assert.ok(path in fixtures,'Unexpected request: '+path);return new window.Response(JSON.stringify(fixtures[path]),{status:200,headers:{'content-type':'application/json'}});}) as any;
   try{
-    const scripts=['ui','inbox/billing','inbox/onboarding','inbox/core','inbox/chat','inbox/professionals','inbox/agenda','inbox/training','inbox/settings','inbox/simulator'];
+    const scripts=['ui','inbox/billing','inbox/onboarding','inbox/core','inbox/chat','inbox/professionals','inbox/agenda','inbox/training','inbox/settings','inbox/support'];
     window.eval(scripts.map(name=>fs.readFileSync('public/js/'+name+'.js','utf8')).join('\n'));
     await window.init();await window.happyDOM.whenAsyncComplete();
     assert.equal(window.document.getElementById('selectedMenuLabel')!.textContent,'Conversas','Initialization without a hash keeps the default page');
-    for(const page of ['onboarding','plan','config','settings','agenda','account','simulator','chat']){
+    for(const page of ['onboarding','plan','config','settings','agenda','account','support','chat']){
       window.selectNavigationTab(page);await window.happyDOM.whenAsyncComplete();assert.equal(window.document.querySelector('[aria-current=page]')?.getAttribute('data-nav-tab'),page);
     }
     assert.ok(window.document.getElementById('conversationList')!.textContent.includes('depois que você ativa'));
@@ -187,10 +189,15 @@ test('The actual dashboard initializes and navigates all eight pages with offlin
     window.toggleVerticalMenu({stopPropagation(){}});assert.equal(window.document.getElementById('verticalMenuTrigger')!.getAttribute('aria-expanded'),'true');
     window.document.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(window.document.getElementById('verticalMenuTrigger')!.getAttribute('aria-expanded'),'false');
     assert.equal((window.document.getElementById('btnLaunchEmbeddedSignup') as any).disabled,true,'Missing Meta configuration must keep guided connection disabled');
-    for(const tab of ['simulator','onboarding','plan','config','settings','agenda','account','chat']){
+    for(const tab of ['support','onboarding','plan','config','settings','agenda','account','chat']){
       window.history.replaceState(null,'','#'+tab);await window.init();await window.happyDOM.whenAsyncComplete();
       assert.equal(window.document.querySelector('[aria-current=page]')?.getAttribute('data-nav-tab'),tab);
     }
+    window.history.replaceState(null, '', '#simulator');
+    await window.init();await window.happyDOM.whenAsyncComplete();
+    assert.equal(window.location.hash, '#support-simular');
+    assert.equal(window.document.querySelector('[aria-current=page]')?.getAttribute('data-nav-tab'), 'support');
+    assert.equal(window.document.getElementById('simulationModeButton')?.getAttribute('aria-pressed'), 'true');
     for(const hash of ['#invalid','#constructor','#toString']){
       window.history.replaceState(null,'',hash);await window.init();await window.happyDOM.whenAsyncComplete();
       assert.equal(window.document.getElementById('selectedMenuLabel')!.textContent,'Conversas');
@@ -216,12 +223,112 @@ test('The actual dashboard initializes and navigates all eight pages with offlin
   }finally{await window.happyDOM.close();}
 });
 
+test('Support keeps simulated and real conversations separate and retries safely', async () => {
+  const window = await dom(INBOX_HTML, []);
+  const field = (id: string) => window.document.getElementById(id) as any;
+  const now = '2026-11-13T22:00:00.000Z';
+  const base = { threadId: 'thread-1', messages: [] as object[], canSimulate: true, simulationReady: true };
+  const thread = { ...base, before: 'm1', messages: [
+    { id: 'm1', role: 'user', content: 'Posso usar uma agenda externa?', createdAt: now },
+    { id: 'm2', role: 'assistant', content: '<script>exemplo literal</script>', createdAt: now },
+  ] };
+  const calls: Array<{path:string, body:any}> = [];
+  let state: object = base;
+  let supportSends = 0;
+  try {
+    window.setInterval = (() => 0) as any;
+    window.eval(['core', 'support'].map(name => fs.readFileSync('public/js/inbox/' + name + '.js', 'utf8')).join('\n'));
+    window.eval('currentUser={tenantId:"tenant-a",userId:1,canManageClinic:true};');
+    window.fetch = (async (url: any, options: any) => {
+      const path = String(url), body = options?.body ? JSON.parse(options.body) : null;
+      calls.push({ path, body });
+      let response = state, status = 200;
+      if (path === '/api/support/chat') {
+        supportSends++;
+        if (supportSends === 1) {
+          status = 429;
+          response = { error: 'Tente novamente.' };
+        } else if (supportSends === 2) {
+          status = 502;
+          state = { ...base, messages: [thread.messages[0]] };
+          response = { error: 'A IA está indisponível.', messageSaved: true };
+        } else {
+          state = thread;
+          response = thread;
+        }
+      } else if (path === '/api/support?before=m1') response = { ...base, before: null, messages: [{ id: 'm0', role: 'assistant', content: 'Mensagem anterior', createdAt: now }] };
+      else if (path === '/api/support/simulation') response = { reply: 'Resposta simulada' };
+      else if (path === '/api/support/reset') state = response = { ...base, threadId: null };
+      else assert.equal(path, '/api/support');
+      return new window.Response(JSON.stringify(response), { status });
+    }) as any;
+    window.selectNavigationTab('support');
+    await window.happyDOM.whenAsyncComplete();
+    assert.equal(field('supportMessageInput').disabled, false);
+    field('supportMessageInput').value = 'Posso usar uma agenda externa?';
+    await window.handleSupportSubmit({ preventDefault() {} });
+    assert.match(field('supportNotice').textContent, /Aguarde um momento/);
+    assert.equal(field('supportMessageInput').value, 'Posso usar uma agenda externa?');
+    await window.handleSupportSubmit({ preventDefault() {} });
+    assert.match(field('supportNotice').textContent, /mensagem ficou registrada/);
+    assert.match(field('supportMessagesArea').textContent, /Posso usar uma agenda externa/);
+    assert.equal(field('supportMessageInput').value, '');
+    assert.equal(field('supportRetryButton').hidden, false);
+    field('supportMessageInput').value = 'Outra dúvida';
+    window.updateSupportRetryButton();
+    assert.equal(field('supportRetryButton').hidden, true);
+    field('supportMessageInput').value = '';
+    window.updateSupportRetryButton();
+    await window.retrySavedSupportMessage();
+    assert.equal(field('supportRetryButton').hidden, true);
+    const attempts = calls.filter(call => call.path === '/api/support/chat');
+    assert.deepEqual(attempts[0].body, attempts[1].body);
+    assert.deepEqual(attempts[1].body, attempts[2].body);
+    assert.match(field('supportMessagesArea').textContent, /<script>exemplo literal<\/script>/);
+    assert.equal(field('supportMessagesArea').querySelector('script'), null);
+    assert.equal(field('supportHistoryButton').hidden, false);
+    await window.loadOlderSupportMessages();
+    assert.match(field('supportMessagesArea').firstElementChild.textContent, /Mensagem anterior/);
+    assert.equal(field('supportHistoryButton').hidden, true);
+
+    window.selectNavigationTab('support-simular');
+    await window.happyDOM.whenAsyncComplete();
+    assert.equal(field('supportMessagesArea').textContent, '');
+    field('supportMessageInput').value = 'Quero uma avaliação.';
+    await window.handleSupportSubmit({ preventDefault() {} });
+    assert.deepEqual(calls.find(call => call.path === '/api/support/simulation')?.body.history, []);
+    assert.match(field('supportMessagesArea').textContent, /Resposta simulada/);
+    window.selectNavigationTab('support');
+    await window.happyDOM.whenAsyncComplete();
+    assert.match(field('supportMessagesArea').textContent, /Posso usar uma agenda externa/);
+    assert.match(field('supportMessagesArea').firstElementChild.textContent, /Mensagem anterior/);
+    assert.doesNotMatch(field('supportMessagesArea').textContent, /Resposta simulada/);
+
+    await window.resetSupportConversation();
+    assert.deepEqual(calls.find(call => call.path === '/api/support/reset')?.body, { threadId: 'thread-1' });
+    assert.equal(field('supportMessagesArea').textContent, '');
+    assert.equal(field('supportMessageInput').disabled, false);
+
+    state = { ...base, canSimulate: false };
+    window.eval('currentUser={tenantId:"tenant-a",userId:2,canManageClinic:false};');
+    window.selectNavigationTab('support-simular');
+    await window.happyDOM.whenAsyncComplete();
+    assert.equal(window.location.hash, '#support');
+    assert.equal(field('supportModes').hidden, true);
+  } finally { await window.happyDOM.close(); }
+});
+
 
 test('Client sidebar separates operation and account controls without an administrative entry',async()=>{
  const window=await dom(INBOX_HTML,[]);try{
  assert.equal(window.document.getElementById('superAdminNavBtn'),null);assert.equal(window.document.querySelector('.aura-topbar'),null);
  const footer=window.document.querySelector('.aura-sidebar-footer')!;
  assert.deepEqual([...footer.querySelectorAll('button')].map(button=>button.id),['sidebarCollapseTrigger']);
+ const support=window.document.querySelector('[data-nav-tab="support"]')!;
+ assert.equal(support.parentElement!.nextElementSibling, footer);
+ assert.equal(support.textContent, 'Suporte');
+ assert.ok(support.querySelector('.fa-headset'));
+ assert.ok(!window.document.querySelector('#verticalMenuDropdown [data-nav-tab="support"]'));
  const header=window.document.querySelector('.aura-dashboard-page-header')!;
  for(const id of ['accountMenuTrigger','staffLogout','headerAccountName','trialStatusWidget','trialDaysBadge','trialMessagesBadge','topUserName','topUserEmail'])assert.ok(header.querySelector('#'+id),id);
  assert.ok(window.document.querySelector('#accountQuickMenu #themeIcon'));
@@ -337,7 +444,7 @@ test('Quiz transitions follow direction, ignore repeated navigation and focus af
  timers.shift()!.callback();assert.equal(window.document.activeElement?.id,'email');assert.equal(step(2).inert,false);assert.equal(field('quizNextBtn').disabled,false);assert.ok(!field('registerQuiz').hasAttribute('aria-busy'));
  window.previousQuizStep();assert.ok(step(2).classList.contains('aura-quiz-exit-backward'));timers.shift()!.callback();assert.ok(step(1).classList.contains('aura-quiz-enter-backward'));timers.shift()!.callback();assert.equal(window.document.activeElement?.id,'adminName');assert.equal(field('adminName').value,'Mariana Costa');
  window.beginAccountPreparation();assert.deepEqual(timers.map(t=>t.delay),[1400,2800,4000]);timers.shift()!.callback();timers.shift()!.callback();timers.shift()!.callback();
- assert.ok(field('accountPreparation').classList.contains('is-leaving'));assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),'1');assert.equal(window.location.hash,'');assert.equal(timers[0].delay,450);timers.shift()!.callback();assert.equal(window.location.hash,'#simulator');
+ assert.ok(field('accountPreparation').classList.contains('is-leaving'));assert.equal(window.sessionStorage.getItem('aura_entry_reveal'),'1');assert.equal(window.location.hash,'');assert.equal(timers[0].delay,450);timers.shift()!.callback();assert.equal(window.location.hash,'#support-simular');
  const css=fs.readFileSync('public/css/aura.css','utf8');assert.ok(!/@keyframes aura-dashboard-reveal/.test(css));assert.ok(!/aura-entry[^{}]*[^}]*clip-path/.test(css));
  }finally{await window.happyDOM.close();}
 });

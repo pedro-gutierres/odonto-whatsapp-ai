@@ -54,7 +54,7 @@ export async function registerAccount(request: Request, env: Env) {
     const user = await getUserByEmail(env.DB, email);
     if (!user) throw new Error('REGISTER_USER_MISSING');
     const token = await createSessionToken({ userId: user.id, tenantId: id, email, name: adminName, role: 'admin' }, env.AUTH_SECRET);
-    return jsonResponse({ success: true, redirect: '/inbox#simulator', tenantId: id, user: { name: adminName, email, role: 'admin', tenantId: id } }, 201,
+    return jsonResponse({ success: true, redirect: '/inbox#support-simular', tenantId: id, user: { name: adminName, email, role: 'admin', tenantId: id } }, 201,
       { 'Set-Cookie': makeSessionCookie(token, new URL(request.url).protocol === 'https:') });
   } catch (error) {
     if (error instanceof SyntaxError) return jsonResponse({ error: 'JSON inválido.' }, 400);

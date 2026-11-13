@@ -98,13 +98,13 @@ export const INBOX_CHAT_VIEW_HTML = `
             <i class="fa-brands fa-whatsapp"></i>
           </div>
           <p class="font-medium text-neutral-700 dark:text-neutral-300 mb-1">Selecione um paciente na lista ao lado para ver o histórico.</p>
-          <p class="text-[11px] text-neutral-500 dark:text-neutral-400 max-w-sm mb-4">
-            Ainda não recebeu mensagens ou quer testar a IA imediatamente sem conectar número?
+          <p class="aura-simulation-shortcut text-[11px] text-neutral-500 dark:text-neutral-400 max-w-sm mb-4">
+            Você pode simular uma conversa antes de conectar seu número.
           </p>
-          <button onclick="selectNavigationTab('simulator', 'Test Drive da IA', 'fa-solid fa-flask-vial', 'purple')"
-            class="px-4 py-2 rounded-xl bg-neutral-600 hover:bg-neutral-700 text-white font-bold text-xs shadow-md shadow-neutral-500/20 flex items-center gap-2 transition">
+          <button type="button" onclick="selectNavigationTab('support-simular')"
+            class="aura-simulation-shortcut px-4 py-2 rounded-xl bg-neutral-600 hover:bg-neutral-700 text-white font-bold text-xs shadow-md shadow-neutral-500/20 flex items-center gap-2 transition">
             <i class="fa-solid fa-flask-vial"></i>
-            <span>Fazer Test Drive da IA no Simulador</span>
+            <span>Simular atendimento</span>
           </button>
         </div>
       </div>

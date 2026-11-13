@@ -11,7 +11,7 @@ import { audioSeconds } from './audio-duration';
 import { prepareVoice } from './voice';
 import { authenticatedBusiness, handleOnboarding, registerAccount } from "./onboarding";
 import { agendaBlocks } from "./agenda-blocks";
-import { simulatorChat } from "./simulator";
+import { handleSupport, purgeExpiredSupportData } from './support-chat';
 import type { BotConfig, Env, InboundJob, ProfessionalRecord } from "./types";
 import { arrayBufferToBase64, downloadWhatsAppMedia, extractJobs, sendText, sendAudio, verifySignature } from "./whatsapp";
 import { askClaude, type ChatTurn, type ImageAttachment } from "./claude";
@@ -34,7 +34,6 @@ import {
   saveHumanOutbound,
   clearConversation,
   getSyncState,
-  ensureAuthAndAppointments,
   getUserByEmail,
   getUserById,
   listAppointments,
@@ -137,6 +136,9 @@ export default {
       const business = await authenticatedBusiness(request, env);
       if ('response' in business) return business.response!;
       const { tenant, access, canManage } = business;
+      if (url.pathname === '/api/support' || url.pathname.startsWith('/api/support/')) {
+        return handleSupport(request, env, business);
+      }
       if (!canManage) {
         const staffPaths = ['/api/onboarding','/api/conversations','/api/messages','/api/media','/api/sync-check','/api/send','/api/toggle-ai','/api/clear-chat','/api/appointments','/api/appointments/run-confirmations','/api/clinic/password'];
         const allowed = staffPaths.includes(url.pathname) || (url.pathname === '/api/professionals' && request.method === 'GET') || (url.pathname === '/api/agenda/blocks' && request.method === 'GET');
@@ -160,8 +162,6 @@ export default {
       if (url.pathname === '/api/config' && writes && !canManage) return jsonResponse({ error: 'Somente o responsável pode editar o treinamento.' }, 403);
       if (['/api/conversations','/api/messages','/api/media','/api/sync-check'].includes(url.pathname) && !access.can_read_history)
         return jsonResponse({ error: 'O atendimento real será liberado após a ativação.', code: 'OPERATION_BLOCKED' }, 403);
-      if (url.pathname === '/api/init-perf' && !isSuperAdminAuthorized(business.user.email,business.user.role,env))
-        return jsonResponse({ error: 'Inicialização restrita ao administrador global.' }, 403);
     }
 
 
@@ -214,7 +214,7 @@ export default {
     }
 
     // 4) PAINEL GLOBAL SUPER ADMIN - PROTEGIDO POR SESSÃO + ROLE SUPERADMIN + ALLOWLIST
-    if (url.pathname === "/admin") {
+    if (url.pathname === '/admin') {
       const auth = await requireSuperAdmin(request, env, true);
       if ("response" in auth) return auth.response;
       return htmlResponse(ADMIN_HTML);
@@ -821,20 +821,6 @@ export default {
       }
     }
 
-    // Inicialização manual de tabelas e índices (protegida por sessão; uso exclusivo de setup)
-    if (url.pathname === "/api/init-perf") {
-      const auth = await requireSession(request, env);
-      if ("response" in auth) return auth.response;
-
-      try {
-        await ensureAuthAndAppointments(env.DB);
-        return jsonResponse({ status: "indexes and tables ensured" });
-      } catch (err) {
-        console.error("Erro em /api/init-perf:", String(err));
-        return jsonResponse({ error: "Erro ao garantir estrutura do banco." }, 500);
-      }
-    }
-
     // Envio manual de resposta da recepcionista (usa phone_number_id e token da clínica logada)
     if (url.pathname === "/api/send" && request.method === "POST") {
       const auth = await requireSession(request, env);
@@ -980,15 +966,6 @@ export default {
     }
 
     // -------------------------------------------------------------------------
-    // SIMULADOR DE ATENDIMENTO ("TEST DRIVE GUIADO" - ETAPA 3 / MILESTONE 3)
-    // -------------------------------------------------------------------------
-    if (url.pathname === "/api/simulator/chat") {
-      const business = await authenticatedBusiness(request, env);
-      if ("response" in business) return business.response!;
-      return simulatorChat(request, env, business.tenant);
-    }
-
-    // -------------------------------------------------------------------------
     // FALLBACK EXPLÍCITO PARA ASSETS ESTÁTICOS (/js/*) E WEBHOOK DA META
     // -------------------------------------------------------------------------
     if (env.ASSETS && (request.method === "GET" || request.method === "HEAD") && (url.pathname.startsWith("/js/") || url.pathname.startsWith("/css/"))) {
@@ -1047,7 +1024,12 @@ export default {
   },
 
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    if(_controller.cron==='* * * * *'){await processPaddleInbox(env);return;}
+    if (_controller.cron === '* * * * *') {
+      const results = await Promise.allSettled([processPaddleInbox(env), purgeExpiredSupportData(env.DB)]);
+      if (results[1].status === 'rejected') console.error('[SUPPORT] maintenance failed');
+      if (results[0].status === 'rejected') throw results[0].reason;
+      return;
+    }
     console.log("[CRON] Executando rotina de confirmações automáticas de véspera às 20h...");
     const result = await runDayBeforeConfirmations(env);
     console.log("[CRON] Confirmações finalizadas:", JSON.stringify(result));
@@ -1324,7 +1306,6 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
 
     const existingAppointments = upcoming.map((a) => ({
       scheduled_at: a.scheduled_at,
-      procedure: a.procedure || "Consulta",
       duration: a.duration || "30 min",
       professional_id: a.professional_id ?? null,
       professional_name: a.professional_name ?? null,
@@ -1399,14 +1380,14 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
       );
       if (res.success) {
         bookingSucceeded = true;
-        console.log(`[AGENDAMENTO_IA] Agendamento criado com sucesso para ${patientName} em ${scheduledAt}`);
+        console.log('[AGENDAMENTO_IA] criado');
       } else {
-        conflictReason = res.message || "Horário já ocupado na grade.";
-        console.warn(`[AGENDAMENTO_IA_CONFLITO] Não foi possível agendar para ${patientName} em ${scheduledAt}: ${conflictReason}`);
+        conflictReason = 'O horário ficou indisponível ou exige ajuste na agenda.';
+        console.warn('[AGENDAMENTO_IA_CONFLITO] horário indisponível');
       }
-    } catch (e) {
+    } catch {
       conflictReason = "Não foi possível validar os dados do horário solicitado.";
-      console.error("Erro ao processar tag <<<AGENDAR>>>:", e);
+      console.warn('[AGENDAMENTO_IA] dados de agendamento inválidos');
     }
 
     reply = reply.replace(agendarRegex, "").trim();
@@ -1430,7 +1411,6 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
             nowBrasiliaStr,
             existingAppointments: latestUpcoming.map((a) => ({
               scheduled_at: a.scheduled_at,
-              procedure: a.procedure || "Consulta",
               duration: a.duration || "30 min",
               professional_id: a.professional_id ?? null,
               professional_name: a.professional_name ?? null,
@@ -1466,9 +1446,9 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
     try {
       const confirmed = await confirmUpcomingAppointmentForContact(env.DB, tenant.id, job.from);
       if (confirmed) {
-        console.log(`[CONFIRMACAO_IA] Consulta confirmada com sucesso para contato ${job.from}`);
+        console.log('[CONFIRMACAO_IA] confirmada');
       } else {
-        console.warn(`[CONFIRMACAO_IA] Nenhum agendamento pendente encontrado para confirmar (contato=${job.from}, tenant=${tenant.id})`);
+        console.warn('[CONFIRMACAO_IA] sem agendamento pendente');
       }
     } catch (e) {
       console.error("Erro ao processar tag <<<CONFIRMAR>>>:", e);

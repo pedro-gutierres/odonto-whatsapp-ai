@@ -9,13 +9,15 @@ export const INBOX_HEADER_HTML = `
     <button class="aura-nav-item" data-nav-tab="agenda" aria-label="Agenda" title="Agenda" onclick="selectNavigationTab('agenda')"><i class="fa-regular fa-calendar" aria-hidden="true"></i><span>Agenda</span></button>
     <p class="aura-nav-label aura-nav-settings-label">Configurações</p>
     <button class="aura-nav-item" data-nav-tab="config" aria-label="Parâmetros de atendimento" title="Parâmetros de atendimento" onclick="selectNavigationTab('config')"><i class="fa-solid fa-sliders" aria-hidden="true"></i><span>Parâmetros de atendimento</span></button>
-    <button class="aura-nav-item aura-nav-simulator" data-nav-tab="simulator" aria-label="Simulador da IA" title="Simulador da IA" onclick="selectNavigationTab('simulator')"><i class="fa-regular fa-message" aria-hidden="true"></i><span>Simulador da IA</span><span class="aura-nav-pill">Testar</span></button>
     <button class="aura-nav-item" data-nav-tab="settings" aria-label="Seu número" title="Seu número" onclick="selectNavigationTab('settings')"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>Seu número</span><span id="menuWhatsappStatusDot" class="w-2.5 h-2.5 rounded-full bg-neutral-300 ml-auto" title="Verificando conexão"></span></button>
   </nav>
   <p id="onboardingRefreshNotice" class="hidden aura-field-hint" role="status" aria-live="polite"></p>
   <div class="hidden"><div id="topClinicNameBadge">Meu negócio</div><div id="businessSubtitle">Seu espaço no Aura</div></div>
+  <nav id="sidebarSupportNavigation" class="aura-sidebar-support" aria-label="Ajuda">
+    <button type="button" class="aura-nav-item" data-nav-tab="support" aria-label="Suporte" title="Suporte" onclick="selectNavigationTab('support')"><i class="fa-solid fa-headset" aria-hidden="true"></i><span>Suporte</span></button>
+  </nav>
   <div class="aura-sidebar-footer">
-    <button id="sidebarCollapseTrigger" type="button" class="aura-icon-button aura-sidebar-collapse" onclick="toggleSidebarCollapse()" aria-label="Recolher menu" aria-expanded="true" aria-controls="verticalMenuDropdown" title="Recolher menu"><span class="aura-sidebar-mode-icon" aria-hidden="true"></span></button>
+    <button id="sidebarCollapseTrigger" type="button" class="aura-icon-button aura-sidebar-collapse" onclick="toggleSidebarCollapse()" aria-label="Recolher menu" aria-expanded="true" aria-controls="verticalMenuDropdown sidebarSupportNavigation" title="Recolher menu"><span class="aura-sidebar-mode-icon" aria-hidden="true"></span></button>
   </div>
   <div class="aura-topbar-title"><button id="verticalMenuTrigger" class="aura-icon-button aura-menu-toggle" onclick="toggleVerticalMenu(event)" aria-label="Abrir navegação" aria-expanded="false" aria-controls="verticalMenuContainer"><i class="fa-solid fa-bars" aria-hidden="true"></i></button><span id="selectedMenuIcon" hidden></span><h1 id="selectedMenuLabel" class="aura-page-title">Conversas</h1></div>
 </aside>

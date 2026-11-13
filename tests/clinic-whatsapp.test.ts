@@ -442,7 +442,6 @@ test("WhatsApp Meta Embedded Signup, AES-256-GCM storage, duplicate conflict, di
     assert.equal(diagAfterRes.status, 200);
     const diagAfter = (await diagAfterRes.json()) as any;
     assert.equal(diagAfter.summary, "ok");
-
     // 6. Disconnect resets phone_number_id to unconfigured:clinica-a and clears token
     const discRes = await worker.fetch(
       new Request("https://aura.test/api/clinic/whatsapp/disconnect", {

@@ -15,7 +15,8 @@ export default {
     }
     const path = new URL(request.url).pathname;
     const attendance = path === '/webhook' || path.startsWith('/api/admin/')
-      || ['/api/send', '/api/toggle-ai', '/api/clear-chat', '/api/simulator/chat'].includes(path)
+      || path === '/api/support' || path.startsWith('/api/support/')
+      || ['/api/send', '/api/toggle-ai', '/api/clear-chat'].includes(path)
       || path.startsWith('/api/clinic/whatsapp/')
       || (path.startsWith('/api/appointments') && request.method !== 'GET');
     if (attendance) return jsonResponse({ error: 'O ambiente de testes Paddle não executa atendimento real.' }, 403);

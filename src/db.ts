@@ -33,22 +33,6 @@ export function isConfiguredPhoneNumberId(phoneNumberId?: string | null): boolea
   return Boolean(trimmed && !trimmed.startsWith("unconfigured:"));
 }
 
-// Garante criação idempotente da tabela conversation_states (usado apenas na inicialização manual /api/init-perf)
-export async function ensureConversationStatesTable(db: D1Database): Promise<void> {
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS conversation_states (
-        tenant_id TEXT NOT NULL,
-        contact_wa_id TEXT NOT NULL,
-        ai_paused INTEGER NOT NULL DEFAULT 0,
-        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-        PRIMARY KEY (tenant_id, contact_wa_id)
-      );`,
-    )
-    .run();
-}
-export const ensureConversationStateTable = ensureConversationStatesTable;
-
 export async function isAiPaused(db: D1Database, tenantId: string, contact: string): Promise<boolean> {
   const row = await db
     .prepare("SELECT ai_paused FROM conversation_states WHERE tenant_id = ?1 AND contact_wa_id = ?2")
@@ -335,172 +319,6 @@ export interface AppointmentRecord {
   confirmed_at?: string;
   confirmed_by?: "human" | "ai" | string;
   created_at: string;
-}
-
-// Rotina explícita de inicialização de schema e índices (executada apenas via migrations ou /api/init-perf)
-export async function ensureAuthAndAppointments(db: D1Database): Promise<void> {
-  await ensureConversationStatesTable(db);
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS users (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        tenant_id     TEXT NOT NULL,
-        email         TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        name          TEXT NOT NULL,
-        role          TEXT NOT NULL DEFAULT 'admin',
-        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-      );`
-    )
-    .run();
-
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS appointments (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        tenant_id     TEXT NOT NULL,
-        contact_wa_id TEXT NOT NULL,
-        patient_name  TEXT NOT NULL,
-        procedure     TEXT,
-        scheduled_at  TEXT NOT NULL,
-        status        TEXT NOT NULL DEFAULT 'agendado',
-        notes         TEXT,
-        duration      TEXT DEFAULT '30 min',
-        confirmed_at  TEXT,
-        confirmed_by  TEXT,
-        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-      );`
-    )
-    .run();
-
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS professionals (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        tenant_id       TEXT NOT NULL REFERENCES tenants(id),
-        name            TEXT NOT NULL,
-        specialty       TEXT,
-        cro_crm         TEXT,
-        working_days    TEXT NOT NULL DEFAULT '[1,2,3,4,5]',
-        start_hour      TEXT NOT NULL DEFAULT '08:00',
-        end_hour        TEXT NOT NULL DEFAULT '18:00',
-        break_start     TEXT DEFAULT '12:00',
-        break_end       TEXT DEFAULT '13:00',
-        procedures_json TEXT NOT NULL DEFAULT '[]',
-        color           TEXT NOT NULL DEFAULT '#10b981',
-        active          INTEGER NOT NULL DEFAULT 1,
-        created_at      TEXT NOT NULL DEFAULT (datetime('now'))
-      );`
-    )
-    .run();
-
-  await db.prepare("CREATE INDEX IF NOT EXISTS idx_messages_tenant_id ON messages (tenant_id, id);").run();
-  await db.prepare("CREATE INDEX IF NOT EXISTS idx_appointments_tenant ON appointments (tenant_id, scheduled_at);").run();
-  await db.prepare("CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);").run();
-  await db.prepare("CREATE INDEX IF NOT EXISTS idx_professionals_tenant ON professionals (tenant_id, active);").run();
-
-  // Verifica colunas via PRAGMA antes de alterar (sem gerar erros propositais no D1)
-  const cols = await db.prepare("PRAGMA table_info(appointments)").all<{ name: string }>();
-  const existingCols = new Set((cols.results || []).map((c) => c.name));
-  if (!existingCols.has("duration")) {
-    await db.prepare("ALTER TABLE appointments ADD COLUMN duration TEXT DEFAULT '30 min';").run();
-  }
-  if (!existingCols.has("confirmed_at")) {
-    await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_at TEXT;").run();
-  }
-  if (!existingCols.has("confirmed_by")) {
-    await db.prepare("ALTER TABLE appointments ADD COLUMN confirmed_by TEXT;").run();
-  }
-  if (!existingCols.has("professional_id")) {
-    await db.prepare("ALTER TABLE appointments ADD COLUMN professional_id INTEGER;").run();
-  }
-  if (!existingCols.has("professional_name")) {
-    await db.prepare("ALTER TABLE appointments ADD COLUMN professional_name TEXT;").run();
-  }
-
-  const msgCols = await db.prepare("PRAGMA table_info(messages)").all<{ name: string }>();
-  const existingMsgCols = new Set((msgCols.results || []).map((c) => c.name));
-  if (!existingMsgCols.has("media_key")) {
-    await db.prepare("ALTER TABLE messages ADD COLUMN media_key TEXT;").run();
-  }
-  if (!existingMsgCols.has("media_mime")) {
-    await db.prepare("ALTER TABLE messages ADD COLUMN media_mime TEXT;").run();
-  }
-  if (!existingMsgCols.has("media_type")) {
-    await db.prepare("ALTER TABLE messages ADD COLUMN media_type TEXT;").run();
-  }
-
-  const tenantCols = await db.prepare("PRAGMA table_info(tenants)").all<{ name: string }>();
-  const existingTenantCols = new Set((tenantCols.results || []).map((c) => c.name));
-  const tenantAdditions = [
-    "legal_name",
-    "cnpj",
-    "admin_phone",
-    "responsible_name",
-    "contact_email",
-    "wa_display_phone",
-    "wa_verified_name",
-    "wa_connected_at",
-  ];
-  for (const col of tenantAdditions) {
-    if (!existingTenantCols.has(col)) {
-      await db.prepare(`ALTER TABLE tenants ADD COLUMN ${col} TEXT;`).run();
-    }
-  }
-
-  // Milestone 1 (Etapa 3): Colunas de controle de plano e limites de trial
-  if (!existingTenantCols.has("plan_status")) {
-    await db
-      .prepare(
-        "ALTER TABLE tenants ADD COLUMN plan_status TEXT NOT NULL DEFAULT 'trial' CHECK (plan_status IN ('trial', 'active', 'past_due', 'canceled'));"
-      )
-      .run();
-  }
-  if (!existingTenantCols.has("trial_ends_at")) {
-    await db.prepare("ALTER TABLE tenants ADD COLUMN trial_ends_at TEXT;").run();
-  }
-  if (!existingTenantCols.has("trial_messages_used")) {
-    await db.prepare("ALTER TABLE tenants ADD COLUMN trial_messages_used INTEGER NOT NULL DEFAULT 0;").run();
-  }
-  if (!existingTenantCols.has("trial_messages_limit")) {
-    await db.prepare("ALTER TABLE tenants ADD COLUMN trial_messages_limit INTEGER NOT NULL DEFAULT 100;").run();
-  }
-  if (!existingTenantCols.has("billing_cycle")) {
-    await db.prepare("ALTER TABLE tenants ADD COLUMN billing_cycle TEXT DEFAULT 'monthly';").run();
-  }
-
-  const userCols = await db.prepare("PRAGMA table_info(users)").all<{ name: string }>();
-  const existingUserCols = new Set((userCols.results || []).map((c) => c.name));
-  if (!existingUserCols.has("active")) {
-    await db.prepare("ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1;").run();
-  }
-  await db.prepare("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users (tenant_id, active);").run();
-
-  // Semeia usuários iniciais apenas se a tabela users estiver vazia
-  const user = await db.prepare("SELECT id FROM users LIMIT 1").first();
-  if (!user) {
-    // Senha padrão inicial para testes: 'admin123'
-    // Hash SHA-256 de "admin123:odonto_salt_2026"
-    const defaultHash = "219f1b54263a28a320ddb777b89011a54d75d32bc5d0e6b20b9fdbdc02d61876";
-    await db
-      .prepare(
-        `INSERT OR IGNORE INTO users (tenant_id, email, password_hash, name, role)
-         VALUES 
-         ('lab', 'pedrogutierres@protonmail.com', ?1, 'Pedro Gutierres', 'superadmin'),
-         ('lab', 'admin@clinica.com', ?1, 'Dra. Fernanda (Admin)', 'admin');`
-      )
-      .bind(defaultHash)
-      .run();
-
-    await db
-      .prepare(
-        `INSERT OR IGNORE INTO appointments (tenant_id, contact_wa_id, patient_name, procedure, scheduled_at, status, notes)
-         VALUES 
-         ('lab', '5511988881234', 'Mariana Silveira', 'Botox / Toxina Botulínica', '2026-11-14 10:00', 'confirmado', 'Agendado automaticamente pela Secretária IA Claude 24h'),
-         ('lab', '5521973401655', 'Pedro (Paciente Teste)', 'Avaliação Geral & Clareamento', '2026-11-11 15:30', 'agendado', 'Paciente aguardando confirmação de véspera');`
-      )
-      .run();
-  }
 }
 
 export async function getUserByEmail(db: D1Database, email: string): Promise<UserRecord | null> {
@@ -1034,18 +852,27 @@ export async function getUpcomingAppointments(
   tenantId: string,
   days: number = 14
 ): Promise<AppointmentRecord[]> {
+  const fields = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const local = Object.fromEntries(fields.map(({ type, value }) => [type, value]));
+  const start = `${local.year}-${local.month}-${local.day} ${local.hour}:${local.minute}`;
+  const end = new Date(Date.parse(start.replace(' ', 'T') + ':00Z') + days * 86_400_000)
+    .toISOString().slice(0, 16).replace('T', ' ');
   const { results } = await db
     .prepare(
       `SELECT * FROM appointments 
-       WHERE tenant_id = ?1 AND status NOT IN ('cancelado')
+       WHERE tenant_id = ?1 AND status != 'cancelado' AND scheduled_at < ?3
+         AND (scheduled_at >= ?2 OR COALESCE(ends_at,datetime(scheduled_at,'+30 minutes')) > ?2)
        ORDER BY scheduled_at ASC LIMIT 100`
     )
-    .bind(tenantId)
+    .bind(tenantId, start, end)
     .all<AppointmentRecord>();
   const { results: blocks } = await db.prepare(`SELECT b.*,p.name AS professional_name FROM appointment_blocks b
     JOIN professionals p ON p.id=b.professional_id AND p.tenant_id=b.tenant_id
-    WHERE b.tenant_id=?1 AND b.ends_at>=strftime('%Y-%m-%d %H:%M','now','-3 hours') ORDER BY b.starts_at LIMIT 200`)
-    .bind(tenantId).all<{id:number;starts_at:string;ends_at:string;professional_id:number;professional_name:string}>();
+    WHERE b.tenant_id=?1 AND b.ends_at>?2 AND b.starts_at<?3 ORDER BY b.starts_at LIMIT 200`)
+    .bind(tenantId, start, end).all<{id:number;starts_at:string;ends_at:string;professional_id:number;professional_name:string}>();
   const occupations = (blocks || []).map(b => ({ id:-b.id, tenant_id:tenantId, contact_wa_id:'', patient_name:'',
     procedure:'Horário bloqueado', scheduled_at:b.starts_at, status:'agendado' as const, notes:null,
     duration: `${Math.round((Date.parse(b.ends_at.replace(' ','T')+'Z')-Date.parse(b.starts_at.replace(' ','T')+'Z'))/60000)} min`,
@@ -1126,7 +953,7 @@ export function isCrucialConfigComplete(cfg: BotConfig | null | undefined): bool
 // -----------------------------------------------------------------------------
 export async function listAdminOverview(db: D1Database) {
   const {results} = await db.prepare(`SELECT t.id,t.name,t.business_kind,COALESCE(t.business_sectors,t.business_sector) AS business_sector,t.commercial_status,t.schedule_mode,
-    t.demo_messages_used,t.demo_messages_limit,t.trial_messages_used,t.trial_messages_limit,t.is_test,t.test_label,t.created_at,
+    t.trial_messages_used,t.trial_messages_limit,t.is_test,t.test_label,t.created_at,
     t.bot_config,t.phone_number_id,
     (SELECT u.name FROM users u WHERE u.tenant_id=t.id AND u.role='admin' ORDER BY u.id LIMIT 1) AS owner_name,
     (SELECT u.email FROM users u WHERE u.tenant_id=t.id AND u.role='admin' ORDER BY u.id LIMIT 1) AS owner_email,
@@ -1601,25 +1428,3 @@ export function getTenantTrialInfo(tenant: Tenant): TenantTrialInfo {
     can_send_messages: canSend,
   };
 }
-
-/**
- * Incrementa atomicamente o contador de mensagens de trial de uma clínica.
- * Retorna o novo total de mensagens consumidas, ou 0 se a clínica não for encontrada.
- */
-export async function incrementTenantTrialMessages(
-  db: D1Database,
-  tenantId: string
-): Promise<number> {
-  const row = await db
-    .prepare(
-      `UPDATE tenants
-       SET trial_messages_used = COALESCE(trial_messages_used, 0) + 1
-       WHERE id = ?1
-       RETURNING trial_messages_used`
-    )
-    .bind(tenantId)
-    .first<{ trial_messages_used: number }>();
-
-  return row ? Number(row.trial_messages_used) : 0;
-}
-

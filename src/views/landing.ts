@@ -2,7 +2,7 @@ import { AURA_STYLE_LINKS } from "./brand";
 import { planCards } from './plan-cards';
 import type { PlanOffer } from '../plans';
 export function landingHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aura · IA para clínicas de odontologia e estética</title><meta name="description" content="Transforme conversas no WhatsApp em avaliações agendadas. Teste sua IA no Simulador e ative o plano Free no WhatsApp Oficial, sem cartão.">${AURA_STYLE_LINKS}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"></head>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aura · IA para clínicas de odontologia e estética</title><meta name="description" content="Transforme conversas no WhatsApp em avaliações agendadas. Simule o atendimento e ative o plano Free no WhatsApp Oficial, sem cartão.">${AURA_STYLE_LINKS}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"></head>
 <body class="aura-public aura-commercial">
 <header class="aura-public-header">
   <a href="/" class="aura-brand" aria-label="Aura, início"><span class="aura-brand-mark" aria-hidden="true"></span><span class="aura-brand-name">aura</span></a>
@@ -12,7 +12,7 @@ export function landingHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYP
   <section class="aura-hero" aria-labelledby="heroTitle">
     <div><p class="aura-eyebrow">IA Oficial para Odontologia e Estética</p><h1 id="heroTitle">Transforme cliques em pacientes agendados no WhatsApp em segundos.</h1><p>Sua recepção ativa 24h por dia com Inteligência Artificial. O Aura responde dúvidas sobre procedimentos, ouve áudios, envia fotos, consulta a agenda de cada profissional e marca avaliações automaticamente na API Oficial da Meta.</p>
       <div class="aura-hero-actions"><a href="/register" class="aura-primary">Criar conta e simular minha IA <span aria-hidden="true">→</span></a><a href="#planos" class="aura-secondary">Ver planos</a></div>
-      <p class="aura-small-note">Comece no Simulador ao criar sua conta. Ative o atendimento no WhatsApp quando estiver tudo pronto, sem precisar de cartão no plano Free.</p>
+      <p class="aura-small-note">Simule o atendimento ao criar sua conta. Ative o WhatsApp quando estiver tudo pronto, sem precisar de cartão no plano Free.</p>
     </div>
     <div class="aura-chat-preview" aria-label="Exemplo ilustrativo de agendamento no WhatsApp">
       <div class="aura-chat-preview-head"><span class="aura-chat-avatar" aria-hidden="true"></span><div>Aura · Recepção da clínica<span class="aura-chat-availability"><i aria-hidden="true"></i>Disponível para atender, mesmo à noite</span></div><span class="aura-chat-time">21:42</span></div>
@@ -30,7 +30,7 @@ export function landingHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYP
   <section id="como-funciona" class="aura-public-section" aria-labelledby="howTitle">
     <p class="aura-eyebrow">DO PRIMEIRO TESTE AO PRIMEIRO PACIENTE</p><h2 id="howTitle">Comece a usar em 3 passos simples</h2>
     <div class="aura-feature-grid">
-      <div><div class="aura-feature-index">01 · EXPERIMENTE</div><h3>Simule na hora (já pré-treinada)</h3><p>Ao criar sua conta, a IA já vem configurada com um modelo para Odontologia ou Estética. Converse com ela no Simulador em menos de 1 minuto.</p></div>
+      <div><div class="aura-feature-index">01 · EXPERIMENTE</div><h3>Simule na hora</h3><p>Ao criar sua conta, a IA já vem configurada com um modelo para Odontologia ou Estética. Abra Suporte e simule uma conversa como paciente.</p></div>
       <div><div class="aura-feature-index">02 · PERSONALIZE</div><h3>Personalize sua rotina</h3><p>Ajuste seus procedimentos, valores, regras de avaliação e os horários de cada profissional da sua equipe. O atendimento fica com o jeito da sua clínica.</p></div>
       <div><div class="aura-feature-index">03 · ATIVE QUANDO QUISER</div><h3>Conecte seu WhatsApp e ative o atendimento</h3><p>Vincule seu número na API Oficial da Meta e comece com até 50 respostas automáticas da IA por mês no plano Free.</p></div>
     </div>
@@ -45,20 +45,20 @@ export function landingHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYP
   </section>
   <section id="planos" class="aura-public-section" aria-labelledby="pricingTitle">
     <p class="aura-eyebrow">EXPERIMENTE ANTES DE ESCOLHER</p><h2 id="pricingTitle">Investimento transparente que se paga no primeiro agendamento</h2>
-    <p class="aura-section-intro">Todas as contas incluem <strong>30 mensagens no Simulador</strong>. O plano Free tem <strong>até 50 respostas automáticas com IA por mês</strong> no WhatsApp. Você decide quando ativar o atendimento.</p>
+    <p class="aura-section-intro">Todas as contas incluem suporte e simulação de atendimento. O plano Free tem <strong>até 50 respostas automáticas com IA por mês</strong> no WhatsApp. Você decide quando ativar o atendimento.</p>
     ${planCards(false,offers)}
     <p class="aura-field-hint">Escolha mensal ou anual e configure a renovação automática no checkout. As cotas reiniciam mensalmente, inclusive nos planos anuais.</p>
   </section>
   <section id="duvidas" class="aura-public-section" aria-labelledby="faqTitle">
     <p class="aura-eyebrow">PODE PERGUNTAR</p><h2 id="faqTitle">Tudo claro antes de começar</h2>
     <div class="aura-faq">
-      <details><summary>Preciso cadastrar cartão para começar?</summary><p>Não. O plano Free é grátis e sem vencimento. Você pode experimentar o Simulador e ativar o atendimento após preparar o treinamento, a conexão com o WhatsApp e a agenda.</p></details>
+      <details><summary>Preciso cadastrar cartão para começar?</summary><p>O plano Free é grátis e sem vencimento. Você pode simular o atendimento em Suporte e ativar o WhatsApp após preparar o treinamento, a conexão e a agenda.</p></details>
       <details><summary>E se minha clínica já usar outro sistema de agenda?</summary><p>Você escolhe entre usar a agenda completa do Aura, reservar faixas de horários dedicadas para a IA ou manter sua agenda externa e importar os horários ocupados como bloqueios via CSV. Nos dois últimos modos, sua equipe mantém as disponibilidades atualizadas no Aura; não há sincronização automática com outro sistema.</p></details>
       <details><summary>A IA passa preço de procedimentos ou foca na avaliação?</summary><p>Você escolhe no treinamento: ela pode informar valores exatos, valores “a partir de” ou conduzir direto para o agendamento da avaliação inicial. Personalize os exemplos do seu modelo com os valores e as orientações da sua clínica antes de ativar o atendimento real.</p></details>
       <details><summary>Posso usar no mesmo número de WhatsApp que já tenho hoje?</summary><p>Sim, desde que o número atenda aos requisitos da API Oficial da Meta. Você pode migrar seu número para a Cloud API ou usar um número dedicado. Manter o aplicativo WhatsApp Business junto com a API depende da elegibilidade da conta e da disponibilidade do fluxo de coexistência na conexão Meta. Confira essa opção antes de migrar: a migração convencional pode interromper o uso do número no aplicativo.</p></details>
     </div>
   </section>
-  <section class="aura-public-section aura-final-cta" aria-labelledby="finalTitle"><p class="aura-eyebrow">SUA PRÓXIMA CONVERSA PODE VIRAR UMA AVALIAÇÃO</p><h2 id="finalTitle">Veja sua IA atendendo antes de conectar o WhatsApp.</h2><p>Escolha sua área, crie a conta e converse com o modelo pronto para sua clínica.</p><a href="/register" class="aura-primary">Criar conta e simular minha IA <span aria-hidden="true">→</span></a><p class="aura-small-note">30 mensagens no Simulador. Comece no plano Free, sem cartão.</p></section>
+  <section class="aura-public-section aura-final-cta" aria-labelledby="finalTitle"><p class="aura-eyebrow">SUA PRÓXIMA CONVERSA PODE VIRAR UMA AVALIAÇÃO</p><h2 id="finalTitle">Veja sua IA atendendo antes de conectar o WhatsApp.</h2><p>Escolha sua área, crie a conta e converse com o modelo pronto para sua clínica.</p><a href="/register" class="aura-primary">Criar conta e simular minha IA <span aria-hidden="true">→</span></a><p class="aura-small-note">Comece no plano Free, sem cartão.</p></section>
 </main>
 <footer class="aura-public-footer"><span>Aura · Atendimento com IA para Odontologia e Estética</span><a href="/login">Já tem conta? Entrar no painel</a></footer>
 <script>fetch('/api/auth/me').then(response=>response.ok?response.json():null).then(data=>{if(data&&data.authenticated){const button=document.getElementById('navRegisterBtn');button.href='/inbox';button.textContent='Abrir meu painel';document.getElementById('navLoginBtn').classList.add('hidden');}}).catch(()=>{});</script>

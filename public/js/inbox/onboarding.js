@@ -2,7 +2,7 @@ let currentAccess = null;
 let onboardingBusy = false;
 let lastScheduleMode;
 let lastAgendaReadiness;
-const commercialLabels = { free:'Seu plano Free está disponível. Prepare o atendimento para começar.', preparing:'Experimente no Simulador, personalize sua clínica e conecte o WhatsApp para ativar o atendimento no plano Free.', trial:'Seu teste gratuito está ativo.', active:'Seu plano está ativo.', ended:'O atendimento está pausado. Confira seu plano na página Plano.', legacy:'Seu atendimento está disponível.' };
+const commercialLabels = { free:'Seu plano Free está disponível. Prepare o atendimento para começar.', preparing:'Simule o atendimento em Suporte, personalize sua clínica e conecte o WhatsApp para ativar o plano Free.', trial:'Seu teste gratuito está ativo.', active:'Seu plano está ativo.', ended:'O atendimento está pausado. Confira seu plano na página Plano.', legacy:'Seu atendimento está disponível.' };
 let onboardingRequestId = 0;
 let onboardingRequests = 0;
 async function loadOnboarding({ background = false } = {}) {
@@ -102,11 +102,11 @@ function renderOnboarding(trialEnabled) {
   updateScheduleExplanation();
   const badge = document.getElementById('trialStatusWidget'); badge.classList.remove('hidden'); badge.classList.add('flex');
   document.getElementById('trialDaysBadge').textContent = ({free:'Conta gratuita',preparing:'Em preparação',trial:'Teste ativo',active:'Plano ativo',ended:'Ver meu plano',legacy:'Minha conta'})[access.status];
-  document.getElementById('trialMessagesBadge').textContent = access.status === 'trial' ? trial.used + '/' + trial.limit + ' respostas' : 'Test Drive: ' + access.demo.used + '/' + access.demo.limit;
+  document.getElementById('trialMessagesBadge').textContent = access.status === 'trial' ? trial.used + '/' + trial.limit + ' respostas' : '';
   document.getElementById('globalTrialExpiredBanner').classList.toggle('hidden', access.status !== 'ended');
   document.getElementById('trialExpiredTitle').textContent = 'Atendimento pausado';
   document.getElementById('trialExpiredSubtitle').textContent = 'Seu histórico continua disponível. Confira seu plano para retomar.';
-  applyCommercialLocks(); if (typeof updateDemoState === 'function') updateDemoState();
+  applyCommercialLocks();
 }
 function applyCommercialLocks() {
   if (!currentAccess) return;
