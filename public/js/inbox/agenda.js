@@ -37,9 +37,6 @@
         renderCalendar();
         await loadAgendaBlocks();
         applyCommercialLocks();
-
-        const badge = document.getElementById('menuAppointmentsBadge');
-        if (badge) badge.textContent = String(appointments.length);
       } catch (err) {
         console.error("Erro ao carregar agenda:", err);
       } finally {

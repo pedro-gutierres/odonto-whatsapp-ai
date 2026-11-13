@@ -64,10 +64,10 @@
       const dot = document.getElementById('menuWhatsappStatusDot');
       if (!dot || !wa) return;
       if (wa.configured) {
-        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40';
+        dot.className = 'w-2.5 h-2.5 rounded-full ml-auto bg-emerald-500 shadow-sm shadow-emerald-500/40';
         dot.title = 'WhatsApp conectado (' + (wa.display_phone_number || wa.phone_number_id) + ')';
       } else {
-        dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
+        dot.className = 'w-2.5 h-2.5 rounded-full ml-auto bg-red-500';
         dot.title = 'WhatsApp ainda não conectado';
       }
     }
