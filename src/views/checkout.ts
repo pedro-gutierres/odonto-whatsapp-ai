@@ -29,5 +29,5 @@ export function checkoutHtml(env: Env) {
 <p class="aura-auth-footer"><a href="/inbox#plan">Voltar ao meu plano</a></p>
 </section></main>
 <script id="paddlePublicConfig" type="application/json">${json}</script>
-<script src="/js/plan-checkout.js?v=6"></script><script src="/js/checkout.js?v=3"></script></body></html>`;
+<script src="/js/plan-checkout.js?v=8"></script><script src="/js/checkout.js?v=3"></script></body></html>`;
 }

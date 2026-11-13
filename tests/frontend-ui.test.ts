@@ -368,7 +368,7 @@ test('Plano pago esconde a própria contratação e o Free, e mantém o Ultra di
     assert.ok(!node('checkoutUltra').classList.contains('hidden'));
     const ultraActions=node('checkoutUltra').querySelectorAll('button');
     assert.equal(ultraActions.length,1);
-    assert.equal(ultraActions[0].getAttribute('onclick'),"openAuraCheckout('ultra')");
+    assert.match(ultraActions[0].getAttribute('onclick') || '',/openAuraCheckout.*dataset.plan/);
     assert.equal(ultraActions[0].disabled,false);
     assert.equal(node('planOffers').dataset.cycle,'yearly');
     const ultraPrice=window.document.querySelector('[data-plan="ultra"] [data-yearly]')!;

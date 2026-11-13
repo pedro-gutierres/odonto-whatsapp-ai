@@ -1,8 +1,9 @@
 import type { Env, Tenant } from './types';
 import { getTenantById } from './db';
 import { jsonResponse } from './http';
-import { PLANS, isPaidPlan, effectivePlan, priceIdFor, type BillingCycle, type PlanTier } from './plans';
+import { PLANS, activeOffer, isPaidPlan, effectivePlan, priceIdFor, planUsage, publishedOffers, getOffer, offerPriceId, storedTier, type PlanOffer, type BillingCycle, type PlanTier } from './plans';
 import { paddle, paddlePage, PaddleApiError, ownedSubscription, withBillingLock } from './paddle-client';
+import { acceptMigration, migrationSummary, openMigration, previewMigration, reconcileOfferMigrations } from './offer-migrations';
 
 export function paddleCheckoutAvailable(env:Env) {
   const sandbox = env.PADDLE_ENVIRONMENT === 'sandbox';
@@ -10,14 +11,39 @@ export function paddleCheckoutAvailable(env:Env) {
     && Boolean(env.PADDLE_API_KEY?.startsWith(sandbox?'pdl_sdbx_apikey_':'pdl_live_apikey_')
       && env.PADDLE_CLIENT_TOKEN?.startsWith(sandbox?'test_':'live_') && env.PADDLE_WEBHOOK_SECRET);
 }
-export function billingEnabled(env: Env) {
-  return paddleCheckoutAvailable(env) && Boolean(env.PADDLE_PRO_MONTHLY_PRICE_ID && env.PADDLE_PRO_YEARLY_PRICE_ID
-      && env.PADDLE_ULTRA_MONTHLY_PRICE_ID && env.PADDLE_ULTRA_YEARLY_PRICE_ID);
+export async function billingEnabled(env: Env, plans?:Record<string,PlanOffer>) {
+  if (!paddleCheckoutAvailable(env)) return false;
+  const paid=Object.values(plans || await publishedOffers(env.DB)).filter(offer=>offer.plan_id!=='free');
+  const prices=await Promise.all(paid.flatMap(offer=>(['monthly','yearly'] as const).map(cycle=>offerPriceId(env,offer,cycle))));
+  return paid.length>0 && prices.every(Boolean);
 }
-type Selection = {plan:'pro'|'ultra';cycle:BillingCycle};
-type PlanChange = {id:string;tenant_id:string;subscription_id:string;plan_tier:PlanTier;billing_cycle:BillingCycle;price_id:string|null;auto_renew:number;effective_at:string;status:string};
+type Selection = {offer:PlanOffer;cycle:BillingCycle};
+type PlanChange = {id:string;tenant_id:string;subscription_id:string;plan_tier:PlanTier;billing_cycle:BillingCycle;price_id:string|null;auto_renew:number;effective_at:string;status:string;offer_id?:string|null;expected_amount?:number|null;undo_requested?:number};
 async function openChange(env:Env,tenantId:string) {
   return env.DB.prepare("SELECT * FROM plan_changes WHERE tenant_id=?1 AND status IN ('prepared','applied')").bind(tenantId).first<PlanChange>();
+}
+async function undoChange(env:Env,tenant:Tenant,change:PlanChange) {
+  const sub=await ownedSubscription(env,tenant);
+  if (sub.scheduled_change?.action==='cancel') return finishRenewalCancellation(env,tenant,sub);
+  const price=tenant.plan_price_id;
+  if (!price || sub.status!=='active' || Date.parse(sub.next_billed_at)!==Date.parse(change.effective_at)
+    || Date.parse(change.effective_at)<=Date.now()+1800000) throw new Error('RENEWAL_LOCKED');
+  const hasPrice=(candidate:any)=>candidate.items?.length===1 && candidate.items[0].quantity===1 && candidate.items[0].price?.id===price;
+  if (!hasPrice(sub)) {
+    const path='/subscriptions/'+sub.id;
+    const body={items:[{price_id:price,quantity:1}],proration_billing_mode:'do_not_bill',on_payment_failure:'prevent_change'};
+    const quote=await paddle(env,path+'/preview',body,'PATCH');
+    if (quote.immediate_transaction || quote.scheduled_change || Date.parse(quote.next_billed_at)!==Date.parse(change.effective_at))
+      throw new Error('UNSAFE_PREVIEW');
+    const updated=await paddle(env,path,body,'PATCH');
+    if (!hasPrice(updated) || updated.scheduled_change || Date.parse(updated.next_billed_at)!==Date.parse(change.effective_at))
+      throw new Error('UNEXPECTED_PLAN_CHANGE');
+  }
+  await env.DB.batch([
+    env.DB.prepare("UPDATE plan_changes SET status='superseded' WHERE id=?1 AND status='applied'").bind(change.id),
+    env.DB.prepare("UPDATE plan_offer_migrations SET status='offered',accepted_at=NULL,accepted_by=NULL WHERE tenant_id=?1 AND status='accepted' AND target_offer_id=?2")
+      .bind(tenant.id,change.offer_id ?? null),
+  ]);
 }
 
 async function finishRenewalCancellation(env: Env, tenant: Tenant, sub: Awaited<ReturnType<typeof ownedSubscription>>) {
@@ -43,7 +69,9 @@ async function finishRenewalCancellation(env: Env, tenant: Tenant, sub: Awaited<
   } catch (error) {
     throw new Error('UNSAFE_CANCELLATION',{cause:error});
   }
-  await env.DB.prepare("UPDATE plan_changes SET status='superseded' WHERE tenant_id=?1 AND subscription_id=?2 AND status='applied'")
+  await env.DB.prepare("UPDATE plan_changes SET status='superseded' WHERE tenant_id=?1 AND subscription_id=?2 AND status IN ('prepared','applied')")
+    .bind(tenant.id,sub.id).run();
+  await env.DB.prepare("UPDATE plan_offer_migrations SET status='canceled' WHERE tenant_id=?1 AND subscription_id=?2 AND status IN ('accepted','offered','notice_pending','deferred')")
     .bind(tenant.id,sub.id).run();
 }
 function paddlePortalUrl(value: unknown, environment?: string) {
@@ -58,10 +86,9 @@ function paddlePortalUrl(value: unknown, environment?: string) {
 }
 
 class PaymentMethodChangeRequired extends Error {
-  constructor(public url: string | null, currentPlan: PlanTier, targetPlan: 'pro' | 'ultra', pixRestricted: boolean) {
-    const target = PLANS[targetPlan].name;
+  constructor(public url: string | null, currentPlan: string, target: string, pixRestricted: boolean) {
     super(pixRestricted
-      ? `O Pix Automático do seu plano ${PLANS[currentPlan].name} autoriza apenas o valor atual. Para agendar o plano ${target}, adicione outro meio de pagamento na Paddle e volte a este checkout.`
+      ? `O Pix Automático do seu plano ${currentPlan} autoriza apenas o valor atual. Para agendar o plano ${target}, adicione outro meio de pagamento na Paddle e volte a este checkout.`
       : `Para agendar o plano ${target}, atualize o meio de pagamento na Paddle e volte a este checkout.`);
   }
 }
@@ -70,18 +97,19 @@ function canSelectFree(tenant: Tenant) {
   const hasPaidPeriod = Date.parse(tenant.subscription_ends_at || '') > Date.now();
   return !hasPaidPeriod && (!tenant.paddle_subscription_id || tenant.billing_status === 'canceled');
 }
-async function checkedPrice(env:Env,choice:Selection) {
-  const id = priceIdFor(env,choice.plan,choice.cycle);
+export async function checkedPrice(env:Env,choice:Selection,priceId?:string) {
+  const id = priceId || await offerPriceId(env,choice.offer,choice.cycle);
+  if (!id) throw new Error('PRICE_MISMATCH');
   const price = await paddle(env,`/prices/${id}`);
   if (price.id !== id || price.status !== 'active' || price.unit_price?.currency_code !== 'BRL'
-    || Number(price.unit_price?.amount) !== PLANS[choice.plan][choice.cycle] || price.trial_period
+    || Number(price.unit_price?.amount) !== choice.offer[choice.cycle] || price.trial_period
     || price.billing_cycle?.interval !== (choice.cycle==='monthly'?'month':'year') || price.billing_cycle?.frequency !== 1
     || (price.unit_price_overrides?.length ?? 0) > 0 || price.tax_mode !== 'internal'
     || price.quantity?.minimum !== 1 || price.quantity?.maximum !== 1)
     throw new Error('PRICE_MISMATCH');
   return id!;
 }
-async function preview(env:Env,tenant:Tenant,choice:Selection) {
+export async function preview(env:Env,tenant:Tenant,choice:Selection) {
   const priceId = await checkedPrice(env,choice);
   const hasExisting = Boolean(tenant.paddle_subscription_id && (tenant.billing_status !== 'canceled' || Date.parse(tenant.subscription_ends_at || '')>Date.now()));
   let effectiveAt:string|null = null;
@@ -92,11 +120,25 @@ async function preview(env:Env,tenant:Tenant,choice:Selection) {
     if (sub.status === 'active' && !effectiveAt) throw new Error('CHECKOUT_PROCESSING');
     const cancellation = sub.scheduled_change?.action === 'cancel';
     const periodBoundary = cancellation ? sub.scheduled_change.effective_at : sub.next_billed_at;
+    if (cancellation) throw new Error('RENEWAL_DISABLED');
     if (sub.status !== 'active' || !effectiveAt || Date.parse(effectiveAt) <= Date.now()+1800000
       || Date.parse(periodBoundary) !== Date.parse(effectiveAt))
       throw new Error('RENEWAL_LOCKED');
     let result;
     try {
+      const periodPrice=tenant.plan_price_id;
+      if (periodPrice && priceId!==periodPrice) {
+        const transactions=await paddle(env,`/transactions?subscription_id=${encodeURIComponent(sub.id)}&status=completed&per_page=30&order_by=billed_at%5BDESC%5D`);
+        const method=transactions?.flatMap((txn:any)=>txn.payments || []).find((attempt:any)=>
+          ['captured','authorized'].includes(attempt.status) && attempt.method_details?.type)?.method_details?.type;
+        if (method==='pix') {
+          const previous=await paddle(env,'/prices/'+encodeURIComponent(periodPrice));
+          if (Number(previous.unit_price?.amount)!==choice.offer[choice.cycle] ||
+            previous.billing_cycle?.interval!==(choice.cycle==='monthly'?'month':'year'))
+            throw new PaymentMethodChangeRequired(paddlePortalUrl(sub.management_urls?.update_payment_method,env.PADDLE_ENVIRONMENT),
+              activeOffer(tenant)?.name || PLANS[tenant.plan_tier || 'free'].name,choice.offer.name,true);
+        }
+      }
       // Keep Paddle's existing billing anchor. A locally stored timestamp has
       // millisecond precision and can be interpreted as a date change by Paddle.
       result = await paddle(env,`/subscriptions/${sub.id}/preview`,{
@@ -104,24 +146,20 @@ async function preview(env:Env,tenant:Tenant,choice:Selection) {
       },'PATCH');
     } catch (error) {
       if (error instanceof PaddleApiError && ['subscription_change_not_allowed_for_payment_method','subscription_missing_payment_method_cannot_update'].includes(error.code || '')) {
-        throw new PaymentMethodChangeRequired(paddlePortalUrl(sub.management_urls?.update_payment_method,env.PADDLE_ENVIRONMENT), effectivePlan(tenant), choice.plan,
+        throw new PaymentMethodChangeRequired(paddlePortalUrl(sub.management_urls?.update_payment_method,env.PADDLE_ENVIRONMENT), activeOffer(tenant)?.name || PLANS[tenant.plan_tier || 'free'].name, choice.offer.name,
           error.code === 'subscription_change_not_allowed_for_payment_method');
       }
-      if (cancellation && error instanceof PaddleApiError && error.status === 400) throw new Error('RENEWAL_DISABLED');
       throw error;
     }
-    // A canceled renewal has no next charge to quote. Restoring it is a
-    // separate user action and must never happen as a side effect of preview.
-    if (cancellation) throw new Error('RENEWAL_DISABLED');
     // Refuse a preview that would bill now or move the already-paid renewal date.
     const next=result.next_transaction,totals=next?.details?.totals;
     nextAmount=Number(totals?.grand_total);
     if (result.immediate_transaction || Date.parse(result.next_billed_at) !== Date.parse(effectiveAt)
       || Date.parse(next?.billing_period?.starts_at)!==Date.parse(effectiveAt) || totals?.currency_code!=='BRL'
-      || !Number.isSafeInteger(nextAmount) || nextAmount<0 || nextAmount>PLANS[choice.plan][choice.cycle]) throw new Error('UNSAFE_PREVIEW');
+      || !Number.isSafeInteger(nextAmount) || nextAmount<0 || nextAmount>choice.offer[choice.cycle]) throw new Error('UNSAFE_PREVIEW');
   }
-  const summary = {plan:choice.plan,cycle:choice.cycle,autoRenew:true,priceId,
-    amount:PLANS[choice.plan][choice.cycle],next_amount:nextAmount,currency:'BRL',scheduled:hasExisting,effective_at:effectiveAt};
+  const summary = {plan:choice.offer.plan_id,offer_id:choice.offer.id,cycle:choice.cycle,autoRenew:true,priceId,
+    amount:choice.offer[choice.cycle],next_amount:nextAmount,currency:'BRL',scheduled:hasExisting,effective_at:effectiveAt};
   const digest = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({...summary,tenant:tenant.id,subscription:tenant.paddle_subscription_id})));
   return {...summary,fingerprint:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')};
 }
@@ -136,6 +174,12 @@ export async function applyPlanChange(env:Env,change:PlanChange,tenant:Tenant) {
     if (!matches) {
       if (Date.parse(change.effective_at) <= Date.now()+1800000 || sub.scheduled_change
         || Date.parse(sub.next_billed_at)!==Date.parse(change.effective_at)) throw new Error('RENEWAL_LOCKED');
+      if (change.offer_id) {
+        const offer=await getOffer(env.DB,change.offer_id);
+        if (!offer) throw new Error('PRICE_MISMATCH');
+        const quote=await preview(env,tenant,{offer,cycle:change.billing_cycle});
+        if (quote.priceId!==change.price_id || quote.next_amount!==change.expected_amount) throw new Error('UNSAFE_PREVIEW');
+      }
       const updated=await paddle(env,`/subscriptions/${sub.id}`,{items:[{price_id:change.price_id,quantity:1}],
         proration_billing_mode:'do_not_bill',on_payment_failure:'prevent_change'},'PATCH');
       if(updated.items?.length!==1 || updated.items[0].price?.id!==change.price_id || Date.parse(updated.next_billed_at)!==Date.parse(change.effective_at))
@@ -148,26 +192,49 @@ export async function applyPlanChange(env:Env,change:PlanChange,tenant:Tenant) {
       .bind(tenant.id,change.auto_renew,change.plan_tier==='free'?change.effective_at:null),
   ]);
 }
-export async function handleBilling(request:Request,env:Env,tenant:Tenant,canManage:boolean) {
+export async function handleBilling(request:Request,env:Env,tenant:Tenant,canManage:boolean,userId?:number) {
   const path = new URL(request.url).pathname;
   if (path === '/api/billing' && request.method === 'GET') {
     const change = await openChange(env,tenant.id);
     const pending = change?.plan_tier==='free' && Date.parse(change.effective_at)<=Date.now() ? null : change;
-    const cancelingChange = Boolean(tenant.renewal_canceled_at && pending?.status==='applied' && isPaidPlan(pending.plan_tier));
-    return jsonResponse({enabled:billingEnabled(env),can_open_portal:canManage && paddleCheckoutAvailable(env) && Boolean(tenant.paddle_customer_id),environment:env.PADDLE_ENVIRONMENT==='live'?'live':'sandbox',
-      plans:PLANS,plan:effectivePlan(tenant),paid_plan:tenant.plan_tier,status:tenant.billing_status ?? null,
+    const offer = pending?.offer_id ? await getOffer(env.DB,pending.offer_id) : null;
+    const plans = await publishedOffers(env.DB);
+    const current = activeOffer(tenant);
+    const usage = await planUsage(env,tenant);
+    const [migration,review,professionals]=await Promise.all([
+      migrationSummary(env,tenant.id),
+      env.DB.prepare('SELECT 1 FROM billing_reviews WHERE tenant_id=?1 AND resolved_at IS NULL LIMIT 1').bind(tenant.id).first(),
+      env.DB.prepare(`SELECT p.id,p.name,p.plan_priority,EXISTS(SELECT 1 FROM plan_bookable_professionals b WHERE b.id=p.id) AS bookable
+        FROM professionals p WHERE p.tenant_id=?1 AND p.active=1 ORDER BY COALESCE(p.plan_priority,2147483647),p.id`).bind(tenant.id).all(),
+    ]);
+    const cancelingChange = Boolean(tenant.renewal_canceled_at && pending && isPaidPlan(pending.plan_tier));
+    return jsonResponse({enabled:await billingEnabled(env,plans),can_open_portal:canManage && paddleCheckoutAvailable(env) && Boolean(tenant.paddle_customer_id),environment:env.PADDLE_ENVIRONMENT==='sandbox'?'sandbox':'live',
+      plans,plan:effectivePlan(tenant),current_offer:current,paid_plan:tenant.plan_tier,status:tenant.billing_status ?? null,usage,
+      billing_cycle:tenant.billing_cycle ?? null, migration, review:Boolean(review),professionals:professionals.results,
+      next_charge_at:tenant.billing_next_at ?? tenant.subscription_ends_at ?? null,
       can_select_free:canSelectFree(tenant),
       selected:Boolean(tenant.plan_tier || tenant.commercial_status==='free'),
       ends_at:tenant.subscription_ends_at ?? null,auto_renew:Boolean(tenant.paddle_subscription_id && ['active','past_due'].includes(tenant.billing_status || '') && !tenant.renewal_canceled_at && (tenant.auto_renew || pending?.status==='applied')),
       renewal_canceled:Boolean(tenant.renewal_canceled_at || tenant.billing_status==='canceled'),
       canceling_change:cancelingChange,has_subscription:Boolean(tenant.paddle_subscription_id),
-      pending:pending?{plan:pending.plan_tier,cycle:pending.billing_cycle,effective_at:pending.effective_at,status:pending.status}:null},200,{'Cache-Control':'no-store'});
+      pending:pending?{plan:offer?.plan_id || pending.plan_tier,name:offer?.name || PLANS[pending.plan_tier].name,
+        cycle:pending.billing_cycle,effective_at:pending.effective_at,status:pending.undo_requested?'undoing':pending.status,amount:pending.expected_amount ?? null}:null},200,{'Cache-Control':'no-store'});
   }
   if (request.method !== 'POST') return jsonResponse({error:'Método não permitido.'},405);
   if (!canManage) return jsonResponse({error:'Somente o responsável pode gerenciar o plano.'},403);
   if(!request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))return jsonResponse({error:'Envie os dados em JSON.'},415);
   let body:any;try{body=await request.json();}catch{return jsonResponse({error:'JSON inválido.'},400);}
   if (!body || typeof body !== 'object') return jsonResponse({error:'Dados inválidos.'},400);
+  if (path==='/api/billing/agenda-priority') {
+    if (!Array.isArray(body.ids) || !body.ids.every((id:unknown)=>Number.isSafeInteger(id)) || new Set(body.ids).size!==body.ids.length || body.ids.length>100)
+      return jsonResponse({error:'Selecione as agendas da clínica.'},400);
+    const {results}=await env.DB.prepare('SELECT id FROM professionals WHERE tenant_id=?1 AND active=1').bind(tenant.id).all<{id:number}>();
+    const own=new Set(results.map(row=>row.id));
+    if (!body.ids.every((id:number)=>own.has(id))) return jsonResponse({error:'Agenda indisponível.'},409);
+    await env.DB.prepare(`UPDATE professionals SET plan_priority=(SELECT CAST(key AS INTEGER) FROM json_each(?2) WHERE value=professionals.id)
+      WHERE tenant_id=?1`).bind(tenant.id,JSON.stringify(body.ids)).run();
+    return jsonResponse({success:true});
+  }
   if (path === '/api/billing/portal') {
     const headers = {'Cache-Control':'no-store'};
     if (!tenant.paddle_customer_id) return jsonResponse({error:'Ainda não há cobranças vinculadas a esta clínica.'},404,headers);
@@ -189,17 +256,35 @@ export async function handleBilling(request:Request,env:Env,tenant:Tenant,canMan
     const unavailable = () => jsonResponse({code:'FREE_UNAVAILABLE',error:'O Free fica disponível após o fim do plano pago.'},409);
     if (!canSelectFree(tenant)) return unavailable();
     try {return await withBillingLock(env,tenant.id,async()=>{
-      const updated=await env.DB.prepare(`UPDATE tenants SET plan_tier='free',commercial_status='free',auto_renew=0 WHERE id=?1
+      const updated=await env.DB.prepare(`UPDATE tenants SET plan_tier='free',plan_offer_id=NULL,commercial_status='free',auto_renew=0 WHERE id=?1
         AND NOT COALESCE(julianday(subscription_ends_at)>julianday('now'),0)
         AND (paddle_subscription_id IS NULL OR billing_status='canceled')`).bind(tenant.id).run();
       return updated.meta.changes?jsonResponse({success:true}):unavailable();
     });}catch{return jsonResponse({error:'Há uma alteração em processamento. Aguarde.'},409);}
   }
   const requiresCatalog=path==='/api/billing/checkout'||path==='/api/billing/preview';
-  if (!(requiresCatalog?billingEnabled(env):paddleCheckoutAvailable(env))) return jsonResponse({error:'O pagamento está temporariamente indisponível.'},503);
+  if (!(requiresCatalog?await billingEnabled(env):paddleCheckoutAvailable(env))) return jsonResponse({error:'O pagamento está temporariamente indisponível.'},503);
   try {
     return await withBillingLock(env,tenant.id,async()=>{
       tenant = (await getTenantById(env.DB,tenant.id))!;
+      if (['/api/billing/accept-offer','/api/billing/preview-offer','/api/billing/checkout','/api/billing/preview'].includes(path)
+        && await env.DB.prepare('SELECT 1 FROM billing_reviews WHERE tenant_id=?1 AND resolved_at IS NULL LIMIT 1').bind(tenant.id).first())
+        return jsonResponse({error:'Há uma alteração de cobrança em análise. Confira os detalhes na Paddle ou fale com o suporte.'},409);
+      if (path==='/api/billing/accept-offer') {
+        if (!userId || typeof body.id!=='string' || typeof body.offer_id!=='string' || typeof body.fingerprint!=='string') return jsonResponse({error:'Oferta inválida.'},400);
+        return await acceptMigration(env,tenant,body.id,userId,body.offer_id,body.fingerprint);
+      }
+      if (path==='/api/billing/preview-offer') {
+        if (typeof body.id!=='string') return jsonResponse({error:'Oferta inválida.'},400);
+        return await previewMigration(env,tenant,body.id);
+      }
+      if (path==='/api/billing/undo-change') {
+        const change=await openChange(env,tenant.id);
+        if (!change || change.status!=='applied' || change.plan_tier==='free') throw new Error('RENEWAL_LOCKED');
+        await env.DB.prepare('UPDATE plan_changes SET undo_requested=1 WHERE id=?1').bind(change.id).run();
+        await undoChange(env,tenant,change);
+        return jsonResponse({success:true});
+      }
       if (path === '/api/billing/renewal') {
         if (typeof body.enabled !== 'boolean') return jsonResponse({error:'Informe o estado da renovação.'},400);
         if(!isPaidPlan(effectivePlan(tenant)))throw new Error('RENEWAL_LOCKED');
@@ -233,22 +318,31 @@ export async function handleBilling(request:Request,env:Env,tenant:Tenant,canMan
         return jsonResponse({success:true});
       }
       if (!['/api/billing/checkout','/api/billing/preview'].includes(path)) return jsonResponse({error:'Rota não encontrada.'},404);
-      if (!isPaidPlan(body.plan) || !['monthly','yearly'].includes(body.cycle))
+      if (typeof body.plan!=='string' || body.plan==='free' || !['monthly','yearly'].includes(body.cycle))
         return jsonResponse({error:'Abra o checkout mensal ou anual na página Plano.'},400);
-      const choice:Selection={plan:body.plan,cycle:body.cycle};
-      if(effectivePlan(tenant)===choice.plan && tenant.plan_tier===choice.plan)
+      const plans=await publishedOffers(env.DB);
+      const offer=Object.hasOwn(plans,body.plan) ? plans[body.plan] : null;
+      if (!offer) return jsonResponse({error:'Esta oferta saiu do catálogo.'},409);
+      if (body.offer_id && body.offer_id!==offer.id) return jsonResponse({error:'A oferta mudou. Reabra o checkout para conferir o preço e as cotas.'},409);
+      const choice:Selection={offer,cycle:body.cycle};
+      const tier=storedTier(offer.plan_id);
+      if (await openChange(env,tenant.id)) throw new Error('BILLING_BUSY');
+      const migration=await openMigration(env,tenant.id);
+      if (migration && ['offered','accepted','review'].includes(migration.status))
+        return jsonResponse({error:'Confira a mudança de oferta na página Plano.'},409);
+      if(effectivePlan(tenant)===offer.plan_id && (tenant.plan_offer_id || tenant.plan_tier+'-v1')===offer.id && tenant.billing_cycle===choice.cycle)
         return jsonResponse({error:'Esse já é seu plano atual.'},409);
       const summary = await preview(env,tenant,choice);
       if (path === '/api/billing/preview') return jsonResponse(summary);
       if (summary.scheduled) {
         if (body.fingerprint !== summary.fingerprint) return jsonResponse({error:'As condições mudaram. Confira a prévia novamente.'},409);
-        const change:PlanChange={id:crypto.randomUUID(),tenant_id:tenant.id,subscription_id:tenant.paddle_subscription_id!,plan_tier:choice.plan,billing_cycle:choice.cycle,price_id:summary.priceId,auto_renew:1,effective_at:summary.effective_at!,status:'prepared'};
+        const change:PlanChange={id:crypto.randomUUID(),tenant_id:tenant.id,subscription_id:tenant.paddle_subscription_id!,plan_tier:tier,billing_cycle:choice.cycle,price_id:summary.priceId,auto_renew:1,effective_at:summary.effective_at!,status:'prepared',offer_id:offer.id,expected_amount:summary.next_amount};
         await saveChange(env,change);
         await applyPlanChange(env,change,tenant);
         return jsonResponse({success:true,scheduled:true,effective_at:change.effective_at});
       }
-      const existing = await env.DB.prepare("SELECT id,transaction_id,plan_tier,billing_cycle,auto_renew FROM checkout_intents WHERE tenant_id=?1 AND status='pending'")
-        .bind(tenant.id).first<{id:string;transaction_id:string|null;plan_tier:PlanTier|null;billing_cycle:BillingCycle;auto_renew:number}>();
+      const existing = await env.DB.prepare("SELECT id,transaction_id,offer_id,billing_cycle,auto_renew FROM checkout_intents WHERE tenant_id=?1 AND status='pending'")
+        .bind(tenant.id).first<{id:string;transaction_id:string|null;offer_id:string|null;billing_cycle:BillingCycle;auto_renew:number}>();
       const checkoutResult=(transactionId:string)=>jsonResponse({transactionId,token:env.PADDLE_CLIENT_TOKEN,environment:env.PADDLE_ENVIRONMENT});
       if (existing) {
         if (!existing.transaction_id) throw new Error('BILLING_BUSY');
@@ -258,7 +352,7 @@ export async function handleBilling(request:Request,env:Env,tenant:Tenant,canMan
         if (transaction.status!=='canceled') {
           if (!['draft','ready'].includes(transaction.status) || transaction.payments?.some((attempt:{status:string}) =>
             ['pending_no_action_required','authorized','authorized_flagged','captured'].includes(attempt.status))) throw new Error('CHECKOUT_PROCESSING');
-          if (existing.plan_tier===choice.plan && existing.billing_cycle===choice.cycle && existing.auto_renew===1
+          if (existing.offer_id===offer.id && existing.billing_cycle===choice.cycle && existing.auto_renew===1
             && transaction.items?.length===1 && transaction.items[0].price?.id===summary.priceId && transaction.items[0].quantity===1)
             return checkoutResult(existing.transaction_id);
           // A different offer gets its own transaction so a previously opened tab keeps its original price.
@@ -268,8 +362,8 @@ export async function handleBilling(request:Request,env:Env,tenant:Tenant,canMan
         await env.DB.prepare("UPDATE checkout_intents SET status='failed' WHERE id=?1 AND status='pending'").bind(existing.id).run();
       }
       const id = crypto.randomUUID();
-      await env.DB.prepare('INSERT INTO checkout_intents(id,tenant_id,billing_cycle,plan_tier,auto_renew) VALUES (?1,?2,?3,?4,1)')
-        .bind(id,tenant.id,choice.cycle,choice.plan).run();
+      await env.DB.prepare('INSERT INTO checkout_intents(id,tenant_id,billing_cycle,plan_tier,auto_renew,offer_id,price_id,expected_amount) VALUES (?1,?2,?3,?4,1,?5,?6,?7)')
+        .bind(id,tenant.id,choice.cycle,tier,offer.id,summary.priceId,summary.amount).run();
       // A failed/ambiguous POST remains pending so a retry cannot charge twice.
       let transaction;
       try {
@@ -308,17 +402,19 @@ export async function handleBilling(request:Request,env:Env,tenant:Tenant,canMan
     return jsonResponse({error:message},code.includes('PRICE_MISMATCH')?503:error instanceof PaddleApiError && error.status>=500?502:409);
   }
 }
-async function saveChange(env:Env,change:PlanChange) {
-  if ((await openChange(env,change.tenant_id))?.status==='prepared') throw new Error('BILLING_BUSY');
+export async function saveChange(env:Env,change:PlanChange,acceptance?:D1PreparedStatement) {
+  if (await openChange(env,change.tenant_id)) throw new Error('BILLING_BUSY');
   await env.DB.batch([
     env.DB.prepare("UPDATE plan_changes SET status='superseded' WHERE tenant_id=?1 AND status='applied'").bind(change.tenant_id),
-    env.DB.prepare('INSERT INTO plan_changes(id,tenant_id,subscription_id,plan_tier,billing_cycle,price_id,auto_renew,effective_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)')
-      .bind(change.id,change.tenant_id,change.subscription_id,change.plan_tier,change.billing_cycle,change.price_id,change.auto_renew,change.effective_at),
+    env.DB.prepare('INSERT INTO plan_changes(id,tenant_id,subscription_id,plan_tier,billing_cycle,price_id,auto_renew,effective_at,offer_id,expected_amount) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)')
+      .bind(change.id,change.tenant_id,change.subscription_id,change.plan_tier,change.billing_cycle,change.price_id,change.auto_renew,change.effective_at,change.offer_id ?? null,change.expected_amount ?? null),
+    ...(acceptance?[acceptance]:[]),
   ]);
 }
 // Runs with the existing billing-only cron; all external writes are repeatable.
 export async function reconcilePlanChanges(env:Env) {
   if (!paddleCheckoutAvailable(env)) return;
+  await reconcileOfferMigrations(env);
   await env.DB.prepare("UPDATE plan_changes SET status='completed' WHERE plan_tier='free' AND status='applied' AND julianday(effective_at)<=julianday('now')").run();
   const unresolved=await env.DB.prepare(`SELECT id,tenant_id,created_at FROM checkout_intents
     WHERE status='pending' AND transaction_id IS NULL AND julianday(created_at)<=julianday('now','-2 minutes') ORDER BY created_at LIMIT 5`)
@@ -347,22 +443,37 @@ export async function reconcilePlanChanges(env:Env) {
       const tenant=await getTenantById(env.DB,change.tenant_id);
       if(tenant) await applyPlanChange(env,change,tenant);
     }); } catch(error) {
-      if(String(error).includes('RENEWAL_LOCKED') && Date.parse(change.effective_at)<=Date.now())
-        await env.DB.prepare("UPDATE plan_changes SET status='failed' WHERE id=?1 AND status='prepared'").bind(change.id).run();
+      if(Date.parse(change.effective_at)<=Date.now()) {
+        await env.DB.batch([
+          env.DB.prepare("UPDATE plan_changes SET status='failed' WHERE id=?1 AND status='prepared'").bind(change.id),
+          env.DB.prepare("UPDATE plan_offer_migrations SET status='review' WHERE tenant_id=?1 AND status='accepted' AND target_offer_id=?2").bind(change.tenant_id,change.offer_id ?? null),
+          env.DB.prepare("INSERT OR IGNORE INTO billing_reviews(id,tenant_id,reason) VALUES (?1,?2,'plan_change_unconfirmed')").bind(change.id,change.tenant_id),
+        ]);
+      }
       else console.warn('[PLAN_CHANGE_PENDING]',JSON.stringify({changeId:change.id}));
     }
   }
   const canceledChanges = await env.DB.prepare(`SELECT t.id FROM tenants t JOIN plan_changes c
     ON c.tenant_id=t.id AND c.subscription_id=t.paddle_subscription_id
     WHERE t.billing_status='active' AND t.renewal_canceled_at IS NOT NULL AND julianday(t.subscription_ends_at)>julianday('now')
-      AND c.status='applied' AND c.plan_tier IN ('pro','ultra') LIMIT 5`).all<{id:string}>();
+      AND c.status IN ('prepared','applied') AND c.plan_tier IN ('pro','ultra') LIMIT 5`).all<{id:string}>();
   for (const {id} of canceledChanges.results) {
     try { await withBillingLock(env,id,async()=>{
       const tenant = await getTenantById(env.DB,id);
       const change = tenant && await openChange(env,id);
-      if (!tenant?.renewal_canceled_at || change?.status!=='applied' || !isPaidPlan(change.plan_tier)) return;
+      if (!tenant?.renewal_canceled_at || !change || !isPaidPlan(change.plan_tier)) return;
       await finishRenewalCancellation(env,tenant,await ownedSubscription(env,tenant));
     }); } catch { console.warn('[PLAN_CANCELLATION_PENDING]',JSON.stringify({tenantId:id})); }
+  }
+  const undos=await env.DB.prepare("SELECT * FROM plan_changes WHERE status='applied' AND undo_requested=1 LIMIT 5").all<PlanChange>();
+  for (const change of undos.results) {
+    try { await withBillingLock(env,change.tenant_id,async()=>{
+      const tenant=await getTenantById(env.DB,change.tenant_id);
+      if (tenant && (await openChange(env,tenant.id))?.id===change.id) await undoChange(env,tenant,change);
+    }); } catch {
+      if (Date.parse(change.effective_at)<=Date.now()+1800000) await env.DB.prepare(
+        "INSERT OR IGNORE INTO billing_reviews(id,tenant_id,reason) VALUES (?1,?2,'plan_change_undo')").bind(change.id,change.tenant_id).run();
+    }
   }
   // Renewals disabled at checkout are canceled only after the purchased period
   // is captured, including the first payment for a scheduled plan change.

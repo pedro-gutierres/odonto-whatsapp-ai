@@ -37,6 +37,8 @@ export interface Env {
   PADDLE_ULTRA_MONTHLY_PRICE_ID?: string;
   PADDLE_ULTRA_YEARLY_PRICE_ID?: string;
   PADDLE_SANDBOX_ENTITLEMENTS?: string;
+  BILLING_EMAIL_API_KEY?: string;
+  BILLING_EMAIL_FROM?: string;
 }
 
 // Uma mensagem recebida do paciente, já "limpa", que viaja pela fila.
@@ -52,6 +54,14 @@ export interface InboundJob {
 }
 
 export interface Tenant {
+  plan_offer_id?: string | null;
+  quota_anchor_at?: string | null;
+  quota_bridge_at?: string | null;
+  paid_transaction_id?: string | null;
+  billing_next_at?: string | null;
+  paid_access_revoked?: number;
+  active_offer?: string | null;
+  free_offer?: string | null;
   plan_tier?: 'free' | 'pro' | 'ultra' | null;
   subscription_starts_at?: string | null;
   plan_price_id?: string | null;

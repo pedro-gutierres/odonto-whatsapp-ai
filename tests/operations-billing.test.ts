@@ -8,7 +8,8 @@ import { getTenantById, isCrucialConfigComplete, checkAppointmentConflict, creat
 import { createSessionToken, verifyPassword, hashPassword } from '../src/auth';
 import type { Env } from '../src/types';
 import { verifyPaddleSignature, inspectPaddleSignature, processPaddleInbox } from '../src/billing';
-import { PLANS, effectivePlan, reservePlanUsage, finishPlanUsage, usageMonth, planUsage } from '../src/plans';
+import { PLANS, effectivePlan, reservePlanUsage, finishPlanUsage, usageMonth, usageWindow, planUsage } from '../src/plans';
+import { billingAdmin, reconcileOfferMigrations } from '../src/offer-migrations';
 import { audioSeconds } from '../src/audio-duration';
 import { prepareVoice } from '../src/voice';
 import sandboxWorker from '../src/paddle-sandbox';
@@ -261,6 +262,7 @@ function mockPaddleProof(id:string,intent:string) {
   globalThis.fetch=async(input)=>{
     if(state.fail)throw Error('Paddle unavailable');
     if(String(input).includes('/transactions?'))return new Response(JSON.stringify({data:state.payments}));
+    if(String(input).endsWith('/transactions/txn_test'))return Response.json({data:state.payments[0]});
     if(String(input).endsWith('/subscriptions/sub_test'))return new Response(JSON.stringify({data:state.subscription}));
     throw Error('Unexpected Paddle request');
   };
@@ -727,6 +729,69 @@ test('Pro limita todos os recursos; Ultra libera somente os recursos anunciados 
   assert.equal(effectivePlan(tenant,Date.parse(tenant.subscription_ends_at!)+1),'free');
 });
 
+test('Primeira compra carrega o Free e repõe a cota no aniversário mensal, inclusive após voltar ao Free',async()=>{
+  const {db,env}=setup();configureBilling(env);
+  const user=await account(env);
+  const intent=await billingIntent(db,user.id);
+  const proof=mockPaddleProof(user.id,intent);
+  const originalNow=Date.now;
+  const start='2026-12-01T01:15:00.000Z',end='2026-12-31T01:15:00.000Z';
+  try {
+    Date.now=()=>Date.parse(start);
+    let tenant=(await getTenantById(db as any,user.id))!;
+    assert.equal(await reservePlanUsage(env,tenant,'responses','free-before-buy',50),'reserved');
+    proof.state.subscription.items=[{price:{id:'pri_pro_monthly'}}];
+    proof.state.payments[0].items=[{price:{id:'pri_pro_monthly'},quantity:1}];
+    proof.state.payments[0].billing_period={starts_at:start,ends_at:end};
+    await signedEvent(env,{...completedPayment(user.id,intent),occurred_at:start});
+    tenant=(await getTenantById(env.DB,user.id))!;
+    assert.equal(tenant.quota_anchor_at,start);
+    Date.now=()=>Date.parse('2026-12-01T03:00:00Z');
+    const usage=await planUsage(env,tenant);
+    assert.equal(usage.available.responses,950);
+    assert.equal(usage.reset_at,end);
+    assert.equal(await reservePlanUsage(env,tenant,'responses','paid-replies',950),'reserved');
+    assert.equal(await reservePlanUsage(env,tenant,'responses','too-many'),'limit');
+    await db.prepare("UPDATE tenants SET renewal_canceled_at=?2,subscription_ends_at=?2 WHERE id=?1").bind(user.id,'2026-12-20T00:00:00Z').run();
+    Date.now=()=>Date.parse('2026-12-21T00:00:00Z');
+    tenant=(await getTenantById(env.DB,user.id))!;
+    assert.equal(effectivePlan(tenant),'free');
+    assert.equal((await planUsage(env,tenant)).available.responses,0);
+    Date.now=()=>Date.parse(end);
+    assert.equal((await planUsage(env,tenant)).available.responses,50);
+    assert.equal(usageWindow({quota_anchor_at:'2027-02-01T01:15:00Z'},Date.parse('2027-02-28T01:15:00Z')).resetAt,'2027-03-01T01:15:00.000Z');
+    assert.equal(usageWindow({quota_anchor_at:'2027-02-01T01:15:00Z'},Date.parse('2027-03-01T01:15:00Z')).resetAt,'2027-04-01T01:15:00.000Z');
+  } finally { Date.now=originalNow;proof.restore(); }
+});
+
+test('Tolerância conserva saldo, limita Ultra e desconta consumo após a virada da nova cota',async()=>{
+  const {db,env}=setup();
+  const user=await account(env);
+  const start='2026-11-15T12:00:00.000Z',end='2026-12-15T12:00:00.000Z';
+  const originalNow=Date.now;
+  try {
+    await db.prepare(`UPDATE tenants SET plan_tier='ultra',plan_offer_id='ultra-v1',commercial_status='active',
+      paddle_subscription_id='sub_grace',billing_status='active',quota_anchor_at=?2,subscription_ends_at=?3 WHERE id=?1`)
+      .bind(user.id,start,end).run();
+    let tenant=(await getTenantById(env.DB,user.id))!;
+    Date.now=()=>Date.parse(end)-1000;
+    assert.equal(await reservePlanUsage(env,tenant,'voice','used-voice',3500),'reserved');
+    Date.now=()=>Date.parse(end)+1000;
+    assert.equal((await planUsage(env,tenant)).available.voice,100);
+    assert.equal(await reservePlanUsage(env,tenant,'voice','over-remaining',101),'limit');
+    assert.equal(await reservePlanUsage(env,tenant,'voice','last-voice',100),'reserved');
+    assert.equal(await reservePlanUsage(env,tenant,'responses','grace-50',50),'reserved');
+    assert.equal(await reservePlanUsage(env,tenant,'responses','grace-51'),'limit');
+    assert.equal((await planUsage(env,tenant)).available.responses,0);
+    Date.now=()=>Date.parse(end)+7*86400000;
+    assert.equal(effectivePlan(tenant),'free');
+    assert.equal((await planUsage(env,tenant)).available.responses,0);
+    await db.prepare("UPDATE tenants SET subscription_ends_at='2027-01-15T12:00:00Z' WHERE id=?1").bind(user.id).run();
+    tenant=(await getTenantById(env.DB,user.id))!;
+    assert.equal((await planUsage(env,tenant)).available.voice,3500);
+  } finally { Date.now=originalNow; }
+});
+
 test('Fila real respeita a quinquagésima resposta e mantém o atendimento humano disponível',async()=>{
   const {db,env}=setup();const user=await account(env);await ready(db,user.id,'free');
   await db.prepare("UPDATE tenants SET plan_tier='free' WHERE id=?1").bind(user.id).run();const tenant=(await getTenantById(env.DB,user.id))!;
@@ -779,6 +844,7 @@ async function paidBillingFixture(tier:'pro'|'ultra'='pro',cycle:'monthly'|'year
       data=state.subscription;
     }else if(url.endsWith('/subscriptions/sub_test'))data=state.subscription;
     else if(url.includes('/transactions?'))data=[state.payment];
+    else if(url.endsWith('/transactions/'+state.payment.id))data=state.payment;
     else throw new Error('Unexpected test URL '+url);
     return new Response(JSON.stringify({data}));
   };
@@ -804,13 +870,136 @@ test('Upgrade, downgrade e mensal/anual começam no próximo período, sem antec
       const before=Date.now;Date.now=()=>Date.parse(f.end)+1000;
       try {
         f.state.payment.items=[{price:{id:`pri_${to}_${cycle}`},quantity:1}];
+        Object.assign(f.state.payment,{details:{totals:{currency_code:'BRL',grand_total:String(PLANS[to][cycle])}}});
+        f.state.payment.id='txn_renewal';
         f.state.payment.billing_period={starts_at:f.end,ends_at:new Date(Date.now()+86400000*30).toISOString()};
-        await signedEvent(f.env,{...completedPayment(f.user.id,f.intent),occurred_at:new Date(Date.now()).toISOString()});
+        const event=completedPayment(f.user.id,f.intent);
+        await signedEvent(f.env,{...event,data:{...event.data,id:f.state.payment.id},occurred_at:new Date(Date.now()).toISOString()});
         tenant=(await getTenantById(f.env.DB,f.user.id))!;assert.equal(tenant.plan_tier,to);assert.equal(tenant.billing_cycle,cycle);
         assert.equal((await f.db.prepare('SELECT status FROM plan_changes WHERE id=?1').bind(pending.id).first<any>()).status,'completed');
       }finally{Date.now=before;}
     }finally{f.restore();}
   }
+});
+
+test('Desfazer troca restaura o preço original antes de remover o agendamento',async()=>{
+  const f=await paidBillingFixture();
+  try {
+    const choice={plan:'ultra',cycle:'monthly'};
+    const summary=await api(f.env,'/api/billing/preview',f.user.cookie,choice).then(r=>r.json()) as any;
+    assert.equal((await api(f.env,'/api/billing/checkout',f.user.cookie,{...choice,fingerprint:summary.fingerprint})).status,200);
+    assert.equal((await api(f.env,'/api/billing/undo-change',f.user.cookie,{})).status,200);
+    assert.equal(f.state.subscription.items[0].price.id,'pri_pro_monthly');
+    assert.equal((await f.db.prepare('SELECT status FROM plan_changes').first<any>()).status,'superseded');
+  } finally {f.restore();}
+});
+
+test('Chargeback, reversão e reembolso integral preservam o histórico e só afetam o período vinculado',async()=>{
+  const f=await paidBillingFixture();
+  try {
+    await signedEvent(f.env,completedPayment(f.user.id,f.intent));
+    assert.equal((await getTenantById(f.env.DB,f.user.id))!.paid_transaction_id,'txn_test');
+    const adjustment=(action:string,type:string,delta:number)=>({
+      event_id:'evt_'+crypto.randomUUID(),event_type:'adjustment.created',occurred_at:new Date(Date.now()+delta).toISOString(),
+      data:{id:'adj_'+crypto.randomUUID(),action,type,status:'approved',transaction_id:'txn_test',customer_id:'ctm_test',subscription_id:'sub_test'},
+    });
+    await signedEvent(f.env,adjustment('refund','partial',0));
+    assert.equal(effectivePlan((await getTenantById(f.env.DB,f.user.id))!),'pro');
+    assert.equal((await f.db.prepare('SELECT reason FROM billing_reviews').first<any>()).reason,'partial_refund');
+    const reversal=adjustment('chargeback_reverse','full',3000);
+    await signedEvent(f.env,reversal);
+    await signedEvent(f.env,adjustment('chargeback','full',2000));
+    assert.equal(effectivePlan((await getTenantById(f.env.DB,f.user.id))!),'pro');
+    await signedEvent(f.env,adjustment('chargeback','full',4000));
+    assert.equal(effectivePlan((await getTenantById(f.env.DB,f.user.id))!),'free');
+    await signedEvent(f.env,adjustment('chargeback_reverse','full',5000));
+    assert.equal(effectivePlan((await getTenantById(f.env.DB,f.user.id))!),'pro');
+    await signedEvent(f.env,adjustment('refund','full',6000));
+    assert.equal(effectivePlan((await getTenantById(f.env.DB,f.user.id))!),'free');
+    assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM billing_payments').first<any>()).n,1);
+  } finally {f.restore();}
+});
+
+test('Nova oferta aceita exige aviso entregue e usa a versão confirmada no agendamento',async()=>{
+  const f=await paidBillingFixture();
+  const originalFetch=fetch;
+  try {
+    const userId=(await f.db.prepare('SELECT id FROM users WHERE tenant_id=?1').bind(f.user.id).first<any>()).id;
+    await f.db.prepare("INSERT INTO plan_offers VALUES ('pro-v2','pro',2,'Pro',800,3600,200,2,900,12900,118800,0)").run();
+    await f.db.prepare("INSERT INTO plan_offer_prices VALUES ('sandbox','pri_pro_next','pro-v2','monthly')").run();
+    const acceptBy=new Date(Date.parse(f.end)-86400000).toISOString();
+    await f.db.prepare(`INSERT INTO plan_offer_migrations(id,tenant_id,subscription_id,source_offer_id,target_offer_id,cycle,effective_at,accept_by,email_to,status)
+      VALUES ('m-test',?1,'sub_test','pro-v1','pro-v2','monthly',?2,?3,'billing@example.test','offered')`)
+      .bind(f.user.id,f.end,acceptBy).run();
+    const accept={id:'m-test',offer_id:'pro-v2',fingerprint:'invalid'};
+    assert.equal((await api(f.env,'/api/billing/accept-offer',f.user.cookie,accept)).status,409);
+    await f.db.prepare("UPDATE plan_offer_migrations SET notice_delivered_at='2026-01-01T00:00:00Z' WHERE id='m-test'").run();
+    assert.equal((await api(f.env,'/api/billing/accept-offer',f.user.cookie,{...accept,offer_id:'pro-v1'})).status,409);
+    const quote=await api(f.env,'/api/billing/preview-offer',f.user.cookie,{id:'m-test'}).then(r=>r.json()) as any;
+    assert.equal((await api(f.env,'/api/billing/accept-offer',f.user.cookie,{...accept,fingerprint:quote.fingerprint})).status,200);
+    assert.equal(f.state.subscription.items[0].price.id,'pri_pro_next');
+    const migration=await f.db.prepare("SELECT status,accepted_by FROM plan_offer_migrations WHERE id='m-test'").first<any>();
+    assert.equal(migration.status,'accepted');assert.equal(migration.accepted_by,userId);
+    assert.equal((await planUsage(f.env,(await getTenantById(f.env.DB,f.user.id))!)).limits.responses,1000);
+  } finally {globalThis.fetch=originalFetch;f.restore();}
+});
+
+test('Campanha sem aceite agenda cancelamento confirmado, e aviso fora do prazo é adiado',async()=>{
+  const f=await paidBillingFixture();
+  try {
+    const deadline=new Date(Date.now()-60000).toISOString();
+    await f.db.prepare(`INSERT INTO plan_offer_migrations(id,tenant_id,subscription_id,source_offer_id,target_offer_id,cycle,effective_at,accept_by,email_to,status)
+      VALUES ('m-test',?1,'sub_test','pro-v1','ultra-v1','monthly',?2,?3,'billing@example.test','notice_pending')`)
+      .bind(f.user.id,f.end,deadline).run();
+    await reconcileOfferMigrations(f.env);
+    assert.equal((await f.db.prepare("SELECT status FROM plan_offer_migrations WHERE id='m-test'").first<any>()).status,'deferred');
+    assert.equal(f.state.subscription.scheduled_change,null);
+    await f.db.prepare("UPDATE plan_offer_migrations SET status='offered',notice_delivered_at='2026-01-01T00:00:00Z' WHERE id='m-test'").run();
+    await reconcileOfferMigrations(f.env);
+    assert.equal(f.state.subscription.scheduled_change.action,'cancel');
+    assert.equal((await f.db.prepare("SELECT status FROM plan_offer_migrations WHERE id='m-test'").first<any>()).status,'canceled');
+    assert.equal((await getTenantById(f.env.DB,f.user.id))!.renewal_canceled_at,f.end);
+  } finally {f.restore();}
+});
+
+test('Catálogo valida os preços de uma nova versão antes de publicar',async()=>{
+  const f=await paidBillingFixture();
+  try {
+    const offer={plan_id:'pro',version:2,name:'Pro',monthly:12900,yearly:118800,responses:850,
+      transcription:3600,images:200,professionals:2,voice:900,prices:{monthly:'pri_pro_next',yearly:'pri_pro_next_yearly'}};
+    const publish=(body:unknown)=>billingAdmin(new Request('https://aura.test/api/admin/billing/offers',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),
+    }),f.env);
+    assert.equal((await publish({...offer,monthly:1})).status,409);
+    assert.equal((await publish(offer)).status,201);
+    assert.equal((await f.db.prepare("SELECT id FROM plan_offers WHERE plan_id='pro' AND published=1").first<any>()).id,'pro-v2');
+    const tenant=(await getTenantById(f.env.DB,f.user.id))!;
+    assert.equal((await planUsage(f.env,tenant)).limits.responses,1000);
+  } finally {f.restore();}
+});
+
+test('O aviso só libera aceite depois de confirmar a entrega por e-mail',async()=>{
+  const f=await paidBillingFixture();
+  const paddleFetch=fetch;
+  try {
+    Object.assign(f.env,{BILLING_EMAIL_API_KEY:'test-email-key',BILLING_EMAIL_FROM:'aura@example.test'});
+    const effective=new Date(Date.now()+32*86400000).toISOString();
+    const deadline=new Date(Date.parse(effective)-7200000).toISOString();
+    await f.db.prepare(`INSERT INTO plan_offer_migrations(id,tenant_id,subscription_id,source_offer_id,target_offer_id,cycle,effective_at,accept_by,email_to)
+      VALUES ('m-delivery',?1,'sub_test','pro-v1','ultra-v1','monthly',?2,?3,'billing@example.test')`).bind(f.user.id,effective,deadline).run();
+    globalThis.fetch=async(input,init)=>{
+      if (String(input)==='https://api.resend.com/emails') {
+        assert.match(JSON.parse(String(init?.body)).text,/Sem aceite/);
+        return Response.json({id:'email-delivery'});
+      }
+      if (String(input)==='https://api.resend.com/emails/email-delivery') return Response.json({last_event:'delivered'});
+      return paddleFetch(input,init);
+    };
+    await reconcileOfferMigrations(f.env);
+    assert.equal((await f.db.prepare("SELECT status FROM plan_offer_migrations WHERE id='m-delivery'").first<any>()).status,'notice_pending');
+    await reconcileOfferMigrations(f.env);
+    assert.equal((await f.db.prepare("SELECT status FROM plan_offer_migrations WHERE id='m-delivery'").first<any>()).status,'offered');
+  } finally {f.restore();}
 });
 
 test('A Paddle payment mandate restriction returns the payment update link without scheduling a change',async()=>{

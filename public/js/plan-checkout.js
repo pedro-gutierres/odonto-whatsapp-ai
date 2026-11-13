@@ -20,7 +20,7 @@
   const choice={plan,cycle};
   function showActivePlan(data) {
     form.classList.add('hidden');
-    status.textContent='Plano '+data.plans[plan].name+' ativo até '+date(data.ends_at)+'.';
+    status.textContent='Plano '+(data.current_offer?.name || data.plans[plan].name)+' ativo até '+date(data.ends_at)+'.';
   }
   function waitForConfirmation() {
     if(paymentCompleted)return;
@@ -34,7 +34,7 @@
         const response=await fetch('/api/billing',{cache:'no-store'});
         if(response.ok) {
           const data=await response.json();
-          if(data.plan===plan && data.ends_at) {showActivePlan(data);return;}
+          if(data.plan===plan && data.ends_at && (!data.billing_cycle || data.billing_cycle===cycle)) {showActivePlan(data);return;}
         }
       } catch { /* A temporary network failure can be retried. */ }
       if(++checks<24)setTimeout(check,5000);
@@ -84,7 +84,7 @@
       if(conditions.scheduled) {
         confirm.classList.remove('hidden');status.textContent='Confira os dados e confirme a troca para o próximo período.';
       } else {
-        const data=await post('/api/billing/checkout',choice);
+        const data=await post('/api/billing/checkout',{...choice,...(conditions.offer_id?{offer_id:conditions.offer_id}:{})});
         await paddleReady(data);
         Paddle.Checkout.open({transactionId:data.transactionId,settings:{locale:'pt-BR',displayMode:'inline',variant:'one-page',allowLogout:false,
           showAddDiscounts:false,frameTarget:'paddle-checkout-frame',frameInitialHeight:500,frameStyle:'width:100%;min-width:286px;background-color:transparent;border:none;'}});
@@ -107,12 +107,14 @@
   });
   (async()=>{
     try {
-      if(!['free','pro','ultra'].includes(plan))throw new Error('Plano inválido. Escolha um plano no painel.');
+      if(!/^[a-z][a-z0-9-]{0,38}$/.test(plan || ''))throw new Error('Plano inválido. Escolha um plano no painel.');
       if(plan!=='free' && !['monthly','yearly'].includes(cycle))throw new Error('Volte à página Plano e abra o checkout mensal ou anual.');
       const response=await fetch('/api/billing');billing=await response.json();
       if(!response.ok)throw new Error(billing.error || 'Entre na sua conta para escolher um plano.');
+      if(!Object.hasOwn(billing.plans,plan))throw new Error('Esta oferta saiu do catálogo.');
       document.getElementById('checkoutTitle').textContent='Plano '+billing.plans[plan].name+(plan==='free'?'':cycle==='yearly'?' anual':' mensal');
-      if(plan!=='free' && billing.plan===plan && billing.ends_at) {showActivePlan(billing);return;}
+      if(plan!=='free' && billing.plan===plan && billing.ends_at && billing.billing_cycle===cycle
+        && billing.current_offer?.id===billing.plans[plan].id) {showActivePlan(billing);return;}
       if(plan==='free') {
         if(billing.can_select_free===false || (billing.can_select_free===undefined && billing.plan!=='free')) {
           status.textContent='O Free fica disponível após o fim do plano pago.';
@@ -120,7 +122,7 @@
         }
         form.classList.remove('hidden');
         summary.textContent='Grátis. Sem cobrança.';
-        effective.textContent='50 respostas com IA, 5 minutos de transcrição e 15 imagens por mês. Agenda para 1 profissional. Respostas em texto.';
+        effective.textContent='Confira os recursos e a data de reposição na página Plano.';
         confirm.classList.remove('hidden');confirm.disabled=false;confirm.textContent='Confirmar plano Free';status.textContent='';
       }else if(!billing.enabled){throw new Error('O pagamento está temporariamente indisponível.');}
       else await refresh();

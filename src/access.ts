@@ -1,6 +1,6 @@
 import type { Env, Tenant } from './types';
 import { getTenantById, isConfiguredPhoneNumberId, isCrucialConfigComplete } from './db';
-import { effectivePlan } from './plans';
+import { effectivePlan, graceUntil } from './plans';
 
 export function tenantConfig(tenant: Tenant) {
   try { return JSON.parse(tenant.bot_config || '{}'); } catch { return {}; }
@@ -17,7 +17,8 @@ export function commercialAccess(tenant: Tenant, now = Date.now()) {
     status = 'ended';
     endedReason = quotaReached ? 'quota' : 'time';
   }
-  if (status === 'active' && (!Number.isFinite(paidEnd) || paidEnd <= now)) {
+  if (graceUntil(tenant,now)) status='active';
+  if (status === 'active' && (!Number.isFinite(paidEnd) || paidEnd <= now) && !graceUntil(tenant,now)) {
     status = 'ended';
     endedReason = 'subscription';
   }

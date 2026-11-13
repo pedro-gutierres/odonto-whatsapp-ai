@@ -1,4 +1,5 @@
-import { INBOX_PLAN_VIEW_HTML } from "./inbox/plan-view";
+import { inboxPlanView } from "./inbox/plan-view";
+import type { PlanOffer } from "../plans";
 import { INBOX_ACCOUNT_VIEW_HTML } from "./inbox/account-view";
 import { INBOX_ONBOARDING_VIEW_HTML } from "./inbox/onboarding-view";
 import { INBOX_HEADER_HTML } from "./inbox/header";
@@ -9,9 +10,9 @@ import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "34";
+const ASSET_VERSION = "38";
 
-export const INBOX_HTML = `<!DOCTYPE html>
+export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
 <head>
   <meta charset="UTF-8">
@@ -39,7 +40,7 @@ export const INBOX_HTML = `<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/aura.css?v=29">
+  <link rel="stylesheet" href="/css/aura.css?v=30">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .wa-bg-light {
@@ -82,7 +83,7 @@ ${INBOX_HEADER_HTML}
 
 ${INBOX_ACCOUNT_VIEW_HTML}
 ${INBOX_ONBOARDING_VIEW_HTML}
-${INBOX_PLAN_VIEW_HTML}
+${inboxPlanView(offers)}
 ${INBOX_CHAT_VIEW_HTML}
 ${INBOX_AGENDA_VIEW_HTML}
 ${INBOX_TRAINING_VIEW_HTML}
@@ -102,4 +103,5 @@ ${INBOX_MODALS_HTML}
   <script src="/js/inbox/simulator.js?v=${ASSET_VERSION}"></script>
 </body>
 </html>
-`;
+`; }
+export const INBOX_HTML=inboxHtml();

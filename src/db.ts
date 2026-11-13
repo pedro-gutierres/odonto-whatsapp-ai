@@ -12,17 +12,18 @@ import type {
   TenantTrialInfo,
 } from "./types";
 import type { ChatTurn } from "./claude";
+import { tenantOfferSelect } from "./plans";
 
 export async function getTenantByPhoneNumberId(db: D1Database, phoneNumberId: string): Promise<Tenant | null> {
   return db
-    .prepare("SELECT * FROM tenants WHERE phone_number_id = ?1")
+    .prepare(`SELECT ${tenantOfferSelect} FROM tenants WHERE phone_number_id = ?1`)
     .bind(phoneNumberId)
     .first<Tenant>();
 }
 
 export async function getTenantById(db: D1Database, tenantId: string): Promise<Tenant | null> {
   return db
-    .prepare("SELECT * FROM tenants WHERE id = ?1")
+    .prepare(`SELECT ${tenantOfferSelect} FROM tenants WHERE id = ?1`)
     .bind(tenantId)
     .first<Tenant>();
 }

@@ -1,5 +1,6 @@
 import { planCards } from './plan-cards';
-export const LANDING_HTML = `<!DOCTYPE html>
+import type { PlanOffer } from '../plans';
+export function landingHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aura · IA para clínicas de odontologia e estética</title><meta name="description" content="Transforme conversas no WhatsApp em avaliações agendadas. Teste sua IA no Simulador e ative o plano Free no WhatsApp Oficial, sem cartão."><link rel="stylesheet" href="/css/aura.css?v=7"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"></head>
 <body class="aura-public aura-commercial">
 <header class="aura-public-header">
@@ -44,7 +45,7 @@ export const LANDING_HTML = `<!DOCTYPE html>
   <section id="planos" class="aura-public-section" aria-labelledby="pricingTitle">
     <p class="aura-eyebrow">EXPERIMENTE ANTES DE ESCOLHER</p><h2 id="pricingTitle">Investimento transparente que se paga no primeiro agendamento</h2>
     <p class="aura-section-intro">Todas as contas incluem <strong>30 mensagens no Simulador</strong>. O plano Free tem <strong>até 50 respostas automáticas com IA por mês</strong> no WhatsApp. Você decide quando ativar o atendimento.</p>
-    ${planCards()}
+    ${planCards(false,offers)}
     <p class="aura-field-hint">Escolha mensal ou anual e configure a renovação automática no checkout. As cotas reiniciam mensalmente, inclusive nos planos anuais.</p>
   </section>
   <section id="duvidas" class="aura-public-section" aria-labelledby="faqTitle">
@@ -60,4 +61,5 @@ export const LANDING_HTML = `<!DOCTYPE html>
 </main>
 <footer class="aura-public-footer"><span>Aura · Atendimento com IA para Odontologia e Estética</span><a href="/login">Já tem conta? Entrar no painel</a></footer>
 <script>fetch('/api/auth/me').then(response=>response.ok?response.json():null).then(data=>{if(data&&data.authenticated){const button=document.getElementById('navRegisterBtn');button.href='/inbox';button.textContent='Abrir meu painel';document.getElementById('navLoginBtn').classList.add('hidden');}}).catch(()=>{});</script>
-</body></html>`;
+</body></html>`; }
+export const LANDING_HTML=landingHtml();

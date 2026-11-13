@@ -6,7 +6,7 @@ import { handleBilling, paddleWebhook, processPaddleInbox } from "./billing";
 //   queue     -> Processa cada mensagem recebida (busca clínica, checa pausa da IA, chama Claude, responde no WhatsApp)
 //   scheduled -> Cron diário (23:00 UTC / 20h Brasília) para confirmações de véspera multi-tenant
 import { commercialAccess, canStillOperate, reserveUsage, finishUsage } from "./access";
-import { reservePlanUsage, finishPlanUsage, effectivePlan } from './plans';
+import { reservePlanUsage, finishPlanUsage, effectivePlan, publishedOffers, graceUntil } from './plans';
 import { audioSeconds } from './audio-duration';
 import { prepareVoice } from './voice';
 import { authenticatedBusiness, handleOnboarding, registerAccount } from "./onboarding";
@@ -76,10 +76,11 @@ import {
 } from "./auth";
 import { SECURITY_HEADERS, htmlResponse, jsonResponse } from "./http";
 import { handleClinicRoutes } from "./clinic-routes";
-import { LANDING_HTML } from "./views/landing";
+import { landingHtml } from "./views/landing";
+import { billingAdmin } from "./offer-migrations";
 import { LOGIN_HTML } from "./views/login";
 import { REGISTER_HTML } from "./views/register";
-import { INBOX_HTML } from "./views/inbox";
+import { inboxHtml } from "./views/inbox";
 import { ADMIN_HTML } from "./views/admin";
 import { checkoutHtml } from "./views/checkout";
 
@@ -141,7 +142,7 @@ export default {
         const allowed = staffPaths.includes(url.pathname) || (url.pathname === '/api/professionals' && request.method === 'GET') || (url.pathname === '/api/agenda/blocks' && request.method === 'GET');
         if (!allowed) return jsonResponse({error:'Acesso permitido apenas ao administrador.'},403);
       }
-      if (url.pathname.startsWith('/api/billing')) return handleBilling(request,env,tenant,canManage);
+      if (url.pathname.startsWith('/api/billing')) return handleBilling(request,env,tenant,canManage,business.user.id);
       if (url.pathname.startsWith('/api/agenda/import/')) return agendaImport(request,env,tenant,canManage);
       if (url.pathname === '/api/agenda/blocks') return agendaBlocks(request, env, tenant, canManage);
       if (url.pathname.startsWith('/api/onboarding')) return handleOnboarding(request, env, tenant, canManage);
@@ -177,7 +178,7 @@ export default {
 
     // 1) PÁGINA INICIAL / LANDING INSTITUCIONAL
     if (url.pathname === "/") {
-      return htmlResponse(LANDING_HTML);
+      return htmlResponse(landingHtml(await publishedOffers(env.DB)));
     }
 
     // 2) TELA DE LOGIN
@@ -207,7 +208,9 @@ export default {
       const owner = await getUserById(env.DB, session.userId);
       if (owner && owner.active !== 0 && owner.tenant_id === session.tenantId && isSuperAdminAuthorized(owner.email,owner.role,env))
         return Response.redirect(url.origin + '/admin',302);
-      return htmlResponse(INBOX_HTML);
+      const inbox=htmlResponse(inboxHtml(await publishedOffers(env.DB)));
+      inbox.headers.set('Cache-Control','no-store');
+      return inbox;
     }
 
     // 4) PAINEL GLOBAL SUPER ADMIN - PROTEGIDO POR SESSÃO + ROLE SUPERADMIN + ALLOWLIST
@@ -326,6 +329,7 @@ export default {
     if (url.pathname.startsWith('/api/admin/')) {
       const auth = await requireSuperAdmin(request, env);
       if ('response' in auth) return auth.response;
+      if (url.pathname==='/api/admin/billing' || url.pathname.startsWith('/api/admin/billing/')) return billingAdmin(request,env);
       return jsonResponse({error:'Painel de relatórios somente leitura.'},405);
     }
 
@@ -1274,7 +1278,7 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   }
 
   const trialRequest = tenant.commercial_status === 'trial';
-  const tierAtStart=effectivePlan(tenant);
+  const planAtStart=JSON.stringify([effectivePlan(tenant),tenant.plan_offer_id,graceUntil(tenant)]);
   const planReservation = await reservePlanUsage(env,tenant,'responses',job.waMessageId);
   if (planReservation==='replay' || planReservation==='limit') {await markAnswered(env.DB,job.waMessageId);return;}
   if (planReservation!=='reserved') throw new Error('RESPONSE_PENDING');
@@ -1337,7 +1341,7 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   }
 
   const refreshedPlan=await getTenantById(env.DB,tenant.id);
-  if(!refreshedPlan || effectivePlan(refreshedPlan)!==tierAtStart)throw new Error('PLAN_CHANGED');
+  if(!refreshedPlan || JSON.stringify([effectivePlan(refreshedPlan),refreshedPlan.plan_offer_id,graceUntil(refreshedPlan)])!==planAtStart)throw new Error('PLAN_CHANGED');
   if (!await canStillOperate(env, tenant.id, trialRequest)) throw new Error('OPERATION_ENDED');
   // In request mode the reception confirms; no definite slot is created by AI.
   if (tenant.schedule_mode === 'request') {
@@ -1481,7 +1485,7 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   }
   if(voice){
     const latest=await getTenantById(env.DB,tenant.id);
-    if(!latest || effectivePlan(latest)!==tierAtStart)throw new Error('PLAN_CHANGED');
+    if(!latest || JSON.stringify([effectivePlan(latest),latest.plan_offer_id,graceUntil(latest)])!==planAtStart)throw new Error('PLAN_CHANGED');
     if (!await canStillOperate(env,tenant.id,trialRequest)) throw new Error('OPERATION_ENDED');
   }
   const sentId = voice ? await sendAudio(env,tenant.phone_number_id,token,job.from,voice.bytes)
