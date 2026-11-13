@@ -189,6 +189,25 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 
 /* Collapsible desktop navigation. */
 .aura-sidebar-collapse{display:none}
+.aura-sidebar-mode-icon{
+  position:relative;
+  width:18px;
+  height:18px;
+  border:1.5px solid currentColor;
+  border-radius:3px;
+}
+.aura-sidebar-mode-icon::before{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:3px;
+  width:1.5px;
+  background:currentColor;
+  transform:translateX(7px);
+  transition:transform .3s cubic-bezier(.22,1,.36,1);
+}
+.aura-sidebar-collapsed .aura-sidebar-mode-icon::before{transform:translateX(0)}
 @media(min-width:861px){
   .aura-dashboard{
     --aura-sidebar-collapsed-width:72px;
