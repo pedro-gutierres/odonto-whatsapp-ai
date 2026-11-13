@@ -6,11 +6,14 @@ import { handleBilling, paddleWebhook, processPaddleInbox } from "./billing";
 //   queue     -> Processa cada mensagem recebida (busca clínica, checa pausa da IA, chama Claude, responde no WhatsApp)
 //   scheduled -> Cron diário (23:00 UTC / 20h Brasília) para confirmações de véspera multi-tenant
 import { commercialAccess, canStillOperate, reserveUsage, finishUsage } from "./access";
+import { reservePlanUsage, finishPlanUsage, effectivePlan } from './plans';
+import { audioSeconds } from './audio-duration';
+import { prepareVoice } from './voice';
 import { authenticatedBusiness, handleOnboarding, registerAccount } from "./onboarding";
 import { agendaBlocks } from "./agenda-blocks";
 import { simulatorChat } from "./simulator";
 import type { BotConfig, Env, InboundJob, ProfessionalRecord } from "./types";
-import { arrayBufferToBase64, downloadWhatsAppMedia, extractJobs, sendText, verifySignature } from "./whatsapp";
+import { arrayBufferToBase64, downloadWhatsAppMedia, extractJobs, sendText, sendAudio, verifySignature } from "./whatsapp";
 import { askClaude, type ChatTurn, type ImageAttachment } from "./claude";
 import { buildSystemPromptParts } from "./prompt";
 import {
@@ -123,10 +126,10 @@ async function requireSuperAdmin(
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const isSecure = url.protocol === "https:";
-    if (url.pathname === '/api/webhooks/paddle') return paddleWebhook(request,env);
+    if (url.pathname === '/api/webhooks/paddle') return paddleWebhook(request,env,ctx);
     // One access policy protects direct API calls as well as the UI.
     if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/')
       && !url.pathname.startsWith('/api/admin/') && url.pathname !== '/api/time') {
@@ -407,6 +410,7 @@ export default {
           await refreshAgendaReadiness(env.DB, tenantId, previousTenant?.schedule_mode === 'aura' || Boolean(previousTenant?.agenda_ready_at));
           return jsonResponse({ success: true, id });
         } catch (err) {
+          if (String(err).includes('PROFESSIONAL_PLAN_LIMIT')) return jsonResponse({error:'O limite de profissionais do seu plano foi atingido.',code:'PLAN_LIMIT'},409);
           console.error("Erro em POST /api/professionals:", String(err));
           return jsonResponse({ error: "Erro ao cadastrar profissional." }, 500);
         }
@@ -449,6 +453,7 @@ export default {
           await refreshAgendaReadiness(env.DB, tenantId, previousTenant?.schedule_mode === 'aura' || Boolean(previousTenant?.agenda_ready_at));
           return jsonResponse({ success: true });
         } catch (err) {
+          if (String(err).includes('PROFESSIONAL_PLAN_LIMIT')) return jsonResponse({error:'O limite de profissionais do seu plano foi atingido.',code:'PLAN_LIMIT'},409);
           console.error("Erro em PATCH /api/professionals:", String(err));
           return jsonResponse({ error: "Erro ao atualizar profissional." }, 500);
         }
@@ -691,6 +696,8 @@ export default {
           if (!body.config) {
             return jsonResponse({ error: "config é obrigatório" }, 400);
           }
+          if(body.config.voice_replies!==undefined && typeof body.config.voice_replies!=='boolean')
+            return jsonResponse({error:'Opção de resposta por voz inválida.'},400);
           if ((body.config.business_kind !== undefined && !['solo','clinic'].includes(body.config.business_kind))
             || (body.config.business_sector !== undefined && !['dentistry','aesthetics','both'].includes(body.config.business_sector)))
             return jsonResponse({error:'Perfil ou área de atuação inválidos.'},400);
@@ -1168,11 +1175,11 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   if ((isAudioJob || isImageJob) && job.mediaId) {
     const existing = state === "retry" ? await getInboundMessageByWaId(env.DB, job.waMessageId) : null;
 
-    if (existing?.media_key) {
+    if (existing?.media_key || isAudioJob && existing?.body?.startsWith('[Áudio transcrito]:')) {
       // Retry: reaproveita mídia já salva no R2 e transcrição já gravada no D1
       if (isAudioJob) {
         audioTranscriptReady = Boolean(existing.body && existing.body.startsWith("[Áudio transcrito]:"));
-      } else if (isImageJob && env.MEDIA_BUCKET) {
+      } else if (isImageJob && env.MEDIA_BUCKET && existing.media_key) {
         try {
           const obj = await env.MEDIA_BUCKET.get(existing.media_key);
           if (obj) {
@@ -1205,6 +1212,10 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
         if (isAudioJob) {
           let transcript = "";
           if (env.AI) {
+            const duration = audioSeconds(media.bytes,media.mimeType);
+            const quota = duration===null ? 'limit' : await reservePlanUsage(env,tenant,'transcription',job.waMessageId,duration);
+            if (quota === 'pending') throw new Error('TRANSCRIPTION_PENDING');
+            if (quota === 'reserved') {
             try {
               const aiRes = (await env.AI.run("@cf/openai/whisper-large-v3-turbo", {
                 audio: arrayBufferToBase64(media.bytes),
@@ -1212,8 +1223,11 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
                 vad_filter: true,
               })) as { text?: string };
               transcript = aiRes?.text?.trim() || "";
+              await finishPlanUsage(env,tenant.id,'transcription',job.waMessageId,!transcript);
             } catch (aiErr) {
+              await finishPlanUsage(env,tenant.id,'transcription',job.waMessageId,true);
               console.warn(`[WHISPER_ERR] Falha ao transcrever áudio (tenant=${tenant.id}):`, String(aiErr));
+            }
             }
           }
           audioTranscriptReady = Boolean(transcript);
@@ -1260,13 +1274,22 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   }
 
   const trialRequest = tenant.commercial_status === 'trial';
+  const tierAtStart=effectivePlan(tenant);
+  const planReservation = await reservePlanUsage(env,tenant,'responses',job.waMessageId);
+  if (planReservation==='replay' || planReservation==='limit') {await markAnswered(env.DB,job.waMessageId);return;}
+  if (planReservation!=='reserved') throw new Error('RESPONSE_PENDING');
   if (trialRequest) {
     const reservation = await reserveUsage(env, tenant.id, 'trial', job.waMessageId);
-    if (reservation.kind === 'replay') { await markAnswered(env.DB, job.waMessageId); return; }
-    if (reservation.kind === 'limit') { await markAnswered(env.DB, job.waMessageId); return; }
-    if (reservation.kind !== 'reserved') throw new Error('RESPONSE_PENDING');
+    if (reservation.kind === 'replay' || reservation.kind === 'limit') { await finishPlanUsage(env,tenant.id,'responses',job.waMessageId,true);await markAnswered(env.DB, job.waMessageId); return; }
+    if (reservation.kind !== 'reserved') { await finishPlanUsage(env,tenant.id,'responses',job.waMessageId,true);throw new Error('RESPONSE_PENDING'); }
   }
+  let sendAccepted=false;
   try {
+  if (imageAttachment) {
+    const imageQuota = await reservePlanUsage(env,tenant,'images',job.waMessageId);
+    if(imageQuota==='pending')throw new Error('IMAGE_ANALYSIS_PENDING');
+    if(imageQuota==='limit')imageAttachment=null;
+  }
   let reply: string;
   let freshHistory: { role: "user" | "assistant"; content: string }[] = [];
   let activeProfessionals: ProfessionalRecord[] = [];
@@ -1310,8 +1333,11 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
     });
 
     reply = (await askClaude(env, systemParts, freshHistory, imageAttachment)) ?? MSG_FALHA_IA;
+    if(imageAttachment) await finishPlanUsage(env,tenant.id,'images',job.waMessageId,reply===MSG_FALHA_IA);
   }
 
+  const refreshedPlan=await getTenantById(env.DB,tenant.id);
+  if(!refreshedPlan || effectivePlan(refreshedPlan)!==tierAtStart)throw new Error('PLAN_CHANGED');
   if (!await canStillOperate(env, tenant.id, trialRequest)) throw new Error('OPERATION_ENDED');
   // In request mode the reception confirms; no definite slot is created by AI.
   if (tenant.schedule_mode === 'request') {
@@ -1449,13 +1475,31 @@ async function processJob(job: InboundJob, env: Env): Promise<void> {
   reply = reply.slice(0, 4000);
 
   if (!await canStillOperate(env, tenant.id, trialRequest)) throw new Error('OPERATION_ENDED');
-  const sentId = await sendText(env, tenant.phone_number_id, token, job.from, reply);
+  let voice:Awaited<ReturnType<typeof prepareVoice>>=null;
+  if (isAudioJob && audioTranscriptReady && parsedCfg?.voice_replies===true) {
+    try {voice=await prepareVoice(env,tenant,job.waMessageId,reply);}catch {console.warn('[VOICE_UNAVAILABLE]',JSON.stringify({tenantId:tenant.id}));}
+  }
+  if(voice){
+    const latest=await getTenantById(env.DB,tenant.id);
+    if(!latest || effectivePlan(latest)!==tierAtStart)throw new Error('PLAN_CHANGED');
+    if (!await canStillOperate(env,tenant.id,trialRequest)) throw new Error('OPERATION_ENDED');
+  }
+  const sentId = voice ? await sendAudio(env,tenant.phone_number_id,token,job.from,voice.bytes)
+    : await sendText(env, tenant.phone_number_id, token, job.from, reply);
   if (!sentId) throw new Error('WHATSAPP_SEND_NOT_CONFIRMED');
+  sendAccepted=true;
   // Persist the accepted send before other local writes, so a retry cannot resend it.
   if (trialRequest) await finishUsage(env, tenant.id, 'trial', job.waMessageId, { sentId });
+  await finishPlanUsage(env,tenant.id,'responses',job.waMessageId);
+  if(voice)await finishPlanUsage(env,tenant.id,'voice',job.waMessageId);
   await saveOutbound(env.DB, tenant.id, job.from, reply, sentId);
+  if(voice)await updateInboundMessageMediaAndBody(env.DB,sentId,reply,voice.key,voice.mime,'audio');
   await markAnswered(env.DB, job.waMessageId);
   } catch (error) {
+    if(sendAccepted)throw error;
+    await finishPlanUsage(env,tenant.id,'responses',job.waMessageId,true);
+    await finishPlanUsage(env,tenant.id,'images',job.waMessageId,true);
+    await finishPlanUsage(env,tenant.id,'voice',job.waMessageId,true);
     if (trialRequest) await finishUsage(env, tenant.id, 'trial', job.waMessageId, null, true);
     throw error;
   }

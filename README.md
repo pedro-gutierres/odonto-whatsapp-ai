@@ -2,7 +2,7 @@
 
 Plataforma SaaS multi-tenant para clínicas odontológicas e de estética no Brasil, executada na edge da Cloudflare (**Workers + D1 + Queues + R2 + Workers AI + Cron Triggers**), conectada à **API Oficial do WhatsApp Cloud (Meta)** e à **Anthropic Claude API** (com Prompt Caching e Visão).
 
-Cada clínica opera isolada por `tenant_id` (conversas, agendamentos, bloqueios, profissionais, configurações da IA, `phone_number_id` e token da Meta). O cadastro gratuito (`/cadastro`) não inicia cobrança nem teste real: o negócio configura o perfil, testa a assistente em um **Test Drive** isolado (30 respostas) e ativa o teste operacional (168 horas ou 100 respostas) somente após revisar treinamento, preparar agenda e diagnosticar o WhatsApp. As regras comerciais, contas `legacy`, integração Paddle sandbox e pendências estão documentadas em [REESTRUTURACAO.md](REESTRUTURACAO.md).
+Cada clínica opera isolada por `tenant_id` (conversas, agendamentos, bloqueios, profissionais, configurações da IA, `phone_number_id` e token da Meta). O cadastro gratuito (`/cadastro`) não inicia cobrança nem teste real: o negócio configura o perfil, testa a assistente em um **Test Drive** isolado (30 respostas) e ativa o atendimento no plano Free somente após revisar treinamento, preparar agenda e diagnosticar o WhatsApp. As regras comerciais, contas `legacy`, integração Paddle sandbox e pendências estão documentadas em [REESTRUTURACAO.md](REESTRUTURACAO.md).
 
 ---
 
@@ -88,7 +88,7 @@ Todas exigem sessão válida (`401` se não autenticado), respeitam a matriz com
 - `GET /inbox` / `GET /painel` — Painel principal (Início, Conversas, Agenda, Meu negócio e IA, Test Drive, WhatsApp, Conta e equipe)
 - `GET /api/onboarding` | `POST /api/onboarding/{prepare,review-training,agenda,start-paid,activate}` — Estado e etapas de preparação/ativação
 - `POST /api/simulator/chat` — Simulação Test Drive (30 respostas isoladas)
-- `GET /api/billing` | `POST /api/billing/{checkout,portal}` — Status de assinatura, abertura de checkout e portal do cliente
+- `GET /api/billing` | `POST /api/billing/{preview,checkout,renewal,free}` — Validade e renovação do plano, checkout e trocas para o próximo período. Consulte [Planos e Paddle](PLANOS.md).
 - `GET | POST | DELETE /api/agenda/blocks` — Bloqueios de horário/período na agenda
 - `POST /api/agenda/import/{preview,commit,undo}` — Prévia, importação e reversão de CSV no modelo Aura
 - `GET /api/conversations` — Lista de conversas da clínica
@@ -169,6 +169,6 @@ npm run db:migrate:remote  # Aplica migrations no D1 remoto
 
 O webhook verifica HMAC e timestamp (tolerância mantida em cinco segundos), valida o vínculo local e grava o snapshot mínimo em `paddle_webhook_inbox` antes de retornar 200. Não consulta a API Paddle nessa requisição. Falha de persistência retorna 503 para permitir reentrega.
 
-O cron por minuto processa até cinco itens por execução. Falhas temporárias voltam a pending com backoff de 60 segundos até uma hora; não há descarte automático após um número de tentativas. Leases de dois minutos permitem recuperar execuções interrompidas. O ledger `billing_events` continua atômico com a alteração do tenant e protege duplicatas e ordem. Eventos permanentemente inválidos ficam rejected e geram log; reentrega assinada permite nova tentativa depois da correção. A liberação do plano pode aguardar o próximo ciclo do cron e a atualização do painel.
+Após persistir a notificação, o Worker inicia o processamento em segundo plano. O cron por minuto recupera até cinco itens pendentes por execução. Falhas temporárias voltam a `pending` com intervalo de 60 segundos até uma hora. A reserva de dois minutos permite recuperar execuções interrompidas. O registro em `billing_events` é atômico com a atualização do plano e protege contra eventos duplicados e fora de ordem. Eventos inválidos ficam em `rejected`. Uma reentrega assinada permite nova tentativa depois da correção.
 
 Logs seguros: `[PADDLE_SIGNATURE_REJECTED]` identifica ausência/formato de cabeçalho, timestamp fora da tolerância ou HMAC divergente. `[PADDLE_RECEIPT_FAILED]` identifica persistência indisponível. `[PADDLE_PROCESSING]` informa ID do evento, tentativa, status e código de falha. Não registrar secret, assinatura nem payload. Investigar pending com muitas tentativas e rejected; o erro de processamento não altera retroativamente o 200 de recebimento.

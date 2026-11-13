@@ -32,6 +32,10 @@ export interface Env {
   PADDLE_CLIENT_TOKEN?: string;
   PADDLE_MONTHLY_PRICE_ID?: string;
   PADDLE_YEARLY_PRICE_ID?: string;
+  PADDLE_PRO_MONTHLY_PRICE_ID?: string;
+  PADDLE_PRO_YEARLY_PRICE_ID?: string;
+  PADDLE_ULTRA_MONTHLY_PRICE_ID?: string;
+  PADDLE_ULTRA_YEARLY_PRICE_ID?: string;
   PADDLE_SANDBOX_ENTITLEMENTS?: string;
 }
 
@@ -48,6 +52,10 @@ export interface InboundJob {
 }
 
 export interface Tenant {
+  plan_tier?: 'free' | 'pro' | 'ultra' | null;
+  subscription_starts_at?: string | null;
+  plan_price_id?: string | null;
+  auto_renew?: number;
   commercial_status?: 'legacy' | 'free' | 'preparing' | 'trial' | 'active' | 'ended';
   business_kind?: 'solo' | 'clinic' | null;
   business_sectors?: 'dentistry' | 'aesthetics' | 'both' | null;
@@ -149,6 +157,7 @@ export interface InitialConsultationConfig {
 
 // O que cada clínica configura (fica em tenants.bot_config)
 export interface BotConfig {
+  voice_replies?: boolean;
   business_kind?: 'solo' | 'clinic';
   business_sector?: 'dentistry' | 'aesthetics' | 'both';
   schedule_days?: Array<{day:number;enabled:boolean;startHour:string;startMinute:string;endHour:string;endMinute:string}>;

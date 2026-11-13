@@ -9,6 +9,7 @@ import { LOGIN_HTML } from '../src/views/login';
 import { LANDING_HTML } from '../src/views/landing';
 import { checkoutHtml } from '../src/views/checkout';
 import type { Env } from '../src/types';
+import { PLANS } from '../src/plans';
 
 // DOM-only tests: no browser, network, external scripts, screenshots or layout rendering.
 async function dom(html:string, scripts:string[]=['public/js/ui.js']) {
@@ -34,7 +35,7 @@ test('Payment link stays inactive without configuration or a valid transaction',
       const script=window.document.createElement('script');script.type='application/json';script.id='paddlePublicConfig';script.textContent=JSON.stringify(config);window.document.body.append(script);
       window.eval(fs.readFileSync('public/js/checkout.js','utf8'));await window.happyDOM.whenAsyncComplete();
       assert.equal(window.document.querySelectorAll('script[src]').length,0);
-      assert.ok(window.document.getElementById('checkoutStatus')!.textContent.includes(config?'link completo':'ainda não está disponível'));
+      assert.ok(window.document.getElementById('checkoutStatus')!.textContent.includes(config?'link completo':'temporariamente indisponível'));
     }finally{await window.happyDOM.close();}
   }
 });
@@ -54,7 +55,7 @@ test('Payment email link initializes once, supports reopening and waits for serv
 });
 
 test('Checkout public configuration escapes HTML and excludes private credentials',()=>{
-  const html=checkoutHtml({PADDLE_ENABLED:'true',PADDLE_ENVIRONMENT:'sandbox',PADDLE_API_KEY:'pdl_sdbx_apikey_private',PADDLE_WEBHOOK_SECRET:'private-signature',PADDLE_CLIENT_TOKEN:'test_</script><img src=x>',PADDLE_MONTHLY_PRICE_ID:'pri_monthly',PADDLE_YEARLY_PRICE_ID:'pri_yearly'} as Env);
+  const html=checkoutHtml({PADDLE_ENABLED:'true',PADDLE_ENVIRONMENT:'sandbox',PADDLE_API_KEY:'pdl_sdbx_apikey_private',PADDLE_WEBHOOK_SECRET:'private-signature',PADDLE_CLIENT_TOKEN:'test_</script><img src=x>',PADDLE_MONTHLY_PRICE_ID:'pri_monthly',PADDLE_YEARLY_PRICE_ID:'pri_yearly',PADDLE_PRO_MONTHLY_PRICE_ID:'pri_pro_monthly',PADDLE_PRO_YEARLY_PRICE_ID:'pri_pro_yearly',PADDLE_ULTRA_MONTHLY_PRICE_ID:'pri_ultra_monthly',PADDLE_ULTRA_YEARLY_PRICE_ID:'pri_ultra_yearly'} as Env);
   assert.ok(!html.includes('<img src=x>'));assert.ok(!html.includes('pdl_sdbx_apikey_private'));assert.ok(!html.includes('private-signature'));assert.ok(html.includes('\\u003c'));
 });
 test('Dropdown changes the native value and emits the existing change event once',async()=>{
@@ -101,19 +102,19 @@ test('Block editor keeps day/time values and validates overnight periods',async(
 });
 test('Dashboard has unique field IDs and preserves every view and critical action',async()=>{
   const window=await dom(INBOX_HTML);
-  try{const ids=[...window.document.querySelectorAll('[id]')].map(element=>element.id);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs make actions target the wrong field');for(const id of ['viewChat','viewAgenda','viewConfig','viewSettings','viewSimulator','viewOnboarding','viewPlan','viewAccount','businessProfileLabel','onboardingStatus','operationalQuota','readyTraining','readyWhatsapp','readyAgenda','scheduleExplanation','maintenanceAcknowledgedLabel','activationSection','activationSummary','trialTerms','activationAcknowledged','activationAcknowledgmentText','activationAvailability','plano','billingAvailability','billingDetails','checkoutMonthly','checkoutYearly','billingPortal','paidRenewalAccepted','chatCount','profCountBadge','prepareTrialBtn','reviewTrainingBtn','saveAgendaReadinessBtn','scheduleMode','maintenanceAcknowledged','activateTrialBtn','btnSaveClinicProfile','cfgClinicName','btnSaveConfigText','blockStart','blockEnd','appDate','appHourSelect','appMinuteSelect'])assert.ok(window.document.getElementById(id),id);assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,8);
+  try{const ids=[...window.document.querySelectorAll('[id]')].map(element=>element.id);assert.equal(new Set(ids).size,ids.length,'Duplicate IDs make actions target the wrong field');for(const id of ['viewChat','viewAgenda','viewConfig','viewSettings','viewSimulator','viewOnboarding','viewPlan','viewAccount','businessProfileLabel','onboardingStatus','operationalQuota','readyTraining','readyWhatsapp','readyAgenda','scheduleExplanation','maintenanceAcknowledgedLabel','activationSection','activationSummary','trialTerms','activationAcknowledged','activationAcknowledgmentText','activationAvailability','plano','billingAvailability','billingValidity','checkoutFree','checkoutPro','checkoutUltra','billingPortal','chatCount','profCountBadge','prepareTrialBtn','reviewTrainingBtn','saveAgendaReadinessBtn','scheduleMode','maintenanceAcknowledged','activateTrialBtn','btnSaveClinicProfile','cfgClinicName','btnSaveConfigText','blockStart','blockEnd','appDate','appHourSelect','appMinuteSelect'])assert.ok(window.document.getElementById(id),id);assert.equal(window.document.querySelectorAll('[data-nav-tab]').length,8);
   }finally{await window.happyDOM.close();}
 });
 test('Pages no longer publish demo credentials or imply signup starts the trial',()=>{
-  assert.ok(!LOGIN_HTML.includes('admin123'));assert.ok(!LOGIN_HTML.includes('admin@clinica.com'));assert.ok(!REGISTER_HTML.includes('Iniciar Teste Grátis'));assert.ok(LANDING_HTML.includes('O cadastro não inicia seu teste'));assert.ok(!INBOX_HTML.includes('type="datetime-local"'));
+  assert.ok(!LOGIN_HTML.includes('admin123'));assert.ok(!LOGIN_HTML.includes('admin@clinica.com'));assert.ok(!REGISTER_HTML.includes('Iniciar Teste Grátis'));assert.ok(LANDING_HTML.includes('Ative o atendimento no WhatsApp quando estiver tudo pronto'));assert.ok(!INBOX_HTML.includes('type="datetime-local"'));
   for(const section of ['como-funciona','recursos','planos','duvidas']){
     assert.ok(LANDING_HTML.includes('id="'+section+'"'));assert.ok(LANDING_HTML.includes('href="#'+section+'"'));
   }
-  assert.ok(LANDING_HTML.includes('R$ 2.148 cobrados anualmente'));
-  assert.ok(LANDING_HTML.includes('Economia de R$ 240/ano'));
+  assert.ok(LANDING_HTML.includes('R$ 1.188 por ano'));assert.ok(LANDING_HTML.includes('R$ 2.388 por ano'));
+  assert.ok(LANDING_HTML.includes('Plano Free'));assert.ok(LANDING_HTML.includes('R$ 129/mês'));assert.ok(LANDING_HTML.includes('R$ 249/mês'));
   assert.ok(LANDING_HTML.includes('href="/register"'));
   assert.ok(LANDING_HTML.includes('30 mensagens no Simulador'));
-  assert.ok(LANDING_HTML.includes('até 100 respostas da IA'));
+  assert.ok(LANDING_HTML.includes('até 50 respostas automáticas com IA por mês'));
 });
 
 test('Registration quiz validates five steps, choices, retry and four-second preparation',async()=>{
@@ -347,7 +348,97 @@ test('Account popover opens upwards using unscaled height and contains the theme
 test('Plans and payment controls belong to their own page',async()=>{
  const window=await dom(INBOX_HTML,[]);try{
  const home=window.document.getElementById('viewOnboarding')!,plan=window.document.getElementById('viewPlan')!;
- for(const id of ['plano','billingAvailability','billingDetails','checkoutMonthly','checkoutYearly','billingPortal','paidRenewalAccepted']){assert.ok(plan.querySelector('#'+id));assert.equal(home.querySelector('#'+id),null);}
+ for(const id of ['plano','billingAvailability','billingValidity','checkoutFree','checkoutPro','checkoutUltra','billingPortal']){assert.ok(plan.querySelector('#'+id));assert.equal(home.querySelector('#'+id),null);}
  assert.equal(window.document.querySelector('[data-nav-tab="onboarding"] span')!.textContent,'Início');assert.ok(window.document.querySelector('#accountQuickMenu [data-nav-tab="plan"]'));
  }finally{await window.happyDOM.close();}
+});
+
+
+test('Plano pago esconde a própria contratação e o Free, e mantém o Ultra disponível',async()=>{
+  const window=await dom(INBOX_HTML,['public/js/inbox/billing.js']);
+  try {
+    const data={enabled:true,environment:'sandbox',plan:'pro',plans:PLANS,selected:true,has_subscription:true,status:'active',auto_renew:true,renewal_canceled:false,can_open_portal:true,can_select_free:false,ends_at:'2026-12-02T16:30:00Z',pending:null as any};
+    window.eval('var currentUser={canManageClinic:true}; var showToast=()=>{};');
+    window.fetch=(async()=>new Response(JSON.stringify(data))) as any;
+    await window.loadBilling();
+    const node=(id:string)=>window.document.getElementById(id)!;
+    assert.ok(node('checkoutPro').classList.contains('hidden'));
+    assert.ok(node('checkoutFree').classList.contains('hidden'));
+    assert.equal(node('checkoutFree').querySelector('button')!.disabled,true);
+    assert.ok(!node('checkoutUltra').classList.contains('hidden'));
+    const ultraActions=node('checkoutUltra').querySelectorAll('button');
+    assert.equal(ultraActions.length,1);
+    assert.equal(ultraActions[0].getAttribute('onclick'),"openAuraCheckout('ultra')");
+    assert.equal(ultraActions[0].disabled,false);
+    assert.equal(node('planOffers').dataset.cycle,'yearly');
+    const ultraPrice=window.document.querySelector('[data-plan="ultra"] [data-yearly]')!;
+    assert.equal(ultraPrice.textContent,'199');
+    assert.doesNotMatch(node('planOffers').textContent,/1\.188|2\.388|em uma cobrança/);
+    let frame:FrameRequestCallback;
+    window.requestAnimationFrame=(callback:FrameRequestCallback)=>{frame=callback;return 1;};
+    window.cancelAnimationFrame=()=>{};
+    window.setPlanCycle('monthly');
+    await window.loadBilling();
+    assert.equal(node('planOffers').dataset.cycle,'monthly');
+    frame!(0);frame!(160);
+    assert.ok(Number(ultraPrice.textContent)>199 && Number(ultraPrice.textContent)<249);
+    frame!(320);
+    assert.equal(ultraPrice.textContent,'249');
+    window.setPlanCycle('yearly');
+    frame!(400);frame!(720);
+    assert.equal(ultraPrice.textContent,'199');
+    assert.ok(node('billingValidity').textContent.includes('13:30'));
+    assert.equal(node('billingNextLabel').textContent,'Próxima renovação do Pro');
+    assert.equal(node('billingPortal').textContent,'Gerenciar cobrança na Paddle');
+    data.pending={plan:'ultra',effective_at:data.ends_at,status:'applied'};
+    await window.loadBilling();
+    assert.equal(node('billingNextLabel').textContent,'Troca agendada para o Ultra');
+    assert.ok(node('checkoutUltra').classList.contains('hidden'));assert.equal(node('planUltraBadge').textContent,'Troca agendada');
+    data.auto_renew=false;data.renewal_canceled=true;data.pending=null;
+    await window.loadBilling();
+    assert.equal(node('billingNextLabel').textContent,'Renovação desativada');
+    assert.match(node('billingNextDetails').textContent,/sem nova cobrança automática/);
+    assert.equal(window.document.getElementById('billingRenewalToggle'),null);
+    assert.ok(!node('viewPlan').textContent.toLowerCase().includes('assinatura'));
+  }finally{await window.happyDOM.close();}
+});
+
+test('Cada checkout abre apenas o plano e o ciclo informados no link',async()=>{
+  for(const plan of ['pro','ultra'] as const) for(const cycle of ['monthly','yearly'] as const) {
+  const window=await dom(checkoutHtml({} as Env),[]);
+  try {
+    window.history.replaceState(null,'','/checkout?plan='+plan+'&cycle='+cycle);
+    const opened:any[]=[],requests:any[]=[];
+    window.Paddle={Environment:{set(){}},Initialize(){},Checkout:{open: (settings:any)=>opened.push(settings)}};
+    window.fetch=(async(url:string,init?:RequestInit)=>{
+      if(url==='/api/billing')return new Response(JSON.stringify({enabled:true,plans:PLANS,plan:'free'}));
+      const body=JSON.parse(String(init?.body));requests.push({url,...body});
+      if(url==='/api/billing/preview')return new Response(JSON.stringify({cycle,amount:PLANS[plan][cycle],scheduled:false}));
+      return new Response(JSON.stringify({transactionId:'txn_test',environment:'sandbox',token:'test_public'}));
+    }) as any;
+    window.eval(fs.readFileSync('public/js/plan-checkout.js','utf8'));await window.happyDOM.whenAsyncComplete();
+    assert.equal(opened.length,1);assert.equal(opened[0].settings.displayMode,'inline');assert.equal(opened[0].transactionId,'txn_test');
+    assert.deepEqual(requests,[{url:'/api/billing/preview',plan,cycle},{url:'/api/billing/checkout',plan,cycle}]);
+    assert.equal(window.document.querySelector('#planCheckoutChoices select, #planCheckoutChoices input'),null);
+    assert.match(window.document.getElementById('checkoutEffective')!.textContent,/renova automaticamente até o cancelamento/);
+  }finally{await window.happyDOM.close();}
+  }
+});
+
+test('Checkout bloqueado por Pix exibe a ação da Paddle e oculta as opções de contratação',async()=>{
+  const window=await dom(checkoutHtml({} as Env),[]);
+  try {
+    window.history.replaceState(null,'','/checkout?plan=ultra&cycle=monthly');
+    const managementUrl='https://sandbox-customer-portal.paddle.com/payment-method';
+    window.fetch=(async(url:string)=>{
+      if(url==='/api/billing')return new Response(JSON.stringify({enabled:true,plans:PLANS,plan:'pro',can_select_free:false}));
+      assert.equal(url,'/api/billing/preview');
+      return new Response(JSON.stringify({code:'PAYMENT_METHOD_CHANGE_REQUIRED',error:'Atualize o meio de pagamento.',update_payment_method_url:managementUrl}),{status:409});
+    }) as any;
+    window.eval(fs.readFileSync('public/js/plan-checkout.js','utf8'));await window.happyDOM.whenAsyncComplete();
+    assert.ok(window.document.getElementById('planCheckoutChoices')!.classList.contains('hidden'));
+    const link=window.document.getElementById('checkoutUpdatePayment')!;
+    assert.ok(!link.classList.contains('hidden'));
+    assert.equal(link.getAttribute('href'),managementUrl);
+  }finally{await window.happyDOM.close();}
 });

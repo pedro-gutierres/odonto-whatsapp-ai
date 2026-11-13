@@ -10,7 +10,7 @@ export const REGISTER_HTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta char
 <div id="quizNavigation" class="aura-quiz-navigation" hidden><button type="button" onclick="previousQuizStep()" class="aura-text-button">← Voltar</button><button id="quizNextBtn" type="button" onclick="nextQuizStep()" class="aura-primary">Continuar →</button><button id="submitBtn" type="submit" class="aura-primary" hidden>Finalizar cadastro</button></div>
 </form>
 <div id="accountPreparation" class="aura-account-preparation" hidden role="status" aria-live="polite"><div class="aura-preparation-mark" aria-hidden="true"><span>a</span></div><h2 id="preparationMessage">Criando sua conta...</h2><p>Seu ambiente está quase pronto.</p></div>
-</section><p class="aura-quiz-note">Conta gratuita · 30 respostas no Simulador.<br>O cadastro não inicia os sete dias nem gera cobrança.</p></main>
+</section><p class="aura-quiz-note">Conta gratuita · 30 respostas no Simulador.<br>O plano Free não exige cartão. Ative o atendimento quando estiver pronto.</p></main>
 <script>
 let quizStep=1, registrationBusy=false, quizTransitioning=false;
 document.getElementById('registerQuiz').addEventListener('keydown',event=>{if(event.key==='Enter' && quizStep<5 && event.target.tagName==='INPUT'){event.preventDefault();nextQuizStep();}});

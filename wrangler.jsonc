@@ -14,7 +14,7 @@
 
   // Valores que NÃO são secretos (pode ficar no GitHub)
   "vars": {
-    "OPERATIONAL_TRIAL_ENABLED": "true",
+    "OPERATIONAL_TRIAL_ENABLED": "false",
     "GRAPH_VERSION": "v26.0",
     "CLAUDE_MODEL": "claude-haiku-5-5",
     "CLAUDE_EFFORT": "low",

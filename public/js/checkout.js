@@ -1,10 +1,12 @@
 (() => {
+  const query = new URLSearchParams(location.search);
+  if(query.has('plan') && !query.has('_ptxn'))return;
   const status = document.getElementById('checkoutStatus');
   const retry = document.getElementById('retryCheckout');
   const config = JSON.parse(document.getElementById('paddlePublicConfig').textContent);
-  const transactionId = new URLSearchParams(location.search).get('_ptxn');
+  const transactionId = query.get('_ptxn');
   if (!config) {
-    status.textContent = 'A contratação automática ainda não está disponível. Você pode acompanhar seu plano no painel.';
+    status.textContent = 'Pagamento temporariamente indisponível. Confira seu plano no painel.';
     return;
   }
   if (!/^txn_[a-z0-9]{26}$/.test(transactionId || '')) {

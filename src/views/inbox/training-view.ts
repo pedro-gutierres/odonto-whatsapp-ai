@@ -127,6 +127,8 @@ export const INBOX_TRAINING_VIEW_HTML = `
                 <option value="sofisticado">✨ Sofisticado & Exclusivo (Boutique, foco em estética de alto padrão)</option>
                 <option value="clinico">🩺 Clínico & Técnico (Objetivo, seguro, rigor científico e formal)</option>
               </select>
+              <label class="aura-checkbox-line mt-3"><input id="cfgVoiceReplies" type="checkbox">Responder áudios com voz de IA</label>
+              <p class="aura-field-hint">Disponível nos planos Pro e Ultra, dentro do limite mensal. Ao atingir o limite, a IA responde em texto.</p>
             </div>
           </div>
         </div></details>

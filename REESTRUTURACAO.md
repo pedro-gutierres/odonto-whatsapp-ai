@@ -76,30 +76,7 @@ O Embedded Signup depende também de configuração e permissões do aplicativo 
 
 ### Paddle
 
-Comece com uma conta **sandbox** e preços recorrentes sem trial adicional: mensal BRL `19900` centavos/mês e anual BRL `214800` centavos/ano, frequência 1. O servidor confere os preços antes de abrir o checkout.
-
-| Campo | Tipo | Uso |
-|---|---|---|
-| `PADDLE_ENABLED` | Variável | `false` inicialmente; `true` depois de configurar o ambiente |
-| `PADDLE_ENVIRONMENT` | Variável | `sandbox` ou `live`, sem misturar credenciais |
-| `PADDLE_API_KEY` | Secret | API key com `price.read`, `transaction.read/write`, `subscription.read` e `customer_portal_session.write` |
-| `PADDLE_CLIENT_TOKEN` | Variável | Token público do Paddle.js |
-| `PADDLE_WEBHOOK_SECRET` | Secret | Secret do destino de notificações |
-| `PADDLE_MONTHLY_PRICE_ID` | Variável | Price ID mensal |
-| `PADDLE_YEARLY_PRICE_ID` | Variável | Price ID anual |
-| `PADDLE_SANDBOX_ENTITLEMENTS` | Variável | `false` por padrão. `true` somente no ambiente de testes isolado para exercitar a liberação de acesso |
-
-Configure o destino de notificações como `https://SEU-DOMINIO/api/webhooks/paddle`, com eventos de assinatura (`subscription.created`, `activated`, `updated`, `resumed`, `past_due`, `paused`, `canceled`). Configure também o domínio de checkout na Paddle.
-
-O servidor cria a transação e seu vínculo com o negócio. A confirmação no navegador não libera acesso. Webhooks assinados conferem o vínculo e o preço; a vigência paga só avança com transação `completed` confirmada na API Paddle, com cliente, assinatura, contratação, preço, quantidade e período compatíveis. `transaction.completed` também consulta a assinatura atual para funcionar independentemente da ordem dos eventos. Duplicados e eventos antigos não revertem o estado. Falhas ou atraso na consulta pedem reenvio (não retornam sucesso sem persistência). Cancelar a renovação mantém o período pago até seu fim; cancelamento efetivo/inadimplência suspendem a operação.
-
-Sem configuração, os botões ficam desabilitados. Sandbox não concede acesso operacional por padrão. Antes de ativar `live`, conferir checkout, webhooks, portal, renovação e cancelamento na sandbox e aprovação do domínio/negócio na Paddle.
-
-A página pública `/checkout` é o destino preparado para o **Default payment link** da Paddle. Ela carrega somente o token público, reconhece `_ptxn`, permite reabrir um pagamento fechado e mantém o acesso dependente do webhook. Não usa cache e não inclui API key ou secret de assinatura. Configure o link no domínio do ambiente correspondente; não aponte a sandbox para um serviço de produção com outro conjunto de credenciais.
-
-O checkout recusa pares de credenciais incompatíveis: sandbox exige token `test_` e chave `pdl_sdbx_apikey_`; produção exige token `live_` e chave `pdl_live_apikey_`. Variáveis exportadas em outro terminal não ficam automaticamente disponíveis para o agente ou para o Worker. Na máquina local, use `.dev.vars`; na publicação, use Variables and Secrets da Cloudflare.
-
-Referências: https://developer.paddle.com/webhooks/signature-verification/ ; https://developer.paddle.com/api-reference/transactions/create-transaction/ ; https://developer.paddle.com/api-reference/customer-portals/create-customer-portal-session/
+A configuração atual de Free, Pro e Ultra, a migração e o roteiro de teste estão em [Planos e Paddle](PLANOS.md). As informações abaixo registram a primeira integração, anterior ao catálogo de três planos.
 
 ### Integração Paddle sandbox — 12/11/2026
 

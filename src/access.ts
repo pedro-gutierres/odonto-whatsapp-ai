@@ -1,5 +1,6 @@
 import type { Env, Tenant } from './types';
 import { getTenantById, isConfiguredPhoneNumberId, isCrucialConfigComplete } from './db';
+import { effectivePlan } from './plans';
 
 export function tenantConfig(tenant: Tenant) {
   try { return JSON.parse(tenant.bot_config || '{}'); } catch { return {}; }
@@ -20,18 +21,22 @@ export function commercialAccess(tenant: Tenant, now = Date.now()) {
     status = 'ended';
     endedReason = 'subscription';
   }
+  // Tiered plans fall back to Free at expiry; the operational setup survives.
+  if (tenant.plan_tier && (status === 'ended' || status === 'free' || (status === 'active' && effectivePlan(tenant,now)==='free'))) {
+    status='free';endedReason=null;
+  }
   const trainingReady = Boolean(tenant.training_reviewed_at) && isCrucialConfigComplete(tenantConfig(tenant));
   const whatsappReady = isConfiguredPhoneNumberId(tenant.phone_number_id)
     && Boolean(tenant.access_token_enc && tenant.whatsapp_diagnosed_at);
   const agendaReady = Boolean(tenant.agenda_ready_at && tenant.schedule_mode);
-  const entitled = legacy || status === 'trial' || status === 'active';
+  const entitled = legacy || status === 'trial' || status === 'active' || (status==='free' && Boolean(tenant.plan_tier));
   const canOperate = tenant.active === 1 && entitled
     && (legacy || Boolean(tenant.operational_enabled && trainingReady && whatsappReady && agendaReady));
   return {
-    status, legacy_review_required: legacy, ended_reason: endedReason,
+    status, plan:effectivePlan(tenant,now), tiered:Boolean(tenant.plan_tier), legacy_review_required: legacy, ended_reason: endedReason,
     can_operate: canOperate,
-    can_prepare: tenant.active === 1 && (legacy || ['preparing','trial','active'].includes(status)),
-    can_read_history: tenant.active === 1 && (legacy || ['trial','active','ended'].includes(status)),
+    can_prepare: tenant.active === 1 && (legacy || ['preparing','trial','active'].includes(status) || (status==='free' && Boolean(tenant.plan_tier))),
+    can_read_history: tenant.active === 1 && (legacy || ['trial','active','ended'].includes(status) || (status==='free' && Boolean(tenant.plan_tier))),
     readiness: { training: trainingReady, whatsapp: whatsappReady, agenda: agendaReady },
     schedule_mode: tenant.schedule_mode ?? null,
     profile: { kind: tenant.business_kind ?? null, sector: tenant.business_sectors ?? tenant.business_sector ?? null },

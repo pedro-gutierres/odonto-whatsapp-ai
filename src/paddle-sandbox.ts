@@ -9,7 +9,7 @@ export default {
   async scheduled(_controller:ScheduledController,env:Env){
     if(env.PADDLE_ENVIRONMENT==='sandbox'&&env.PADDLE_SANDBOX_ENTITLEMENTS==='true')await processPaddleInbox(env);
   },
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     if (env.PADDLE_ENVIRONMENT !== 'sandbox' || env.PADDLE_SANDBOX_ENTITLEMENTS !== 'true') {
       return jsonResponse({ error: 'Este ambiente exige a configuração sandbox.' }, 503);
     }
@@ -19,7 +19,7 @@ export default {
       || path.startsWith('/api/clinic/whatsapp/')
       || (path.startsWith('/api/appointments') && request.method !== 'GET');
     if (attendance) return jsonResponse({ error: 'O ambiente de testes Paddle não executa atendimento real.' }, 403);
-    const response = await worker.fetch(request, env);
+    const response = await worker.fetch(request, env, ctx);
     const headers = new Headers(response.headers);
     headers.set('X-Robots-Tag', 'noindex, nofollow');
     if (headers.get('content-type')?.includes('text/html')) {

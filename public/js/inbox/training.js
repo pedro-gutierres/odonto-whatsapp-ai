@@ -598,6 +598,7 @@
         doctor_name: document.getElementById('cfgDoctorName').value.trim() || undefined,
         doctor_cro: document.getElementById('cfgDoctorCro').value.trim() || undefined,
         tone: document.getElementById('cfgTone').value,
+        voice_replies: document.getElementById('cfgVoiceReplies').checked,
         unfilled_fallback: unfilledFallback,
         send_secondary_contact_on_finish: sendSecondaryContact,
         initial_consultation: initialConsultation,
@@ -707,6 +708,7 @@ function renderTrainingChecks(container,options,current,target){
 }
 function loadStructuredTraining(config){
   document.getElementById('cfgPaymentMethods').value=config.payment_methods||'';
+  document.getElementById('cfgVoiceReplies').checked=Boolean(config.voice_replies);
   document.getElementById('cfgParking').value=config.parking||'';
   const kind=currentAccess?.profile.kind||config.business_kind,sector=currentAccess?.profile.sector||config.business_sector;
   for(const el of document.querySelectorAll('[name="trainingKind"]'))el.checked=el.value===kind;

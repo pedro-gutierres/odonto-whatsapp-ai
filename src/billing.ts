@@ -2,78 +2,10 @@ import type { Env, Tenant } from './types';
 import { getTenantById } from './db';
 import { jsonResponse } from './http';
 
-export function billingEnabled(env: Env) {
-  const sandbox = env.PADDLE_ENVIRONMENT === 'sandbox';
-  const tokenPrefix = sandbox ? 'test_' : 'live_';
-  const apiKeyPrefix = sandbox ? 'pdl_sdbx_apikey_' : 'pdl_live_apikey_';
-  return env.PADDLE_ENABLED === 'true' && ['sandbox','live'].includes(env.PADDLE_ENVIRONMENT || '')
-    && Boolean(env.PADDLE_API_KEY?.startsWith(apiKeyPrefix) && env.PADDLE_CLIENT_TOKEN?.startsWith(tokenPrefix)
-      && env.PADDLE_WEBHOOK_SECRET && env.PADDLE_MONTHLY_PRICE_ID && env.PADDLE_YEARLY_PRICE_ID);
-}
-async function paddle(env: Env, path: string, body?: unknown, method?: string, timeoutMs = 10000) {
-  const base = env.PADDLE_ENVIRONMENT === 'live' ? 'https://api.paddle.com' : 'https://sandbox-api.paddle.com';
-  const response = await fetch(base + path, {method:method || (body ? 'POST':'GET'),signal:AbortSignal.timeout(timeoutMs),headers:{authorization:`Bearer ${env.PADDLE_API_KEY}`,'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
-  if (!response.ok) throw new Error(`PADDLE_${response.status}`);
-  return (await response.json() as any).data;
-}
-export async function handleBilling(request: Request, env: Env, tenant: Tenant, canManage: boolean) {
-  const path = new URL(request.url).pathname;
-  if (path === '/api/billing' && request.method === 'GET') return jsonResponse({
-    enabled: billingEnabled(env), environment:env.PADDLE_ENVIRONMENT === 'live' ? 'live':'sandbox',
-    offers: [{cycle:'monthly',amount:19900,currency:'BRL'},{cycle:'yearly',amount:214800,currency:'BRL'}],
-    status:tenant.billing_status ?? null, ends_at:tenant.subscription_ends_at ?? null, renewal_canceled_at:tenant.renewal_canceled_at ?? null,
-    has_subscription:Boolean(tenant.paddle_subscription_id),
-  });
-  if (request.method !== 'POST') return jsonResponse({error:'Método não permitido.'},405);
-  if (!canManage) return jsonResponse({error:'Somente o responsável pode contratar ou gerenciar o plano.'},403);
-  if (!billingEnabled(env)) return jsonResponse({error:'A contratação automática ainda não está disponível.'},503);
-  if (path === '/api/billing/portal') {
-    if (!tenant.paddle_customer_id || !tenant.paddle_subscription_id) return jsonResponse({error:'Nenhuma assinatura vinculada.'},409);
-    try {
-      const session = await paddle(env,`/customers/${tenant.paddle_customer_id}/portal-sessions`,{subscription_ids:[tenant.paddle_subscription_id]});
-      const url = session?.urls?.general?.overview;
-      if (typeof url !== 'string' || !/^https:\/\/([a-z0-9-]+\.)*paddle\.com\//.test(url)) throw new Error('INVALID_PORTAL_URL');
-      return jsonResponse({url});
-    } catch { return jsonResponse({error:'Não foi possível abrir o gerenciamento da assinatura.'},502); }
-  }
-  if (path !== '/api/billing/checkout') return jsonResponse({error:'Rota não encontrada.'},404);
-  let body:any;try{body=await request.json();}catch{return jsonResponse({error:'JSON inválido.'},400);}
-  if (!['monthly','yearly'].includes(body?.cycle) || body.renewalAccepted !== true) return jsonResponse({error:'Escolha o ciclo e aceite a renovação automática do plano pago.'},400);
-  if (tenant.paddle_subscription_id && tenant.billing_status!=='canceled') return jsonResponse({error:'Gerencie a assinatura existente para evitar cobrança duplicada.'},409);
-  const priceId = body.cycle==='monthly'?env.PADDLE_MONTHLY_PRICE_ID:env.PADDLE_YEARLY_PRICE_ID;
-  try {
-    const price = await paddle(env,`/prices/${priceId}`);
-    if (price.status!=='active' || price.unit_price?.currency_code!=='BRL'
-      || Number(price.unit_price?.amount)!==(body.cycle==='monthly'?19900:214800)
-      || price.billing_cycle?.interval!==(body.cycle==='monthly'?'month':'year') || price.billing_cycle?.frequency!==1 || price.trial_period)
-      return jsonResponse({error:'O preço configurado não corresponde à oferta. A contratação está indisponível.'},503);
-  } catch { return jsonResponse({error:'Não foi possível conferir o preço da assinatura.'},502); }
-  const existing = await env.DB.prepare("SELECT id,transaction_id,billing_cycle FROM checkout_intents WHERE tenant_id=?1 AND status='pending'").bind(tenant.id).first<any>();
-  if (existing) {
-    if (!existing.transaction_id) return jsonResponse({error:'Há uma contratação em preparação. Aguarde alguns instantes.'},409);
-    if (existing.billing_cycle !== body.cycle) {
-      try {
-        await paddle(env,`/transactions/${existing.transaction_id}`,{items:[{price_id:priceId,quantity:1}]},'PATCH');
-        await env.DB.prepare("UPDATE checkout_intents SET billing_cycle=?2 WHERE id=?1 AND status='pending'").bind(existing.id,body.cycle).run();
-      } catch { return jsonResponse({error:'O checkout já está em processamento. Conclua ou confira a contratação antes de mudar o ciclo.'},409); }
-    }
-    return jsonResponse({transactionId:existing.transaction_id,token:env.PADDLE_CLIENT_TOKEN,environment:env.PADDLE_ENVIRONMENT});
-  }
-  const intent = crypto.randomUUID();
-  try {
-    await env.DB.prepare('INSERT INTO checkout_intents(id,tenant_id,billing_cycle) VALUES (?1,?2,?3)').bind(intent,tenant.id,body.cycle).run();
-    const transaction = await paddle(env,'/transactions',{
-      items:[{price_id:body.cycle==='monthly'?env.PADDLE_MONTHLY_PRICE_ID:env.PADDLE_YEARLY_PRICE_ID,quantity:1}],
-      collection_mode:'automatic',custom_data:{tenant_id:tenant.id,checkout_intent:intent},
-    });
-    if (!transaction?.id?.startsWith('txn_')) throw new Error('INVALID_TRANSACTION');
-    await env.DB.prepare('UPDATE checkout_intents SET transaction_id=?2 WHERE id=?1').bind(intent,transaction.id).run();
-    return jsonResponse({transactionId:transaction.id,token:env.PADDLE_CLIENT_TOKEN,environment:env.PADDLE_ENVIRONMENT});
-  } catch {
-    await env.DB.prepare("UPDATE checkout_intents SET status='failed' WHERE id=?1").bind(intent).run();
-    return jsonResponse({error:'Não foi possível preparar o checkout. Nenhum plano foi liberado.'},502);
-  }
-}
+export { billingEnabled, handleBilling } from './plan-billing';
+import { reconcilePlanChanges } from './plan-billing';
+import { paddle } from './paddle-client';
+import { identifyPrice } from './plans';
 
 type PaddleSignatureResult = {valid:true} | {valid:false;reason:'missing_header'|'malformed_header'|'timestamp_outside_tolerance'|'hmac_mismatch';ageSeconds?:number};
 export async function inspectPaddleSignature(raw: string, header: string | null, secret: string, now = Date.now()): Promise<PaddleSignatureResult> {
@@ -98,7 +30,7 @@ export async function verifyPaddleSignature(raw:string,header:string|null,secret
   return (await inspectPaddleSignature(raw,header,secret,now)).valid;
 }
 
-export async function paddleWebhook(request: Request, env: Env) {
+export async function paddleWebhook(request: Request, env: Env, ctx?: ExecutionContext) {
   if (request.method !== 'POST') return jsonResponse({error:'Método não permitido.'},405);
   if (!env.PADDLE_WEBHOOK_SECRET) return jsonResponse({error:'Webhook não configurado.'},503);
   const raw = await request.text();
@@ -124,7 +56,7 @@ export async function paddleWebhook(request: Request, env: Env) {
     const snapshot={event_id:event.event_id,event_type:event.event_type,occurred_at:event.occurred_at,data:{
       id:data.id,status:data.status,subscription_id:data.subscription_id,customer_id:data.customer_id,
       custom_data:{tenant_id:intent.tenant_id,checkout_intent:custom.checkout_intent},
-      items:Array.isArray(data.items)?data.items.map((item:any)=>({price:{id:item?.price?.id}})):[],
+      items:Array.isArray(data.items)?data.items.map((item:any)=>({price:{id:item?.price?.id},quantity:item?.quantity})):[],
       scheduled_change:data.scheduled_change?{action:data.scheduled_change.action,effective_at:data.scheduled_change.effective_at}:null,
       updated_at:data.updated_at
     }};
@@ -132,6 +64,10 @@ export async function paddleWebhook(request: Request, env: Env) {
       VALUES (?1,?2,?3,?4) ON CONFLICT(event_id) DO UPDATE SET status='pending',next_attempt_at=0,last_error_code=NULL
       WHERE paddle_webhook_inbox.status='rejected'`)
       .bind(event.event_id,intent.tenant_id,env.PADDLE_ENVIRONMENT==='live'?'live':'sandbox',JSON.stringify(snapshot)).run();
+    // The durable row is also picked up by cron if this invocation is interrupted.
+    ctx?.waitUntil(processPaddleInbox(env, Date.now(), event.event_id).catch(() => {
+      console.error('[PADDLE_BACKGROUND_FAILED]', JSON.stringify({eventId:event.event_id}));
+    }));
     return jsonResponse({received:true,queued:true});
   } catch {
     console.error('[PADDLE_RECEIPT_FAILED]',JSON.stringify({eventId:event.event_id,reason:'storage_unavailable'}));
@@ -160,32 +96,52 @@ async function processPaddleEvent(event:any,env:Env) {
     if (data.custom_data?.tenant_id !== tenant.id || data.custom_data?.checkout_intent !== intent.id) return jsonResponse({error:'Vínculo de assinatura inválido.'},409);
   }
   if (tenant.paddle_subscription_id && tenant.paddle_subscription_id!==data.id && tenant.billing_status!=='canceled') return jsonResponse({error:'Vínculo de assinatura inválido.'},409);
-  const priceIds = (data.items || []).map((item:any)=>item.price?.id);
-  if (!priceIds.includes(intent.billing_cycle==='monthly'?env.PADDLE_MONTHLY_PRICE_ID:env.PADDLE_YEARLY_PRICE_ID)) return jsonResponse({error:'Preço não reconhecido.'},409);
+  const selectedPrice = data.items?.length===1 ? identifyPrice(env,data.items[0].price?.id) : null;
+  if (!selectedPrice || data.items[0].quantity !== undefined && data.items[0].quantity !== 1) return jsonResponse({error:'Preço não reconhecido.'},409);
+  if (tenant.paddle_subscription_id!==data.id && intent.plan_tier && (selectedPrice.tier!==intent.plan_tier || selectedPrice.cycle!==intent.billing_cycle))
+    return jsonResponse({error:'Preço divergente do checkout.'},409);
   const validStates=['active','past_due','paused','canceled','trialing'];
   if (!validStates.includes(data.status)) return jsonResponse({error:'Condição de assinatura não reconhecida.'},400);
+  const knownPriceId = data.items[0].price.id;
   // An active subscription alone is not proof of captured payment (Pix can be
   // deferred). Only a completed transaction authorizes a paid-through date.
   let paidEnd: string | null = null;
+  let paidStart: string | null = null;
+  let paidPlan: ReturnType<typeof identifyPrice> = null;
+  let paidPriceId: string | null = null;
   if (data.status === 'active') {
     if (!env.PADDLE_API_KEY) return jsonResponse({error:'Conferência de pagamento indisponível.'},503);
     try {
       const transactions = await paddle(env,`/transactions?subscription_id=${encodeURIComponent(data.id)}&status=completed&per_page=1&order_by=billed_at%5BDESC%5D`,undefined,'GET',1500);
       const payment = Array.isArray(transactions) ? transactions[0] : null;
       const end = payment?.billing_period?.ends_at, start = payment?.billing_period?.starts_at;
-      const expectedPrice = intent.billing_cycle==='monthly'?env.PADDLE_MONTHLY_PRICE_ID:env.PADDLE_YEARLY_PRICE_ID;
+      // Subscription items may already contain a future plan. Only the price
+      // on a captured transaction determines today's entitlement.
+      const receiptPlan = payment?.items?.length===1 ? identifyPrice(env,payment.items[0].price?.id) : null;
       if (payment?.status==='completed' && payment.subscription_id===data.id && payment.customer_id===data.customer_id
         && payment.custom_data?.tenant_id===tenant.id && payment.custom_data?.checkout_intent===intent.id
-        && payment.items?.length===1 && payment.items[0].price?.id===expectedPrice && payment.items[0].quantity===1
-        && typeof end==='string' && Number.isFinite(Date.parse(end)) && Number.isFinite(Date.parse(start)) && Date.parse(start)<Date.parse(end)) {
+        && receiptPlan && payment.items[0].quantity===1
+        && (tenant.paddle_subscription_id===data.id || (payment.id===intent.transaction_id && payment.items[0].price.id===knownPriceId))
+        && typeof end==='string' && Number.isFinite(Date.parse(end)) && Number.isFinite(Date.parse(start)) && Date.parse(start)<Date.parse(end)
+        && Date.parse(start)<=Date.now()) {
         paidEnd = new Date(end).toISOString();
+        paidStart = new Date(start).toISOString();
+        paidPlan = receiptPlan;
+        paidPriceId = payment.items[0].price.id;
       }
     } catch { return jsonResponse({error:'Não foi possível conferir o pagamento. A notificação deve ser reenviada.'},502); }
   }
   if (paymentCompleted && data.status==='active' && !paidEnd) {
     return jsonResponse({error:'A confirmação ainda não está disponível na consulta de pagamentos. A notificação deve ser reenviada.'},502);
   }
-  const active=data.status==='active' && paidEnd !== null && Date.parse(paidEnd)>Date.now();
+  // A past-due/paused/canceled renewal does not erase a period already paid.
+  if (tenant.paddle_subscription_id===data.id && Date.parse(tenant.subscription_ends_at || '')>Date.now()
+    && (!paidEnd || Date.parse(tenant.subscription_ends_at!)>Date.parse(paidEnd))) {
+    paidEnd=tenant.subscription_ends_at!;paidStart=tenant.subscription_starts_at || null;
+    paidPlan=tenant.plan_tier==='pro'||tenant.plan_tier==='ultra'?{tier:tenant.plan_tier,cycle:tenant.billing_cycle==='yearly'?'yearly':'monthly'}:null;
+    paidPriceId=tenant.plan_price_id || null;
+  }
+  const active=paidEnd !== null && Date.parse(paidEnd)>Date.now();
   const pending = data.status==='active' && !active;
   const status = active ? 'active' : pending && tenant.commercial_status!=='active' ? tenant.commercial_status : 'ended';
   const snapshotTime = paymentCompleted && Number.isFinite(Date.parse(data.updated_at)) ? Date.parse(data.updated_at) : 0;
@@ -193,12 +149,23 @@ async function processPaddleEvent(event:any,env:Env) {
   try {
     await env.DB.batch([
       env.DB.prepare(`UPDATE tenants SET commercial_status=?2,plan_status=?3,paddle_customer_id=?4,paddle_subscription_id=?5,
-        subscription_ends_at=?6,billing_cycle=?7,billing_status=?8,billing_event_at=?9,renewal_canceled_at=?10
+        subscription_ends_at=?6,billing_cycle=?7,billing_status=?8,billing_event_at=?9,renewal_canceled_at=?10,
+        plan_tier=COALESCE(?12,plan_tier),subscription_starts_at=COALESCE(?13,subscription_starts_at),plan_price_id=COALESCE(?15,plan_price_id),
+        auto_renew=CASE WHEN ?10 IS NOT NULL OR ?8='canceled' THEN 0
+          WHEN paddle_subscription_id IS NULL OR paddle_subscription_id!=?5 THEN ?14
+          WHEN renewal_canceled_at IS NOT NULL AND ?8='active' AND ?10 IS NULL THEN 1 ELSE auto_renew END
         WHERE id=?1 AND (billing_event_at IS NULL OR billing_event_at<?9
           OR (?11=1 AND billing_event_at=?9 AND billing_status='active' AND paddle_subscription_id=?5))`)
-        .bind(tenant.id,status,active?'active':pending?tenant.plan_status:data.status==='past_due'?'past_due':'canceled',data.customer_id,data.id,paidEnd,intent.billing_cycle,data.status,occurred,data.scheduled_change?.action==='cancel'?data.scheduled_change.effective_at:null,paymentCompleted?1:0),
+        .bind(tenant.id,status,active?'active':pending?tenant.plan_status:data.status==='past_due'?'past_due':'canceled',data.customer_id,data.id,paidEnd,paidPlan?.cycle || tenant.billing_cycle || intent.billing_cycle,data.status,occurred,data.scheduled_change?.action==='cancel'?data.scheduled_change.effective_at:null,paymentCompleted?1:0,paidPlan?.tier || null,paidStart,intent.auto_renew ?? 1,paidPriceId),
       env.DB.prepare('INSERT INTO billing_events(event_id,tenant_id,occurred_at,event_type) VALUES (?1,?2,?3,?4)').bind(event.event_id,tenant.id,occurred,event.event_type),
       env.DB.prepare("UPDATE checkout_intents SET status='completed' WHERE id=?1").bind(intent.id),
+      // Complete the queue only when a matching future period was actually paid.
+      env.DB.prepare(`UPDATE plan_changes SET status='completed' WHERE tenant_id=?1 AND status IN ('prepared','applied')
+        AND plan_tier=?2 AND billing_cycle=?5 AND price_id=?6 AND subscription_id=?7 AND julianday(effective_at)<=julianday(?3)
+        AND EXISTS(SELECT 1 FROM tenants WHERE id=?1 AND billing_event_at=?4 AND plan_tier=?2 AND subscription_starts_at=?3)`)
+        .bind(tenant.id,paidPlan?.tier || '',paidStart,occurred,paidPlan?.cycle||'',paidPriceId,data.id),
+      env.DB.prepare(`UPDATE plan_changes SET status='completed' WHERE tenant_id=?1 AND plan_tier='free' AND status='applied'
+        AND julianday(effective_at)<=julianday('now')`).bind(tenant.id),
     ]);
     return jsonResponse({received:true});
   } catch (error) {
@@ -208,12 +175,12 @@ async function processPaddleEvent(event:any,env:Env) {
   }
 }
 
-export async function processPaddleInbox(env:Env,now=Date.now()) {
+export async function processPaddleInbox(env:Env,now=Date.now(),eventId:string|null=null) {
   if(env.PADDLE_ENVIRONMENT!=='live'&&env.PADDLE_SANDBOX_ENTITLEMENTS!=='true')return {processed:0};
   const environment=env.PADDLE_ENVIRONMENT==='live'?'live':'sandbox';
-  const {results}=await env.DB.prepare(`SELECT event_id FROM paddle_webhook_inbox WHERE environment=?1 AND
+  const {results}=await env.DB.prepare(`SELECT event_id FROM paddle_webhook_inbox WHERE environment=?1 AND (?3 IS NULL OR event_id=?3) AND
     ((status='pending' AND next_attempt_at<=?2) OR (status='processing' AND lease_until<=?2))
-    ORDER BY received_at,event_id LIMIT 5`).bind(environment,now).all<{event_id:string}>();
+    ORDER BY received_at,event_id LIMIT 5`).bind(environment,now,eventId).all<{event_id:string}>();
   let processed=0;
   for(const item of results||[]) {
     const lease=crypto.randomUUID();
@@ -237,5 +204,6 @@ export async function processPaddleInbox(env:Env,now=Date.now()) {
     console[complete?'log':rejected?'error':'warn']('[PADDLE_PROCESSING]',JSON.stringify({eventId:item.event_id,status:state,attempt:job.attempts,error}));
     processed++;
   }
+  if (!eventId) await reconcilePlanChanges(env);
   return {processed};
 }

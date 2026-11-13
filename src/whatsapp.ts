@@ -154,6 +154,20 @@ export async function sendText(
   return data.messages?.[0]?.id ?? null;
 }
 
+export async function sendAudio(env:Env,phoneNumberId:string,token:string,to:string,bytes:Uint8Array<ArrayBuffer>) {
+  const form=new FormData();form.set('messaging_product','whatsapp');
+  form.set('file',new Blob([bytes],{type:'audio/mpeg'}),'reply.mp3');
+  const uploaded=await fetch(`https://graph.facebook.com/${env.GRAPH_VERSION}/${phoneNumberId}/media`,{method:'POST',headers:{authorization:`Bearer ${token}`},body:form});
+  if(!uploaded.ok)throw new Error('VOICE_UPLOAD_FAILED');
+  const media=await uploaded.json() as {id?:string};
+  if(!media.id)throw new Error('VOICE_UPLOAD_FAILED');
+  const sent=await fetch(`https://graph.facebook.com/${env.GRAPH_VERSION}/${phoneNumberId}/messages`,{method:'POST',
+    headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},
+    body:JSON.stringify({messaging_product:'whatsapp',recipient_type:'individual',to,type:'audio',audio:{id:media.id}})});
+  if(!sent.ok)throw new Error('VOICE_SEND_FAILED');
+  return (await sent.json() as {messages?:{id:string}[]}).messages?.[0]?.id ?? null;
+}
+
 // -----------------------------------------------------------------------------
 // META EMBEDDED SIGNUP & DIAGNÓSTICO DE CONEXÃO WHATSAPP CLOUD API
 // -----------------------------------------------------------------------------

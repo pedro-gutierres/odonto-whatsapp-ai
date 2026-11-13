@@ -39,8 +39,8 @@ export async function registerAccount(request: Request, env: Env) {
     await env.DB.batch([
       env.DB.prepare(`INSERT INTO tenants (id,name,phone_number_id,contact_email,admin_phone,responsible_name,
         bot_config,active,commercial_status,business_kind,business_sector,uses_external_schedule,existing_system,
-        trial_ends_at,trial_messages_used,trial_messages_limit,billing_cycle,training_reviewed_at,schedule_mode,agenda_ready_at,business_sectors)
-        VALUES (?1,?2,?3,?4,?5,?6,?7,1,'preparing',?8,?9,?10,?11,NULL,0,100,NULL,?12,?13,?14,?15)`)
+        trial_ends_at,trial_messages_used,trial_messages_limit,billing_cycle,training_reviewed_at,schedule_mode,agenda_ready_at,business_sectors,plan_tier)
+        VALUES (?1,?2,?3,?4,?5,?6,?7,1,'preparing',?8,?9,?10,?11,NULL,0,100,NULL,?12,?13,?14,?15,'free')`)
         .bind(id, clinicName, `unconfigured:${id}`, email, phone || null, adminName, config, kind, sector === 'both' ? 'dentistry' : sector, external ? 1 : 0, external ? system : null,
           now, external ? 'external_manual' : 'aura', external ? null : now, sector),
       env.DB.prepare("INSERT INTO users (tenant_id,email,password_hash,name,role,active) VALUES (?1,?2,?3,?4,'admin',1)")
@@ -75,7 +75,7 @@ export async function handleOnboarding(request: Request, env: Env, tenant: Tenan
   if (!canManage) return jsonResponse({ error: 'Somente o responsável pode preparar ou ativar o atendimento.' }, 403);
   const access = commercialAccess(tenant);
   if (path === '/api/onboarding/prepare') {
-    if (tenant.commercial_status === 'free') {
+    if (tenant.commercial_status === 'free' && !tenant.plan_tier) {
       await env.DB.prepare("UPDATE tenants SET commercial_status='preparing' WHERE id=?1 AND commercial_status='free'").bind(tenant.id).run();
     }
     return response();
@@ -113,12 +113,14 @@ export async function handleOnboarding(request: Request, env: Env, tenant: Tenan
     return response();
   }
   if (path === '/api/onboarding/start-paid') {
-    if (access.status !== 'active' || !Object.values(access.readiness).every(Boolean)) return jsonResponse({error:'Conclua a preparação e confirme a vigência da assinatura.'},409);
-    await env.DB.prepare("UPDATE tenants SET operational_enabled=1 WHERE id=?1 AND commercial_status='active'").bind(tenant.id).run();
+    const canActivate=access.status==='active' || (access.status==='free' && access.tiered) || (access.status==='preparing' && tenant.plan_tier==='free');
+    if (!canActivate || !Object.values(access.readiness).every(Boolean)) return jsonResponse({error:'Conclua a preparação e confirme a validade do plano.'},409);
+    await env.DB.prepare("UPDATE tenants SET operational_enabled=1,commercial_status=CASE WHEN commercial_status='preparing' AND plan_tier='free' THEN 'free' ELSE commercial_status END WHERE id=?1").bind(tenant.id).run();
     return response();
   }
   if (path === '/api/onboarding/activate') {
     if (tenant.trial_started_at) return response(); // idempotent: never grant another trial
+    if (tenant.plan_tier) return jsonResponse({error:'Ative o atendimento do seu plano na preparação.'},409);
     if (env.OPERATIONAL_TRIAL_ENABLED !== 'true') return jsonResponse({ error: 'Ativação do teste ainda não disponível.' }, 503);
     if (tenant.commercial_status !== 'preparing' || !Object.values(access.readiness).every(Boolean)) {
       return jsonResponse({ error: 'Conclua treinamento, diagnóstico do WhatsApp e preparação da agenda.', access }, 409);

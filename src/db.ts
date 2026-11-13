@@ -519,7 +519,7 @@ export async function listProfessionals(
   activeOnly = false
 ): Promise<ProfessionalRecord[]> {
   const query = activeOnly
-    ? "SELECT * FROM professionals WHERE tenant_id = ?1 AND active = 1 ORDER BY name ASC, id ASC"
+    ? "SELECT * FROM plan_bookable_professionals WHERE tenant_id = ?1 ORDER BY name ASC, id ASC"
     : "SELECT * FROM professionals WHERE tenant_id = ?1 ORDER BY active DESC, name ASC, id ASC";
   const { results } = await db.prepare(query).bind(tenantId).all<ProfessionalRecord>();
   return results || [];
@@ -767,6 +767,8 @@ export async function checkAppointmentConflict(
 
   // 1. Se um profissional foi informado, valida dia da semana, expediente e intervalo dele
   if (professionalId) {
+    const bookable=await db.prepare('SELECT id FROM plan_bookable_professionals WHERE tenant_id=?1 AND id=?2').bind(tenantId,professionalId).first();
+    if(!bookable)return {conflict:true,reason:'Este profissional excede a capacidade do plano atual. Ajuste os profissionais ativos ou escolha outro plano.'};
     const prof = await getProfessionalById(db, tenantId, professionalId);
     if (!prof) return { conflict: true, reason: "Profissional inválido." };
     if (prof) {
@@ -916,7 +918,7 @@ export async function createAppointment(
     .run();
   return { success: true, id: result.meta.last_row_id ?? 0 };
   } catch (error) {
-    if (/APPOINTMENT_CONFLICT|VALID_APPOINTMENT_REQUIRED/.test(String(error))) return {success:false,conflict:true,message:'O horário ficou indisponível ou os dados não permitem confirmar a consulta.'};
+    if (/APPOINTMENT_CONFLICT|VALID_APPOINTMENT_REQUIRED|PROFESSIONAL_PLAN_LIMIT/.test(String(error))) return {success:false,conflict:true,message:'O horário ficou indisponível ou excede a capacidade do plano atual.'};
     throw error;
   }
 }

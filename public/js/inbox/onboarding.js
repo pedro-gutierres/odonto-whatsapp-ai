@@ -2,7 +2,7 @@ let currentAccess = null;
 let onboardingBusy = false;
 let lastScheduleMode;
 let lastAgendaReadiness;
-const commercialLabels = { free:'Explore o Simulador e prepare seu atendimento.', preparing:'Sua IA está pré-treinada para seu setor. Experimente no Simulador, personalize sua clínica e conecte o WhatsApp para ativar seus 7 dias grátis.', trial:'Seu teste gratuito está ativo.', active:'Sua assinatura está ativa.', ended:'O atendimento está pausado. Confira sua assinatura na página Plano.', legacy:'Seu atendimento está disponível.' };
+const commercialLabels = { free:'Seu plano Free está disponível. Prepare o atendimento para começar.', preparing:'Experimente no Simulador, personalize sua clínica e conecte o WhatsApp para ativar o atendimento no plano Free.', trial:'Seu teste gratuito está ativo.', active:'Seu plano está ativo.', ended:'O atendimento está pausado. Confira seu plano na página Plano.', legacy:'Seu atendimento está disponível.' };
 let onboardingRequestId = 0;
 let onboardingRequests = 0;
 async function loadOnboarding({ background = false } = {}) {
@@ -59,7 +59,7 @@ function renderOnboarding(trialEnabled) {
   document.getElementById('businessSubtitle').textContent = profile;
   document.getElementById('onboardingStatus').textContent = commercialLabels[access.status] || '';
   const trial = access.trial;
-  document.getElementById('operationalQuota').textContent = trial.started_at ? trial.used + ' / ' + trial.limit + ' respostas usadas · Até ' + new Date(trial.ends_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : 'O prazo do teste começa somente na ativação.';
+  document.getElementById('operationalQuota').textContent = access.status==='trial' && trial.started_at ? trial.used + ' / ' + trial.limit + ' respostas usadas · Até ' + new Date(trial.ends_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : 'Confira os limites na página Plano.';
   for (const [id,ready] of [['readyTraining',access.readiness.training],['readyWhatsapp',access.readiness.whatsapp],['readyAgenda',access.readiness.agenda]]) {
     const badge = document.getElementById(id);
     badge.textContent = ready ? 'Pronto ✓' : 'Pendente';
@@ -77,13 +77,14 @@ function renderOnboarding(trialEnabled) {
     lastAgendaReadiness = access.readiness.agenda;
   }
   const canManage = currentUser && currentUser.canManageClinic;
-  document.getElementById('prepareTrialBtn').classList.toggle('hidden', access.status !== 'free');
+  document.getElementById('prepareTrialBtn').classList.toggle('hidden', true);
   document.getElementById('prepareTrialBtn').disabled = onboardingBusy || !canManage;
   document.getElementById('reviewTrainingBtn').disabled = onboardingBusy || !canManage;
   document.getElementById('saveAgendaReadinessBtn').disabled = onboardingBusy || !access.can_prepare || !canManage;
-  document.getElementById('activateTrialBtn').disabled = onboardingBusy || (!trialEnabled && access.status !== 'active') || !canManage || !['preparing','active'].includes(access.status) || !Object.values(access.readiness).every(Boolean);
-  document.getElementById('activateTrialBtn').textContent = access.status === 'active' ? 'Ativar atendimento da assinatura' : 'Ativar teste de 7 dias';
-  document.getElementById('activationAcknowledgmentText').textContent = access.status === 'active' ? 'Autorizo o atendimento real pelo número conectado durante a vigência da assinatura.' : 'Quero iniciar agora os sete dias e autorizo o atendimento pelo número conectado.';
+  const planActivation=['active','free'].includes(access.status) || access.status==='preparing' && access.tiered;
+  document.getElementById('activateTrialBtn').disabled = onboardingBusy || (!trialEnabled && !planActivation) || !canManage || !['preparing','active','free'].includes(access.status) || !Object.values(access.readiness).every(Boolean);
+  document.getElementById('activateTrialBtn').textContent = planActivation ? 'Ativar atendimento do plano' : 'Ativar teste de 7 dias';
+  document.getElementById('activationAcknowledgmentText').textContent = planActivation ? 'Autorizo o atendimento real pelo número conectado dentro dos limites do meu plano.' : 'Quero iniciar agora os sete dias e autorizo o atendimento pelo número conectado.';
   const readyCount = Object.values(access.readiness).filter(Boolean).length;
   const pending = [['training','personalizar o treinamento'],['agenda','revisar a agenda e a equipe'],['whatsapp','conectar o WhatsApp']]
     .filter(([key]) => !access.readiness[key]).map(([,label]) => label);
@@ -91,13 +92,13 @@ function renderOnboarding(trialEnabled) {
   progress.setAttribute('aria-valuenow', String(readyCount));
   progress.firstElementChild.style.width = (readyCount / 3 * 100) + '%';
   const preparation = readyCount + ' de 3 etapas prontas' + (pending.length ? ' — falta' + (pending.length === 1 ? ' apenas ' : ' ') + pending.join(' e ') + '.' : ' — tudo pronto para ativar!');
-  document.getElementById('activationSummary').textContent = preparation + (access.status === 'active'
-    ? ' Sua assinatura está vigente. Confirme abaixo para autorizar o atendimento.'
+  document.getElementById('activationSummary').textContent = preparation + (planActivation
+    ? ' Seu plano está disponível. Confirme abaixo para autorizar o atendimento.'
     : access.status === 'trial' ? ' Seu teste já está em andamento; concluir a preparação não reinicia o prazo.'
     : ' Os 7 dias grátis só começam com sua confirmação de ativação.');
-  document.getElementById('activationAvailability').textContent = !trialEnabled && access.status !== 'active' ? 'Ativação do teste ainda indisponível.' : pending.length ? 'Conclua ' + (pending.length === 1 ? 'a etapa pendente' : 'as etapas pendentes') + ' para ativar.' : '';
+  document.getElementById('activationAvailability').textContent = !trialEnabled && !planActivation ? 'Selecione seu plano para ativar o atendimento.' : pending.length ? 'Conclua ' + (pending.length === 1 ? 'a etapa pendente' : 'as etapas pendentes') + ' para ativar.' : '';
   document.getElementById('activationSection').classList.toggle('hidden',access.can_operate || access.status==='ended');
-  document.getElementById('trialTerms').classList.toggle('hidden',access.status==='active');
+  document.getElementById('trialTerms').classList.toggle('hidden',planActivation);
   updateScheduleExplanation();
   const badge = document.getElementById('trialStatusWidget'); badge.classList.remove('hidden'); badge.classList.add('flex');
   document.getElementById('trialDaysBadge').textContent = ({free:'Conta gratuita',preparing:'Em preparação',trial:'Teste ativo',active:'Plano ativo',ended:'Ver meu plano',legacy:'Minha conta'})[access.status];
@@ -142,7 +143,7 @@ async function onboardingAction(action, body) {
 }
 async function activateOperationalTrial() {
   if (!document.getElementById('activationAcknowledged').checked) return showToast('Confirme que deseja iniciar agora.', 'amber');
-  await onboardingAction(currentAccess.status === 'active' ? 'start-paid' : 'activate');
+  await onboardingAction(['active','free'].includes(currentAccess.status) || currentAccess.tiered ? 'start-paid' : 'activate');
 }
 async function loadAgendaBlocks() {
   const select = document.getElementById('blockProfessional');

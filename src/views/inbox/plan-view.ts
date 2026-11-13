@@ -1,11 +1,19 @@
+import { planCards } from '../plan-cards';
 export const INBOX_PLAN_VIEW_HTML = `
-<main id="viewPlan" class="hidden flex-1 overflow-y-auto"><div class="max-w-5xl mx-auto space-y-6">
-<div class="aura-page-heading"><div><p class="aura-eyebrow">ASSINATURA E PAGAMENTOS</p><h2>Conta e plano</h2><p class="aura-description">Confira seu plano, a vigência da assinatura e as opções de pagamento. Acesse o portal para consultar cobranças e gerenciar sua assinatura.</p></div></div>
-  <section id="plano" class="aura-card aura-hub-billing"><p class="aura-eyebrow">SEU PRÓXIMO PASSO, QUANDO FIZER SENTIDO</p><h3>Escolha o plano da sua clínica</h3><p id="billingAvailability" class="aura-description">Consultando opções de contratação...</p><p id="billingDetails" class="aura-field-hint mt-3"></p>
-    <div class="aura-pricing-grid aura-hub-pricing">
-      <article class="aura-pricing-card" aria-labelledby="hubMonthlyTitle"><div class="aura-pricing-heading"><h3 id="hubMonthlyTitle">Mensal</h3><span class="aura-pricing-period">Flexibilidade para começar</span></div><p class="aura-price-value">R$ 199 <span>/ mês</span></p><p class="aura-pricing-detail">Cobrança mensal para a rotina da sua clínica.</p><ul class="aura-pricing-list"><li>IA 24h no WhatsApp Oficial</li><li>Agenda de múltiplos profissionais</li><li>Áudios, imagens e atendimento no painel</li><li>Confirmações de véspera</li></ul><button id="checkoutMonthly" type="button" disabled onclick="openAuraCheckout('monthly')" class="aura-secondary">Escolher mensal</button></article>
-      <article class="aura-pricing-card is-featured" aria-labelledby="hubYearlyTitle"><div class="aura-pricing-heading"><h3 id="hubYearlyTitle">Anual</h3><span class="aura-price-badge">Economize R$ 240/ano</span></div><p class="aura-price-value">R$ 179 <span>/ mês equivalente</span></p><p class="aura-pricing-detail"><strong>R$ 2.148 cobrados de uma só vez por ano.</strong></p><ul class="aura-pricing-list"><li>IA 24h no WhatsApp Oficial</li><li>Agenda de múltiplos profissionais</li><li>Áudios, imagens e atendimento no painel</li><li>Confirmações de véspera</li></ul><button id="checkoutYearly" type="button" disabled onclick="openAuraCheckout('yearly')" class="aura-primary">Escolher anual</button></article>
-    </div>
-    <div class="aura-hub-billing-footer"><label class="aura-checkbox-line"><input id="paidRenewalAccepted" type="checkbox">Aceito a renovação automática do plano escolhido. Posso gerenciar o cancelamento na minha assinatura. Confira o valor final e os termos no checkout.</label><button id="billingPortal" type="button" disabled onclick="openBillingPortal()" class="aura-text-button">Gerenciar assinatura</button><p class="aura-field-hint">O teste não gera assinatura automática. Tarifas de mensageria da Meta são separadas do plano.</p></div>
+<main id="viewPlan" class="hidden flex-1 overflow-y-auto"><div class="max-w-6xl mx-auto space-y-6">
+  <div class="aura-page-heading"><h2>Seu plano</h2></div>
+  <section class="aura-card aura-plan-status" aria-label="Plano atual">
+    <div><p class="aura-field-label" id="billingCurrentPlan">Plano atual</p><p id="billingValidity" class="aura-description">Consultando...</p></div>
+    <div id="billingNext" class="hidden"><p class="aura-field-label" id="billingNextLabel"></p><p id="billingNextDetails" class="aura-description" role="status"></p></div>
+    <div id="billingPortalActions" class="hidden"><button id="billingPortal" type="button" class="aura-text-button" disabled onclick="openBillingPortal()">Gerenciar cobrança na Paddle</button></div>
+  </section>
+  <section id="plano" aria-label="Planos disponíveis">
+    <fieldset class="aura-plan-cycle" aria-label="Frequência de cobrança">
+      <label><input type="radio" name="planCycle" value="yearly" checked onchange="setPlanCycle(this.value)"><span>Anual</span></label>
+      <label><input type="radio" name="planCycle" value="monthly" onchange="setPlanCycle(this.value)"><span>Mensal</span></label>
+    </fieldset>
+    ${planCards(true)}
+    <p id="billingAvailability" class="aura-field-hint mt-3" role="status"></p>
+    <p class="aura-field-hint mt-3">Os limites de uso são mensais e reiniciam no primeiro dia do mês, no horário de Brasília. Trocas de plano começam após o período pago atual.</p>
   </section>
 </div></main>`;
