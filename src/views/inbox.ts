@@ -40,7 +40,7 @@ export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/aura.css?v=31">
+  <link rel="stylesheet" href="/css/aura.css?v=32">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .wa-bg-light {
@@ -59,7 +59,7 @@ export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE 
     .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
   </style>
 </head>
-<body class="aura-dashboard bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 h-screen flex flex-col overflow-hidden selection:bg-[#008069] selection:text-white transition-colors duration-200">
+<body class="aura-dashboard bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 h-screen flex flex-col overflow-hidden selection:bg-[#008069] selection:text-white">
 ${INBOX_HEADER_HTML}
   <header class="aura-dashboard-page-header"><h1 id="dashboardPageHeader">Conversas</h1></header>
 

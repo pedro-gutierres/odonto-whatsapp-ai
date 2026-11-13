@@ -2,7 +2,7 @@
 :root.dark{--aura-bg:#0d1518;--aura-panel:#131e22;--aura-soft:#1b292d;--aura-text:#e5eeeb;--aura-muted:#96aaa4;--aura-line:#2a393c;--aura-accent:#5ac8a4;--aura-accent-soft:#1c3831;--aura-danger:#f29b9b;--aura-shadow:0 18px 56px #0006;color-scheme:dark}
 *{box-sizing:border-box}body.aura-dashboard,body.aura-public{font-family:'Plus Jakarta Sans',ui-sans-serif,system-ui,sans-serif;color:var(--aura-text);background:var(--aura-bg)}
 button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-action:manipulation}button:disabled{cursor:not-allowed}button:not(:disabled),summary{cursor:pointer}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--aura-accent);outline-offset:3px}button:disabled{opacity:.45}input,textarea{accent-color:var(--aura-accent)}
-.aura-dashboard{padding-left:232px}.aura-dashboard>main{background:var(--aura-bg)!important}.aura-dashboard>main:not(#viewChat):not(#viewSimulator){padding:28px 32px 40px!important}.aura-dashboard>main>div{max-width:1240px}
+.aura-dashboard{--aura-sidebar-width:232px;padding-left:var(--aura-sidebar-width);transition:background-color .2s,color .2s}.aura-dashboard>main{background:var(--aura-bg)!important}.aura-dashboard>main:not(#viewChat):not(#viewSimulator){padding:28px 32px 40px!important}.aura-dashboard>main>div{max-width:1240px}
 .aura-dashboard .shadow-sm,.aura-dashboard .shadow-md,.aura-dashboard .shadow-lg,.aura-dashboard .shadow-xl{box-shadow:none!important}.aura-dashboard .animate-pulse{animation:none!important}.aura-dashboard .rounded-2xl{border-radius:14px}.aura-dashboard main .font-extrabold,.aura-dashboard main .font-black{font-weight:650}.aura-dashboard main .uppercase{letter-spacing:.055em;font-size:11px}
 .aura-dashboard main [class*="bg-white"],.aura-dashboard main [class*="dark:bg-[#111827]"]{background-color:var(--aura-panel)!important}.aura-dashboard main [class*="border-slate-"]{border-color:var(--aura-line)!important}.aura-dashboard main [class*="dark:bg-[#0b0f17]"]{background-color:var(--aura-bg)!important}
 .aura-dashboard input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not(.aura-native-control),.aura-dashboard textarea,.aura-public input:not([type=checkbox]):not([type=radio]):not([type=hidden]){border:1px solid var(--aura-line);background:var(--aura-panel);color:var(--aura-text);border-radius:9px;min-height:40px;font-size:13px;line-height:1.55;transition:border-color .15s,box-shadow .15s}
@@ -190,8 +190,12 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
 /* Collapsible desktop navigation. */
 .aura-sidebar-collapse{display:none}
 @media(min-width:861px){
-  .aura-dashboard{transition:padding-left .55s cubic-bezier(.22,1,.36,1),background-color .2s,color .2s}
-  .aura-sidebar{transition:width .55s cubic-bezier(.22,1,.36,1);overflow-x:hidden}
+  .aura-dashboard{
+    --aura-sidebar-collapsed-width:72px;
+    --aura-sidebar-transition:.55s cubic-bezier(.22,1,.36,1);
+    transition:padding-left var(--aura-sidebar-transition),background-color .2s,color .2s;
+  }
+  .aura-sidebar{width:var(--aura-sidebar-width);transition:width var(--aura-sidebar-transition);overflow-x:hidden}
   .aura-sidebar-collapse{display:grid;margin:0 0 8px auto}
   .aura-sidebar .aura-brand{transition:padding .55s cubic-bezier(.22,1,.36,1)}
   .aura-sidebar .aura-brand-mark{flex-shrink:0}
@@ -201,9 +205,9 @@ button,input,textarea,select{font:inherit}button,a,input,textarea,summary{touch-
   .aura-sidebar-collapse,.aura-sidebar-controls #accountMenuTrigger{transition:margin .55s cubic-bezier(.22,1,.36,1),background .15s,color .15s}
   .aura-sidebar-controls #accountMenuTrigger{margin-right:0}
   .aura-sidebar .aura-brand-name,.aura-sidebar .aura-nav-item span{transition:opacity .3s ease,visibility 0s linear;white-space:nowrap}
-  .aura-sidebar-collapsed{padding-left:72px}
-  .aura-sidebar-collapsed:has(.aura-sidebar-peek){padding-left:232px}
-  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek){width:72px}
+  /* Hover expands the fixed sidebar over the space already allocated to the page. */
+  .aura-dashboard.aura-sidebar-collapsed{padding-left:var(--aura-sidebar-collapsed-width)}
+  .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek){width:var(--aura-sidebar-collapsed-width)}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand{padding-left:5px;padding-right:0}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand-name,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item span,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-label,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-sidebar-business,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) #onboardingRefreshNotice{opacity:0;visibility:hidden}
   .aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-brand-name,.aura-sidebar-collapsed .aura-sidebar:not(.aura-sidebar-peek) .aura-nav-item span{transition-delay:0s,.3s}
