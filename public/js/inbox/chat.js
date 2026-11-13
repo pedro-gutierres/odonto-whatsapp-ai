@@ -26,7 +26,7 @@
         console.error("Erro ao carregar conversas:", err);
         const container = document.getElementById('conversationList');
         if (container && conversations.length === 0) {
-          container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">Erro ao sincronizar pacientes. Tentando reconectar...</div>';
+          container.innerHTML = '<div class="p-8 text-center text-neutral-400 text-xs">Erro ao sincronizar pacientes. Tentando reconectar...</div>';
         }
       }
     }
@@ -42,7 +42,7 @@
       );
 
       if (filtered.length === 0) {
-        container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">Nenhum paciente encontrado.</div>';
+        container.innerHTML = '<div class="p-8 text-center text-neutral-400 text-xs">Nenhum paciente encontrado.</div>';
         return;
       }
 
@@ -53,11 +53,11 @@
         const initial = (c.contact_name || c.contact_wa_id)[0].toUpperCase();
         const timeStr = formatConversationItemTime(c.last_created_at);
         const isAiOn = trainingComplete && c.ai_paused === 0;
-        const statusDotClass = !trainingComplete ? 'bg-rose-500' : (isAiOn ? 'bg-emerald-500' : 'bg-amber-500');
+        const statusDotClass = !trainingComplete ? 'bg-rose-500' : (isAiOn ? 'bg-[var(--aura-accent)]' : 'bg-amber-500');
         const statusBadgeClass = !trainingComplete
           ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40'
           : (isAiOn
-            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40'
+            ? 'bg-[var(--aura-accent-soft)] text-[var(--aura-accent)] border border-[var(--aura-accent-line)] '
             : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40');
         const statusBadgeText = !trainingComplete ? 'IA Desligada' : (isAiOn ? 'IA respondendo' : 'IA Pausada');
 
@@ -65,22 +65,22 @@
           <div onclick="selectChat('${c.contact_wa_id}')" 
             class="p-3.5 flex items-center gap-3 cursor-pointer transition select-none ${
               isSelected 
-                ? 'bg-slate-100 dark:bg-slate-800/90 border-l-4 border-[#008069]' 
-                : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                ? 'bg-neutral-100 dark:bg-neutral-800/90 border-l-4 border-[var(--aura-accent)]'
+                : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/40'
             }">
             <div class="relative">
-              <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-sm uppercase">
+              <div class="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 flex items-center justify-center font-bold text-sm uppercase">
                 ${initial}
               </div>
-              <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-[#111827] ${statusDotClass}"></span>
+              <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-[#171717] ${statusDotClass}"></span>
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between mb-0.5">
-                <h4 class="text-xs font-bold text-slate-900 dark:text-white truncate">${c.contact_name || c.contact_wa_id}</h4>
-                <span class="text-[10px] text-slate-400 font-medium">${timeStr}</span>
+                <h4 class="text-xs font-bold text-neutral-900 dark:text-white truncate">${c.contact_name || c.contact_wa_id}</h4>
+                <span class="text-[10px] text-neutral-400 font-medium">${timeStr}</span>
               </div>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                ${c.last_direction === 'out' ? '<span class="text-slate-400">Você: </span>' : ''}${escapeHtml((c.last_body || 'Sem mensagens').replace(/^\[Áudio transcrito\]:\s*/i, '🎙️ '))}
+              <p class="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
+                ${c.last_direction === 'out' ? '<span class="text-neutral-400">Você: </span>' : ''}${escapeHtml((c.last_body || 'Sem mensagens').replace(/^\[Áudio transcrito\]:\s*/i, '🎙️ '))}
               </p>
               <div class="flex items-center gap-1.5 mt-1">
                 <span class="text-[9px] font-bold px-1.5 py-0.2 rounded ${statusBadgeClass}">
@@ -125,7 +125,7 @@
       renderConversationList();
 
       document.getElementById('messagesArea').innerHTML = `
-        <div class="h-full flex items-center justify-center text-slate-400 text-xs">
+        <div class="h-full flex items-center justify-center text-neutral-400 text-xs">
           <i class="fa-solid fa-circle-notch fa-spin text-sm mr-2"></i> Abrindo conversa...
         </div>
       `;
@@ -284,32 +284,32 @@
         let html = '<div class="w-60 sm:w-72 max-w-full space-y-2">';
         if (hasMedia) {
           html += '<div id="audioControls_' + m.id + '" class="flex items-center gap-2.5 py-1">' +
-            '<button type="button" onclick="toggleAudioPlayback(' + m.id + ')" class="w-9 h-9 rounded-full bg-[#00a884] hover:bg-[#008f70] text-white flex items-center justify-center shrink-0 shadow-sm transition active:scale-95" title="Reproduzir áudio">' +
+            '<button type="button" onclick="toggleAudioPlayback(' + m.id + ')" class="w-9 h-9 rounded-full aura-filled flex items-center justify-center shrink-0 shadow-sm transition active:scale-95" title="Reproduzir áudio">' +
               '<i id="audioIcon_' + m.id + '" class="fa-solid fa-play text-[11px] ml-0.5"></i>' +
             '</button>' +
             '<div class="flex-1 min-w-0">' +
-              '<input id="audioRange_' + m.id + '" type="range" min="0" max="100" value="0" class="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-[#00a884]">' +
-              '<div class="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-300 mt-1">' +
+              '<input id="audioRange_' + m.id + '" type="range" min="0" max="100" value="0" class="w-full h-1.5 bg-neutral-200 dark:bg-neutral-600 rounded-lg appearance-none cursor-pointer accent-[var(--aura-accent)]">' +
+              '<div class="flex items-center justify-between text-[10px] text-neutral-500 dark:text-neutral-300 mt-1">' +
                 '<span id="audioTime_' + m.id + '" class="font-mono">0:00</span>' +
                 '<span class="flex items-center gap-1.5">' +
-                  '<i class="fa-solid fa-microphone text-[#00a884]"></i>' +
-                  '<a href="/api/media?msg_id=' + m.id + '&download=1" download title="Baixar áudio" class="hover:text-[#00a884] transition"><i class="fa-solid fa-download"></i></a>' +
+                  '<i class="fa-solid fa-microphone text-[var(--aura-accent)]"></i>' +
+                  '<a href="/api/media?msg_id=' + m.id + '&download=1" download title="Baixar áudio" class="hover:text-[var(--aura-accent)] transition"><i class="fa-solid fa-download"></i></a>' +
                 '</span>' +
               '</div>' +
             '</div>' +
             '<audio id="audioEl_' + m.id + '" data-msg-id="' + m.id + '" preload="metadata" src="/api/media?msg_id=' + m.id + '"></audio>' +
           '</div>' +
-          '<div id="audioExpired_' + m.id + '" class="hidden text-[11px] text-slate-400 italic py-1"><i class="fa-regular fa-clock mr-1"></i>Áudio expirado (retenção de 30 dias)</div>';
+          '<div id="audioExpired_' + m.id + '" class="hidden text-[11px] text-neutral-400 italic py-1"><i class="fa-regular fa-clock mr-1"></i>Áudio expirado (retenção de 30 dias)</div>';
         } else {
-          html += '<div class="text-[11px] text-slate-400 italic py-1"><i class="fa-solid fa-microphone-slash mr-1"></i>Áudio indisponível</div>';
+          html += '<div class="text-[11px] text-neutral-400 italic py-1"><i class="fa-solid fa-microphone-slash mr-1"></i>Áudio indisponível</div>';
         }
 
         if (hasTranscript) {
-          html += '<button type="button" onclick="toggleAudioTranscript(' + m.id + ')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition">' +
-            '<i class="fa-regular fa-file-lines text-[10px] text-[#00a884]"></i>' +
+          html += '<button type="button" onclick="toggleAudioTranscript(' + m.id + ')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-700/60 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-[11px] font-semibold text-neutral-700 dark:text-neutral-200 transition">' +
+            '<i class="fa-regular fa-file-lines text-[10px] text-[var(--aura-accent)]"></i>' +
             '<span id="btnTranscriptText_' + m.id + '">Exibir transcrição</span>' +
           '</button>' +
-          '<div id="transcriptBox_' + m.id + '" class="hidden p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap break-words">' +
+          '<div id="transcriptBox_' + m.id + '" class="hidden p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200/70 dark:border-neutral-700/60 text-[11px] text-neutral-700 dark:text-neutral-200 leading-relaxed whitespace-pre-wrap break-words">' +
             escapeHtml(transcript) +
           '</div>';
         }
@@ -325,19 +325,19 @@
           html += '<div class="relative group">' +
             '<img src="/api/media?msg_id=' + m.id + '" alt="Foto enviada pelo paciente" onclick="openImageLightbox(' + m.id + ')" ' +
               'onerror="this.classList.add(\'hidden\'); this.nextElementSibling.classList.remove(\'hidden\');" ' +
-              'class="w-full max-h-64 object-cover rounded-xl cursor-zoom-in border border-slate-200/60 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-900">' +
-            '<div class="hidden px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/70 text-[11px] text-slate-400 italic"><i class="fa-regular fa-clock mr-1"></i>Foto expirada (retenção de 30 dias)</div>' +
+              'class="w-full max-h-64 object-cover rounded-xl cursor-zoom-in border border-neutral-200/60 dark:border-neutral-700/50 bg-neutral-100 dark:bg-neutral-900">' +
+            '<div class="hidden px-3 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800/70 text-[11px] text-neutral-400 italic"><i class="fa-regular fa-clock mr-1"></i>Foto expirada (retenção de 30 dias)</div>' +
           '</div>' +
           '<div class="flex items-center justify-between gap-2 text-[11px]">' +
-            '<button type="button" onclick="openImageLightbox(' + m.id + ')" class="inline-flex items-center gap-1 text-slate-500 dark:text-slate-300 hover:text-[#008069] dark:hover:text-emerald-400 font-semibold transition">' +
+            '<button type="button" onclick="openImageLightbox(' + m.id + ')" class="inline-flex items-center gap-1 text-neutral-500 dark:text-neutral-300 hover:text-[var(--aura-accent)] dark:hover:text-[var(--aura-accent)] font-semibold transition">' +
               '<i class="fa-solid fa-magnifying-glass-plus text-[10px]"></i><span>Ampliar</span>' +
             '</button>' +
-            '<a href="/api/media?msg_id=' + m.id + '&download=1" download class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition">' +
-              '<i class="fa-solid fa-download text-[10px] text-[#00a884]"></i><span>Baixar foto</span>' +
+            '<a href="/api/media?msg_id=' + m.id + '&download=1" download class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-700/60 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold transition">' +
+              '<i class="fa-solid fa-download text-[10px] text-[var(--aura-accent)]"></i><span>Baixar foto</span>' +
             '</a>' +
           '</div>';
         } else {
-          html += '<div class="text-[11px] text-slate-400 italic">[Imagem indisponível]</div>';
+          html += '<div class="text-[11px] text-neutral-400 italic">[Imagem indisponível]</div>';
         }
         if (showCaption) {
           html += '<div class="whitespace-pre-wrap break-words">' + escapeHtml(caption) + '</div>';
@@ -352,7 +352,7 @@
     function renderMessages(msgs) {
       const area = document.getElementById('messagesArea');
       if (msgs.length === 0) {
-        area.innerHTML = '<div class="h-full flex items-center justify-center text-slate-400 text-xs">Nenhuma mensagem nesta conversa ainda.</div>';
+        area.innerHTML = '<div class="h-full flex items-center justify-center text-neutral-400 text-xs">Nenhuma mensagem nesta conversa ainda.</div>';
         return;
       }
 
@@ -368,7 +368,7 @@
           const dividerLabel = getWhatsAppDateDividerLabel(d);
           htmlParts.push(`
             <div class="flex justify-center my-3.5 sticky top-1 z-10 select-none">
-              <span class="px-3.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/95 dark:bg-[#182229]/95 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200/70 dark:border-slate-700/60 backdrop-blur-md">
+              <span class="px-3.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/95 dark:bg-[#171717]/95 text-neutral-600 dark:text-neutral-300 shadow-sm border border-neutral-200/70 dark:border-neutral-700/60 backdrop-blur-md">
                 ${escapeHtml(dividerLabel)}
               </span>
             </div>
@@ -383,9 +383,9 @@
         if (isPatient) {
           htmlParts.push(`
             <div class="flex flex-col items-start max-w-[85%] md:max-w-[70%]">
-              <div class="bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 p-3 rounded-2xl rounded-tl-sm shadow-sm border border-slate-200/50 dark:border-slate-700/30 text-xs leading-relaxed">
+              <div class="bg-white dark:bg-[#202020] text-neutral-800 dark:text-neutral-100 p-3 rounded-2xl rounded-tl-sm shadow-sm border border-neutral-200/50 dark:border-neutral-700/30 text-xs leading-relaxed">
                 ${bodyHtml}
-                <div class="text-[9px] text-slate-400 dark:text-slate-400 text-right mt-1 font-mono">${timeStr}</div>
+                <div class="text-[9px] text-neutral-400 dark:text-neutral-400 text-right mt-1 font-mono">${timeStr}</div>
               </div>
             </div>
           `);
@@ -394,18 +394,18 @@
             <div class="flex flex-col items-end max-w-[85%] md:max-w-[70%] ml-auto">
               <div class="${
                 isHumanAgent 
-                  ? 'bg-sky-50 dark:bg-sky-950/70 border-sky-200 dark:border-sky-800/60 text-sky-950 dark:text-sky-100' 
-                  : 'bg-[#d9fdd3] dark:bg-[#005c4b] border-emerald-200 dark:border-emerald-700/40 text-slate-900 dark:text-white'
+                  ? 'bg-neutral-50 dark:bg-neutral-950/70 border-neutral-200 dark:border-neutral-800/60 text-neutral-950 dark:text-neutral-100'
+                  : 'bg-[var(--aura-accent-soft)] border-[var(--aura-accent-line)] text-neutral-900 dark:text-white'
               } p-3 rounded-2xl rounded-tr-sm shadow-sm border text-xs leading-relaxed">
                 <div class="text-[9px] font-bold uppercase tracking-wider mb-1 ${
-                  isHumanAgent ? 'text-sky-600 dark:text-sky-300' : 'text-emerald-700 dark:text-emerald-300'
+                  isHumanAgent ? 'text-neutral-600 dark:text-neutral-300' : 'text-[var(--aura-accent)] '
                 }">
                   ${isHumanAgent ? 'Você' : 'Atendente IA'}
                 </div>
                 ${bodyHtml}
                 <div class="text-[9px] opacity-75 text-right mt-1 font-mono flex items-center justify-end gap-1">
                   <span>${timeStr}</span>
-                  <i class="fa-solid fa-check-double text-[9px] text-[#53bdeb]" title="Entregue e sincronizado"></i>
+                  <i class="fa-solid fa-check-double text-[9px] text-[var(--aura-accent)]" title="Entregue e sincronizado"></i>
                 </div>
               </div>
             </div>
@@ -430,7 +430,7 @@
       toggleBtn.classList.remove('hidden');
 
       if (currentAccess && !currentAccess.can_operate) {
-        badge.className = 'text-xs text-slate-500';
+        badge.className = 'text-xs text-neutral-500';
         badge.textContent = 'Atendimento pausado';
         toggleBtn.classList.add('hidden');
         sideText.textContent = 'Atendimento pausado';
@@ -458,14 +458,14 @@
         badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60";
         badge.innerText = "Com a equipe";
 
-        toggleBtn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition shadow-sm";
+        toggleBtn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl aura-filled flex items-center gap-1.5 transition shadow-sm";
         toggleIcon.className = "fa-solid fa-play text-[10px]";
         toggleText.innerText = "Reativar IA neste Chat";
 
         sideText.innerText = "IA Pausada (Você no controle)";
         sideText.className = "font-bold text-amber-600 dark:text-amber-400";
       } else {
-        badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60";
+        badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--aura-accent-soft)] text-[var(--aura-accent)] border border-[var(--aura-accent-line)] ";
         badge.innerText = "IA disponível";
 
         toggleBtn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1.5 transition shadow-sm";
@@ -473,7 +473,7 @@
         toggleText.innerText = "Pausar IA (Assumir)";
 
         sideText.innerText = "IA disponível nesta conversa";
-        sideText.className = "font-bold text-emerald-600 dark:text-emerald-400";
+        sideText.className = "font-bold text-[var(--aura-accent)] ";
       }
     }
 
@@ -557,7 +557,7 @@
       const found = procedures.filter(p => allText.includes(p));
       if (found.length > 0) {
         container.innerHTML = found.map(p => 
-          `<span class="inline-block px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] mr-1 mb-1 capitalize border border-emerald-200 dark:border-emerald-800/40">${p}</span>`
+          `<span class="inline-block px-2 py-0.5 rounded-md bg-[var(--aura-accent-soft)] text-[var(--aura-accent)] font-bold text-[10px] mr-1 mb-1 capitalize border border-[var(--aura-accent-line)] ">${p}</span>`
         ).join('');
       } else {
         container.innerText = "Em análise pela conversa...";

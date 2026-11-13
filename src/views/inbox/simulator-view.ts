@@ -8,5 +8,5 @@ export const INBOX_SIMULATOR_VIEW_HTML = `
     <div id="simulatorLockBanner" role="status" class="hidden aura-note w-full"></div>
   </div>
   <div id="simulatorMessagesArea" class="flex-1 overflow-y-auto p-5 space-y-3 custom-scroll" aria-live="polite"></div>
-  <form onsubmit="handleSimulatorSubmit(event)" class="p-4 border-t dark:border-slate-800 flex gap-3 bg-white dark:bg-slate-900"><input id="simulatorMessageInput" maxlength="2000" required aria-label="Mensagem do Test Drive" placeholder="Escreva para experimentar..." class="flex-1 min-w-0 p-3 rounded-lg text-sm"><button id="simulatorSendBtn" class="aura-primary">Enviar</button></form>
+  <form onsubmit="handleSimulatorSubmit(event)" class="p-4 border-t dark:border-neutral-800 flex gap-3 bg-white dark:bg-neutral-900"><input id="simulatorMessageInput" maxlength="2000" required aria-label="Mensagem do Test Drive" placeholder="Escreva para experimentar..." class="flex-1 min-w-0 p-3 rounded-lg text-sm"><button id="simulatorSendBtn" class="aura-primary">Enviar</button></form>
 </main>`;

@@ -17,7 +17,7 @@ function renderSimulatorMessages() {
   intro.textContent = simulatorMode === 'patient' ? 'Converse como um paciente para conhecer as respostas da sua IA.' : 'Pergunte sobre configuração, teste e contratação.';
   container.append(intro);
   for (const turn of simulatorChats[simulatorMode]) {
-    const bubble = document.createElement('div'); bubble.className = 'p-3 rounded-xl text-sm whitespace-pre-wrap max-w-2xl ' + (turn.role === 'user' ? 'ml-auto bg-purple-100 dark:bg-purple-950' : 'bg-white dark:bg-slate-800');
+    const bubble = document.createElement('div'); bubble.className = 'p-3 rounded-xl text-sm whitespace-pre-wrap max-w-2xl ' + (turn.role === 'user' ? 'ml-auto bg-neutral-100 dark:bg-neutral-950' : 'bg-white dark:bg-neutral-800');
     bubble.textContent = turn.content; container.append(bubble);
   }
   container.scrollTop = container.scrollHeight;

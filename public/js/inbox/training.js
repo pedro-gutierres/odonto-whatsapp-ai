@@ -87,10 +87,10 @@
       if (clinicNameEl) {
         if (!hasClinicName) {
           clinicNameEl.classList.add('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/50', 'dark:bg-rose-950/30');
-          clinicNameEl.classList.remove('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/80');
+          clinicNameEl.classList.remove('border', 'border-neutral-200', 'dark:border-neutral-700/60', 'bg-neutral-50', 'dark:bg-neutral-800/80');
           if (lblClinicName) {
             lblClinicName.classList.add('text-rose-600', 'dark:text-rose-400');
-            lblClinicName.classList.remove('text-slate-700', 'dark:text-slate-300');
+            lblClinicName.classList.remove('text-neutral-700', 'dark:text-neutral-300');
           }
           if (badgeClinicName) {
             badgeClinicName.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-600 text-white';
@@ -103,13 +103,13 @@
           missingLive.push({ action: "scrollToMissingField('cfgClinicName')", label: 'Nome do negócio' });
         } else {
           clinicNameEl.classList.remove('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/50', 'dark:bg-rose-950/30');
-          clinicNameEl.classList.add('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/80');
+          clinicNameEl.classList.add('border', 'border-neutral-200', 'dark:border-neutral-700/60', 'bg-neutral-50', 'dark:bg-neutral-800/80');
           if (lblClinicName) {
             lblClinicName.classList.remove('text-rose-600', 'dark:text-rose-400');
-            lblClinicName.classList.add('text-slate-700', 'dark:text-slate-300');
+            lblClinicName.classList.add('text-neutral-700', 'dark:text-neutral-300');
           }
           if (badgeClinicName) {
-            badgeClinicName.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400';
+            badgeClinicName.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-neutral-500/15 text-neutral-700 dark:text-neutral-400';
             badgeClinicName.innerText = '✓ Preenchido';
           }
           if (errClinicName) errClinicName.classList.add('hidden');
@@ -127,14 +127,14 @@
       if (initDurEl) {
         if (!hasInitDur) {
           initDurEl.classList.add('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/60', 'dark:bg-rose-950/30');
-          initDurEl.classList.remove('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800');
+          initDurEl.classList.remove('border', 'border-neutral-200', 'dark:border-neutral-700', 'bg-white', 'dark:bg-neutral-800');
           if (cardInitContainer) {
             cardInitContainer.classList.add('border-rose-500', 'bg-rose-50/40', 'dark:bg-rose-950/20');
-            cardInitContainer.classList.remove('border-emerald-500/30', 'bg-emerald-50/40', 'dark:bg-emerald-950/20');
+            cardInitContainer.classList.remove('border-neutral-500/30', 'bg-neutral-50/40', 'dark:bg-neutral-950/20');
           }
           if (lblInitDur) {
             lblInitDur.classList.add('text-rose-600', 'dark:text-rose-400');
-            lblInitDur.classList.remove('text-slate-700', 'dark:text-slate-300');
+            lblInitDur.classList.remove('text-neutral-700', 'dark:text-neutral-300');
           }
           if (badgeInitDur) {
             badgeInitDur.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-600 text-white';
@@ -147,17 +147,17 @@
           missingLive.push({ action: "scrollToMissingField('cfgInitEvalDuration')", label: 'Duração da primeira avaliação / Consulta' });
         } else {
           initDurEl.classList.remove('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/60', 'dark:bg-rose-950/30');
-          initDurEl.classList.add('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800');
+          initDurEl.classList.add('border', 'border-neutral-200', 'dark:border-neutral-700', 'bg-white', 'dark:bg-neutral-800');
           if (cardInitContainer) {
             cardInitContainer.classList.remove('border-rose-500', 'bg-rose-50/40', 'dark:bg-rose-950/20');
-            cardInitContainer.classList.add('border-emerald-500/30', 'bg-emerald-50/40', 'dark:bg-emerald-950/20');
+            cardInitContainer.classList.add('border-neutral-500/30', 'bg-neutral-50/40', 'dark:bg-neutral-950/20');
           }
           if (lblInitDur) {
             lblInitDur.classList.remove('text-rose-600', 'dark:text-rose-400');
-            lblInitDur.classList.add('text-slate-700', 'dark:text-slate-300');
+            lblInitDur.classList.add('text-neutral-700', 'dark:text-neutral-300');
           }
           if (badgeInitDur) {
-            badgeInitDur.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400';
+            badgeInitDur.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-neutral-500/15 text-neutral-700 dark:text-neutral-400';
             badgeInitDur.innerText = '✓ Preenchido';
           }
           if (errInitDur) errInitDur.classList.add('hidden');
@@ -185,10 +185,10 @@
           if (!hasName || !hasDur) {
             invalidProcCount++;
             row.classList.add('border-2', 'border-rose-500', 'bg-rose-50/50', 'dark:bg-rose-950/30');
-            row.classList.remove('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/40');
+            row.classList.remove('border', 'border-neutral-200', 'dark:border-neutral-700/60', 'bg-neutral-50', 'dark:bg-neutral-800/40');
           } else {
             row.classList.remove('border-2', 'border-rose-500', 'bg-rose-50/50', 'dark:bg-rose-950/30');
-            row.classList.add('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/40');
+            row.classList.add('border', 'border-neutral-200', 'dark:border-neutral-700/60', 'bg-neutral-50', 'dark:bg-neutral-800/40');
           }
 
           if (nameEl) {
@@ -204,21 +204,21 @@
           if (durEl) {
             if (!hasDur) {
               durEl.classList.add('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50', 'dark:bg-rose-950/40');
-              durEl.classList.remove('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800');
+              durEl.classList.remove('border', 'border-neutral-200', 'dark:border-neutral-700', 'bg-white', 'dark:bg-neutral-800');
               if (durErrEl) durErrEl.classList.remove('hidden');
             } else {
               durEl.classList.remove('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50', 'dark:bg-rose-950/40');
-              durEl.classList.add('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800');
+              durEl.classList.add('border', 'border-neutral-200', 'dark:border-neutral-700', 'bg-white', 'dark:bg-neutral-800');
               if (durErrEl) durErrEl.classList.add('hidden');
             }
           }
         } else {
           row.classList.remove('border-2', 'border-rose-500', 'bg-rose-50/50', 'dark:bg-rose-950/30');
-          row.classList.add('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/40');
+          row.classList.add('border', 'border-neutral-200', 'dark:border-neutral-700/60', 'bg-neutral-50', 'dark:bg-neutral-800/40');
           if (nameEl) nameEl.classList.remove('border-b-2', 'border-rose-500', 'text-rose-700', 'dark:text-rose-300');
           if (durEl) {
             durEl.classList.remove('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50', 'dark:bg-rose-950/40');
-            durEl.classList.add('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800');
+            durEl.classList.add('border', 'border-neutral-200', 'dark:border-neutral-700', 'bg-white', 'dark:bg-neutral-800');
           }
           if (nameErrEl) nameErrEl.classList.add('hidden');
           if (durErrEl) durErrEl.classList.add('hidden');
@@ -252,10 +252,10 @@
       if (hoursEl) {
         if (!hasHours) {
           hoursEl.classList.add('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/50', 'dark:bg-rose-950/30');
-          hoursEl.classList.remove('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/80');
+          hoursEl.classList.remove('border', 'border-neutral-200', 'dark:border-neutral-700/60', 'bg-neutral-50', 'dark:bg-neutral-800/80');
           if (lblHours) {
             lblHours.classList.add('text-rose-600', 'dark:text-rose-400');
-            lblHours.classList.remove('text-slate-700', 'dark:text-slate-300');
+            lblHours.classList.remove('text-neutral-700', 'dark:text-neutral-300');
           }
           if (badgeHours) {
             badgeHours.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-600 text-white';
@@ -268,13 +268,13 @@
           missingLive.push({ action: "scrollToMissingField('cfgHours')", label: 'Dias e horários de atendimento' });
         } else {
           hoursEl.classList.remove('border-2', 'border-rose-500', 'ring-2', 'ring-rose-500/20', 'bg-rose-50/50', 'dark:bg-rose-950/30');
-          hoursEl.classList.add('border', 'border-slate-200', 'dark:border-slate-700/60', 'bg-slate-50', 'dark:bg-slate-800/80');
+          hoursEl.classList.add('border', 'border-neutral-200', 'dark:border-neutral-700/60', 'bg-neutral-50', 'dark:bg-neutral-800/80');
           if (lblHours) {
             lblHours.classList.remove('text-rose-600', 'dark:text-rose-400');
-            lblHours.classList.add('text-slate-700', 'dark:text-slate-300');
+            lblHours.classList.add('text-neutral-700', 'dark:text-neutral-300');
           }
           if (badgeHours) {
-            badgeHours.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400';
+            badgeHours.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-neutral-500/15 text-neutral-700 dark:text-neutral-400';
             badgeHours.innerText = '✓ Preenchido';
           }
           if (errHours) errHours.classList.add('hidden');
@@ -309,7 +309,7 @@
       const sidebarBadge = document.getElementById('sidebarAiGlobalBadge');
       if (sidebarBadge) {
         if (complete) {
-          sidebarBadge.className = 'flex items-center gap-1 text-emerald-600 dark:text-emerald-400';
+          sidebarBadge.className = 'flex items-center gap-1 text-[var(--aura-accent)] ';
           sidebarBadge.innerHTML = '<i class="fa-solid fa-check text-[10px]"></i> Treinamento pronto';
         } else {
           sidebarBadge.className = 'flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold';
@@ -368,12 +368,12 @@
       const note = proc.note || '';
 
       return `
-        <div class="proc-row flex flex-col md:flex-row md:items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 transition" data-category="${category}">
+        <div class="proc-row flex flex-col md:flex-row md:items-start gap-2.5 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-700/60 hover:border-neutral-300 dark:hover:border-neutral-600 transition" data-category="${category}">
           <!-- Checkbox + Nome -->
           <div class="flex items-start gap-2 md:w-5/12 min-w-0 md:pt-1.5">
-            <input type="checkbox" class="proc-checkbox rounded text-[#008069] focus:ring-0 w-4 h-4 shrink-0 cursor-pointer mt-0.5" ${isChecked ? 'checked' : ''}>
+            <input type="checkbox" class="proc-checkbox rounded text-[var(--aura-accent)] focus:ring-0 w-4 h-4 shrink-0 cursor-pointer mt-0.5" ${isChecked ? 'checked' : ''}>
             <div class="w-full">
-              <input type="text" class="proc-name w-full bg-transparent font-bold text-xs text-slate-800 dark:text-slate-100 border-b border-transparent hover:border-slate-300 focus:border-[#008069] focus:outline-none px-1" value="${escapeHtml(name)}" placeholder="Nome do procedimento">
+              <input type="text" class="proc-name w-full bg-transparent font-bold text-xs text-neutral-800 dark:text-neutral-100 border-b border-transparent hover:border-neutral-300 focus:border-[var(--aura-accent)] focus:outline-none px-1" value="${escapeHtml(name)}" placeholder="Nome do procedimento">
               <span class="proc-name-err hidden text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 block">Informe o nome do procedimento!</span>
             </div>
           </div>
@@ -384,13 +384,13 @@
               <select class="proc-duration" data-duration="${escapeHtml(duration)}" aria-label="Duração do procedimento">${trainingOptions(TRAINING_DURATIONS,duration,'Selecione a duração')}</select>
               <span class="proc-duration-err hidden text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-0.5 block">Informe a duração.</span>
             </div>
-            <input type="text" class="proc-price w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069]" placeholder="Preço (ex: R$ 250 ou A partir de...)" value="${escapeHtml(price)}">
+            <input type="text" class="proc-price w-full px-2.5 py-1.5 text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 focus:outline-none focus:border-[var(--aura-accent)]" placeholder="Preço (ex: R$ 250 ou A partir de...)" value="${escapeHtml(price)}">
           </div>
 
           <!-- Observações (3 linhas) + Remover -->
           <div class="flex-1 flex items-start gap-2">
-            <textarea rows="3" class="proc-note w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#008069] leading-relaxed resize-none" placeholder="Observações e regras do procedimento...">${escapeHtml(note)}</textarea>
-            <button type="button" onclick="removeProcedureRow(this)" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition shrink-0 md:mt-1" title="Remover procedimento">
+            <textarea rows="3" class="proc-note w-full px-3 py-1.5 text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 focus:outline-none focus:border-[var(--aura-accent)] leading-relaxed resize-none" placeholder="Observações e regras do procedimento...">${escapeHtml(note)}</textarea>
+            <button type="button" onclick="removeProcedureRow(this)" class="p-1.5 text-neutral-400 hover:text-rose-500 rounded-lg transition shrink-0 md:mt-1" title="Remover procedimento">
               <i class="fa-regular fa-trash-can text-xs"></i>
             </button>
           </div>

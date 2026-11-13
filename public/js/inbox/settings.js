@@ -36,9 +36,9 @@
         const btn = buttons[k];
         if (!btn) return;
         if (k === tab) {
-          btn.className = 'px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition bg-[#008069] text-white shadow-sm';
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition aura-filled shadow-sm';
         } else {
-          btn.className = 'px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition bg-white dark:bg-[#111827] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-400';
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition bg-white dark:bg-[#171717] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400';
         }
       });
 
@@ -64,12 +64,14 @@
       const dot = document.getElementById('menuWhatsappStatusDot');
       if (!dot || !wa) return;
       if (wa.configured) {
-        dot.className = 'w-2.5 h-2.5 rounded-full ml-auto bg-emerald-500 shadow-sm shadow-emerald-500/40';
-        dot.title = 'WhatsApp conectado (' + (wa.display_phone_number || wa.phone_number_id) + ')';
+        dot.className = 'w-2.5 h-2.5 rounded-full ml-auto bg-neutral-500 shadow-sm shadow-neutral-500/40';
+        const number = wa.display_phone_number || wa.phone_number_id;
+        dot.title = number ? 'WhatsApp conectado (' + number + ')' : 'WhatsApp conectado';
       } else {
         dot.className = 'w-2.5 h-2.5 rounded-full ml-auto bg-red-500';
         dot.title = 'WhatsApp ainda não conectado';
       }
+      dot.closest('button')?.setAttribute('aria-label', 'Seu número — ' + dot.title);
     }
 
     async function loadClinicSettingsView() {
@@ -118,10 +120,10 @@
 
       if (roleBadge) {
         if (canManageClinicState) {
-          roleBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/20';
+          roleBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-neutral-500/10 text-neutral-700 dark:text-neutral-300 font-bold border border-neutral-500/20';
           roleBadge.innerText = 'Responsável pela operação';
         } else {
-          roleBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border border-slate-300 dark:border-slate-700';
+          roleBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold border border-neutral-300 dark:border-neutral-700';
           roleBadge.innerText = 'Atendente / Recepção';
         }
       }
@@ -154,8 +156,8 @@
       const topPill = document.getElementById('settingsWaTopPill');
       if (topPill) {
         if (wa.configured) {
-          topPill.className = 'px-3.5 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 shrink-0';
-          topPill.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span>WhatsApp Conectado</span>';
+          topPill.className = 'px-3.5 py-2 rounded-xl border border-[var(--aura-accent-line)] bg-[var(--aura-accent-soft)] text-[var(--aura-accent)] text-xs font-bold flex items-center gap-2 shrink-0';
+          topPill.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-[var(--aura-accent)] animate-pulse"></span><span>WhatsApp Conectado</span>';
         } else {
           topPill.className = 'px-3.5 py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-2 shrink-0';
           topPill.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span>WhatsApp Pendente</span>';
@@ -174,7 +176,7 @@
 
       if (statConf) {
         statConf.innerHTML = wa.configured
-          ? '<span class="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Conectado e operando</span>'
+          ? '<span class="text-[var(--aura-accent)] flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Conectado e operando</span>'
           : '<span class="text-amber-600 dark:text-amber-400 flex items-center gap-1.5"><i class="fa-solid fa-circle-exclamation"></i> Não conectado</span>';
       }
       if (statConnAt) {
@@ -247,7 +249,7 @@
 
       if (esBadge) {
         if (es.enabled) {
-          esBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300';
+          esBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold bg-[var(--aura-accent-soft)] text-[var(--aura-accent)] ';
           esBadge.innerText = 'Pronto para Conectar';
         } else {
           esBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300';
@@ -419,7 +421,7 @@
       if (!tbody) return;
 
       if (clinicUsersState.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-400">Nenhum usuário cadastrado nesta clínica.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-neutral-400">Nenhum usuário cadastrado nesta clínica.</td></tr>';
         return;
       }
 
@@ -428,36 +430,36 @@
         const protectedAccess = !['admin','staff'].includes(u.role);
         const isActive = Number(u.active) !== 0;
 
-        let roleBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-[10px]">Atendente</span>';
+        let roleBadge = '<span class="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-semibold text-[10px]">Atendente</span>';
         if (u.role === 'admin') {
-          roleBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">Administrador</span>';
+          roleBadge = '<span class="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-950/80 text-neutral-700 dark:text-neutral-300 font-bold text-[10px]">Administrador</span>';
         }
 
         const statusBadge = isActive
-          ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[10px]"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Ativo</span>'
+          ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 font-bold text-[10px]"><span class="w-1.5 h-1.5 rounded-full bg-neutral-500"></span> Ativo</span>'
           : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[10px]"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pausado</span>';
 
-        let actionsHtml = '<span class="text-[11px] text-slate-400">Somente leitura</span>';
+        let actionsHtml = '<span class="text-[11px] text-neutral-400">Somente leitura</span>';
         if (canManageClinicState) {
           if (protectedAccess) {
-            actionsHtml = '<span class="text-[11px] text-slate-400 italic">Protegido</span>';
+            actionsHtml = '<span class="text-[11px] text-neutral-400 italic">Protegido</span>';
           } else {
             const btns = [];
-            btns.push('<button type="button" onclick="openClinicUserModal(' + Number(u.id) + ')" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-[11px] transition">Editar</button>');
+            btns.push('<button type="button" onclick="openClinicUserModal(' + Number(u.id) + ')" class="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold text-[11px] transition">Editar</button>');
             if (!isSelf) {
-              btns.push('<button type="button" onclick="toggleClinicUserActive(' + Number(u.id) + ', ' + (!isActive) + ')" class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 dark:text-amber-400 font-semibold text-[11px] transition">' + (isActive ? 'Pausar' : 'Ativar') + '</button>');
+              btns.push('<button type="button" onclick="toggleClinicUserActive(' + Number(u.id) + ', ' + (!isActive) + ')" class="px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 dark:text-amber-400 font-semibold text-[11px] transition">' + (isActive ? 'Pausar' : 'Ativar') + '</button>');
               btns.push('<button type="button" onclick="deleteClinicUserRow(' + Number(u.id) + ')" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-[11px] transition">Remover</button>');
             }
             actionsHtml = '<div class="inline-flex items-center gap-1.5">' + btns.join('') + '</div>';
           }
         }
 
-        return '<tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition">' +
-          '<td class="py-3.5 px-4 font-bold text-slate-900 dark:text-white">' + escapeHtml(u.name) + (isSelf ? ' <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold">Você</span>' : '') + '</td>' +
-          '<td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">' + escapeHtml(u.email) + '</td>' +
+        return '<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition">' +
+          '<td class="py-3.5 px-4 font-bold text-neutral-900 dark:text-white">' + escapeHtml(u.name) + (isSelf ? ' <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 font-bold">Você</span>' : '') + '</td>' +
+          '<td class="py-3.5 px-4 font-mono text-neutral-600 dark:text-neutral-300">' + escapeHtml(u.email) + '</td>' +
           '<td class="py-3.5 px-4">' + roleBadge + '</td>' +
           '<td class="py-3.5 px-4" aria-label="Senha protegida">••••••••</td>' +
-          '<td class="py-3.5 px-4 text-slate-400">' + escapeHtml(formatClinicUserCreatedAt(u.created_at)) + '</td>' +
+          '<td class="py-3.5 px-4 text-neutral-400">' + escapeHtml(formatClinicUserCreatedAt(u.created_at)) + '</td>' +
           '<td class="py-3.5 px-4 text-right whitespace-nowrap">' + actionsHtml + '</td>' +
         '</tr>';
       }).join('');
@@ -609,10 +611,10 @@
       if (!box) return;
       box.classList.remove('hidden');
       const colorCls = tone === 'emerald'
-        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+        ? 'border-[var(--aura-accent-line)] bg-[var(--aura-accent-soft)] text-[var(--aura-accent)] '
         : tone === 'rose'
           ? 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300'
-          : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70 text-slate-700 dark:text-slate-300';
+          : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/70 text-neutral-700 dark:text-neutral-300';
       box.className = 'p-3.5 rounded-xl border text-xs space-y-1 ' + colorCls;
       box.innerHTML = lines.map((line) => '<div>' + escapeHtml(line) + '</div>').join('');
     }
@@ -926,7 +928,7 @@
 
       if (btn) btn.disabled = true;
       if (container) {
-        container.innerHTML = '<div class="p-3 text-slate-400 flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i><span>Verificando a conexão...</span></div>';
+        container.innerHTML = '<div class="p-3 text-neutral-400 flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i><span>Verificando a conexão...</span></div>';
       }
 
       try {
@@ -953,8 +955,8 @@
         const checks = Array.isArray(data.checks) ? data.checks : [];
         if (container) {
           container.innerHTML = checks.map((c) => {
-            let cls = 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300';
-            let icon = 'fa-solid fa-circle-check text-emerald-500';
+            let cls = 'border-[var(--aura-accent-line)] bg-[var(--aura-accent-soft)] text-[var(--aura-accent)] ';
+            let icon = 'fa-solid fa-circle-check text-[var(--aura-accent)]';
             if (c.status === 'warn') {
               cls = 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-300';
               icon = 'fa-solid fa-triangle-exclamation text-amber-500';
@@ -965,7 +967,7 @@
             return '<div class="p-3 rounded-xl border ' + cls + ' flex items-start gap-2.5">' +
               '<i class="' + icon + ' mt-0.5 text-sm shrink-0"></i>' +
               '<div class="min-w-0">' +
-                '<div class="font-bold text-slate-900 dark:text-white">' + escapeHtml(c.label) + '</div>' +
+                '<div class="font-bold text-neutral-900 dark:text-white">' + escapeHtml(c.label) + '</div>' +
                 '<div class="text-[11px] opacity-90 break-words">' + escapeHtml(c.detail) + '</div>' +
               '</div>' +
             '</div>';

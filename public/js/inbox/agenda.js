@@ -189,7 +189,7 @@
       const cells = [];
 
       for (let i = 0; i < firstDayIndex; i++) {
-        cells.push('<div class="p-1 min-h-[64px] rounded-xl bg-slate-50/40 dark:bg-slate-800/20 opacity-30 select-none"></div>');
+        cells.push('<div class="p-1 min-h-[64px] rounded-xl bg-neutral-50/40 dark:bg-neutral-800/20 opacity-30 select-none"></div>');
       }
 
       for (let day = 1; day <= totalDays; day++) {
@@ -209,11 +209,11 @@
         const hasConfirmed = dayAppointments.some(a => a.status === 'confirmado');
         const hasScheduled = dayAppointments.some(a => a.status === 'agendado' || a.status === 'pre_agendado');
 
-        let borderClass = 'border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
+        let borderClass = 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600';
         if (isSelected) {
-          borderClass = 'border-sky-500 dark:border-sky-400 ring-2 ring-sky-500/30 bg-sky-50/50 dark:bg-sky-950/30';
+          borderClass = 'border-neutral-500 dark:border-neutral-400 ring-2 ring-neutral-500/30 bg-neutral-50/50 dark:bg-neutral-950/30';
         } else if (isToday) {
-          borderClass = 'border-emerald-500 dark:border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20';
+          borderClass = 'border-neutral-500 dark:border-neutral-500 bg-neutral-50/30 dark:bg-neutral-950/20';
         }
 
         let badgeHtml = '';
@@ -221,7 +221,7 @@
           const count = dayAppointments.length;
           let color = 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300';
           if (hasConfirmed && !hasScheduled) {
-            color = 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300';
+            color = 'bg-neutral-100 dark:bg-neutral-950/80 text-neutral-800 dark:text-neutral-300';
           }
           badgeHtml = `
             <div class="mt-1 flex items-center justify-center">
@@ -234,12 +234,12 @@
 
         cells.push(`
           <div onclick="calSelectDay('${dateKey}')" 
-            class="p-1.5 sm:p-2 min-h-[64px] rounded-xl border ${borderClass} bg-white dark:bg-[#151d2e] cursor-pointer transition flex flex-col justify-between">
+            class="p-1.5 sm:p-2 min-h-[64px] rounded-xl border ${borderClass} bg-white dark:bg-[#171717] cursor-pointer transition flex flex-col justify-between">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold ${isToday ? 'w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]' : isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-slate-700 dark:text-slate-300'}">
+              <span class="text-xs font-bold ${isToday ? 'w-5 h-5 rounded-full bg-neutral-500 text-white flex items-center justify-center text-[10px]' : isSelected ? 'text-neutral-600 dark:text-neutral-400' : 'text-neutral-700 dark:text-neutral-300'}">
                 ${day}
               </span>
-              ${isToday ? '<span class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 hidden sm:inline">Hoje</span>' : ''}
+              ${isToday ? '<span class="text-[9px] font-bold text-neutral-600 dark:text-neutral-400 hidden sm:inline">Hoje</span>' : ''}
             </div>
             ${badgeHtml}
           </div>
@@ -270,8 +270,8 @@
 
       if (dayAppointments.length === 0) {
         container.innerHTML = 
-          '<div class="p-8 text-center text-slate-400 space-y-2">' +
-            '<div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center text-xl mx-auto">' +
+          '<div class="p-8 text-center text-neutral-400 space-y-2">' +
+            '<div class="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-neutral-400 flex items-center justify-center text-xl mx-auto">' +
               '<i class="fa-regular fa-calendar-check"></i>' +
             '</div>' +
             '<p class="text-xs font-medium">Nenhum agendamento neste dia.</p>' +
@@ -286,50 +286,50 @@
 
         let statusBadge = '';
         if (isConfirmed) {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800/60">Confirmado</span>';
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-950/80 text-neutral-800 dark:text-neutral-400 font-bold text-[10px] border border-neutral-200 dark:border-neutral-800/60">Confirmado</span>';
         } else if (isDone) {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-400 font-bold text-[10px] border border-sky-200 dark:border-sky-800/60">Concluído</span>';
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-950/80 text-neutral-800 dark:text-neutral-400 font-bold text-[10px] border border-neutral-200 dark:border-neutral-800/60">Concluído</span>';
         } else if (a.status === 'cancelado') {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-[10px]">Cancelado</span>';
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-bold text-[10px]">Cancelado</span>';
         } else {
           statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 font-bold text-[10px] border border-amber-200 dark:border-amber-800/60">Agendado</span>';
         }
 
         const profBadge = getProfessionalBadgeHtml(a.professional_id, a.professional_name);
-        const noteHtml = a.notes ? '<p class="text-[11px] text-slate-500 dark:text-slate-400 italic">“' + escapeHtml(a.notes) + '”</p>' : '';
-        const conclBtn = (!isDone && a.status !== 'cancelado') ? '<button onclick="handleConcludeAppointment(' + a.id + ')" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-[10px] font-bold transition">Concluir</button>' : '';
+        const noteHtml = a.notes ? '<p class="text-[11px] text-neutral-500 dark:text-neutral-400 italic">“' + escapeHtml(a.notes) + '”</p>' : '';
+        const conclBtn = (!isDone && a.status !== 'cancelado') ? '<button onclick="handleConcludeAppointment(' + a.id + ')" class="px-2 py-1 rounded-lg bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 text-neutral-700 dark:text-neutral-200 text-[10px] font-bold transition">Concluir</button>' : '';
 
         return [
-          '<div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2 hover:border-slate-300 dark:hover:border-slate-600 transition">',
+          '<div class="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700/60 space-y-2 hover:border-neutral-300 dark:hover:border-neutral-600 transition">',
             '<div class="flex items-start justify-between gap-2">',
               '<div class="flex items-center gap-2">',
-                '<span class="px-2 py-1 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 font-black text-xs font-mono">' + escapeHtml(timePart) + '</span>',
+                '<span class="px-2 py-1 rounded-lg bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 font-black text-xs font-mono">' + escapeHtml(timePart) + '</span>',
                 '<div>',
-                  '<h4 class="font-bold text-xs text-slate-900 dark:text-white leading-tight">' + escapeHtml(a.patient_name) + '</h4>',
-                  '<span class="text-[10px] text-slate-400 font-mono">' + escapeHtml(a.contact_wa_id) + '</span>',
+                  '<h4 class="font-bold text-xs text-neutral-900 dark:text-white leading-tight">' + escapeHtml(a.patient_name) + '</h4>',
+                  '<span class="text-[10px] text-neutral-400 font-mono">' + escapeHtml(a.contact_wa_id) + '</span>',
                 '</div>',
               '</div>',
               '<div>' + statusBadge + '</div>',
             '</div>',
-            '<div class="flex items-center justify-between gap-2 text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/40 text-slate-600 dark:text-slate-300">',
+            '<div class="flex items-center justify-between gap-2 text-xs pt-1 border-t border-neutral-200/60 dark:border-neutral-700/40 text-neutral-600 dark:text-neutral-300">',
               '<div class="flex items-center gap-1.5 truncate">',
-                '<i class="fa-solid fa-tooth text-slate-400 text-[10px]"></i>',
+                '<i class="fa-solid fa-tooth text-neutral-400 text-[10px]"></i>',
                 '<span class="font-medium">' + escapeHtml(a.procedure || 'Consulta') + '</span>',
               '</div>',
               profBadge ? '<div class="shrink-0">' + profBadge + '</div>' : '',
             '</div>',
             noteHtml,
             '<div class="flex items-center justify-end gap-1.5 pt-1">',
-              '<button type="button" onclick="openAppointmentDetailsModal(' + a.id + ')" class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold transition flex items-center gap-1" title="Ver mais informações e editar">',
-                '<i class="fa-solid fa-file-lines text-[#008069] dark:text-emerald-400"></i>',
+              '<button type="button" onclick="openAppointmentDetailsModal(' + a.id + ')" class="px-2 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-[10px] font-bold transition flex items-center gap-1" title="Ver mais informações e editar">',
+                '<i class="fa-solid fa-file-lines text-[var(--aura-accent)] dark:text-neutral-400"></i>',
                 '<span>Ver mais</span>',
               '</button>',
-              '<button onclick="goToChatWithPatient(&quot;' + escapeHtml(a.contact_wa_id) + '&quot;)" class="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[10px] font-bold transition flex items-center gap-1" title="Abrir conversa no WhatsApp">',
+              '<button onclick="goToChatWithPatient(&quot;' + escapeHtml(a.contact_wa_id) + '&quot;)" class="px-2 py-1 rounded-lg bg-neutral-50 dark:bg-neutral-950/60 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 text-[10px] font-bold transition flex items-center gap-1" title="Abrir conversa no WhatsApp">',
                 '<i class="fa-brands fa-whatsapp"></i>',
                 '<span>WhatsApp</span>',
               '</button>',
               conclBtn,
-              '<button onclick="handleDeleteAppointment(' + a.id + ')" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 transition" title="Excluir agendamento">',
+              '<button onclick="handleDeleteAppointment(' + a.id + ')" class="p-1 rounded-lg text-neutral-400 hover:text-rose-500 transition" title="Excluir agendamento">',
                 '<i class="fa-regular fa-trash-can text-xs"></i>',
               '</button>',
             '</div>',
@@ -355,18 +355,18 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-neutral-400">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
         return;
       }
 
       tbody.innerHTML = filtered.map(a => {
         let statusBadge = '';
         if (a.status === 'confirmado') {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800/60">Confirmado</span>';
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-950/80 text-neutral-800 dark:text-neutral-400 font-bold text-[10px] border border-neutral-200 dark:border-neutral-800/60">Confirmado</span>';
         } else if (a.status === 'concluido') {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-400 font-bold text-[10px] border border-sky-200 dark:border-sky-800/60">Concluído</span>';
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-950/80 text-neutral-800 dark:text-neutral-400 font-bold text-[10px] border border-neutral-200 dark:border-neutral-800/60">Concluído</span>';
         } else if (a.status === 'cancelado') {
-          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-[10px]">Cancelado</span>';
+          statusBadge = '<span class="px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-bold text-[10px]">Cancelado</span>';
         } else {
           statusBadge = '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-400 font-bold text-[10px] border border-amber-200 dark:border-amber-800/60">Agendado</span>';
         }
@@ -375,24 +375,24 @@
         const profBadge = getProfessionalBadgeHtml(a.professional_id, a.professional_name);
 
         return [
-          '<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">',
+          '<tr class="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition">',
             '<td class="py-3 px-4">',
-              '<div class="font-bold text-slate-900 dark:text-white">' + escapeHtml(a.patient_name) + '</div>',
-              '<div class="text-[10px] text-slate-400 font-mono">' + escapeHtml(a.contact_wa_id) + '</div>',
+              '<div class="font-bold text-neutral-900 dark:text-white">' + escapeHtml(a.patient_name) + '</div>',
+              '<div class="text-[10px] text-neutral-400 font-mono">' + escapeHtml(a.contact_wa_id) + '</div>',
             '</td>',
             '<td class="py-3 px-4">',
-              '<div class="font-semibold text-slate-800 dark:text-slate-200">' + escapeHtml(a.procedure || 'Avaliação Inicial') + '</div>',
+              '<div class="font-semibold text-neutral-800 dark:text-neutral-200">' + escapeHtml(a.procedure || 'Avaliação Inicial') + '</div>',
               profBadge ? '<div class="mt-1">' + profBadge + '</div>' : '',
             '</td>',
-            '<td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">',
-              '<i class="fa-regular fa-clock mr-1 text-slate-400"></i>' + escapeHtml(formattedDate),
+            '<td class="py-3 px-4 font-medium text-neutral-700 dark:text-neutral-300">',
+              '<i class="fa-regular fa-clock mr-1 text-neutral-400"></i>' + escapeHtml(formattedDate),
             '</td>',
             '<td class="py-3 px-4">',
               statusBadge,
             '</td>',
             '<td class="py-3 px-4">' + escapeHtml(a.created_by_name || 'Não informado') + '</td>',
             '<td class="py-3 px-4 text-center whitespace-nowrap">',
-              '<button type="button" onclick="openAppointmentDetailsModal(' + a.id + ')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-slate-800 text-[#008069] dark:text-emerald-400 font-bold text-xs transition shadow-sm">',
+              '<button type="button" onclick="openAppointmentDetailsModal(' + a.id + ')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:border-neutral-500 hover:bg-neutral-50/40 dark:hover:bg-neutral-800 text-[var(--aura-accent)] dark:text-neutral-400 font-bold text-xs transition shadow-sm">',
                 '<i class="fa-solid fa-file-lines text-xs"></i>',
                 '<span>Ver mais / Editar</span>',
               '</button>',
@@ -632,8 +632,8 @@
       const timeSlotText = startHStr + ':' + startMStr + ' às ' + endHStr + ':' + endMStr + ' (' + durMin + ' min)';
 
       if (!dateVal) {
-        feedbackEl.innerHTML = '<span class="text-slate-500 dark:text-slate-400">Duração prevista: <strong>' + timeSlotText + '</strong>. Selecione uma data para verificar conflitos.</span>';
-        feedbackEl.className = "mt-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/40 text-[11px] transition-all";
+        feedbackEl.innerHTML = '<span class="text-neutral-500 dark:text-neutral-400">Duração prevista: <strong>' + timeSlotText + '</strong>. Selecione uma data para verificar conflitos.</span>';
+        feedbackEl.className = "mt-2 p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100/70 dark:bg-neutral-900/40 text-[11px] transition-all";
         if (submitBtn) submitBtn.disabled = false;
         return;
       }
@@ -657,15 +657,15 @@
         if (submitBtn) submitBtn.disabled = true;
       } else {
         feedbackEl.innerHTML = [
-          '<div class="flex items-center justify-between text-emerald-700 dark:text-emerald-300">',
+          '<div class="flex items-center justify-between text-neutral-700 dark:text-neutral-300">',
             '<div class="flex items-center gap-2">',
-              '<i class="fa-solid fa-circle-check text-emerald-500"></i>',
+              '<i class="fa-solid fa-circle-check text-neutral-500"></i>',
               '<span>Duração prevista: <strong>' + timeSlotText + '</strong></span>',
             '</div>',
-            '<span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">Disponível</span>',
+            '<span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-neutral-500/20 text-neutral-800 dark:text-neutral-300">Disponível</span>',
           '</div>'
         ].join('');
-        feedbackEl.className = "mt-2 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/30 text-[11px] transition-all";
+        feedbackEl.className = "mt-2 p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-900/60 bg-neutral-50/80 dark:bg-neutral-950/30 text-[11px] transition-all";
         if (submitBtn) submitBtn.disabled = false;
       }
     }
@@ -782,7 +782,7 @@
       const confirmBadge = document.getElementById('detConfirmationBadge');
       if (confirmBadge) {
         if (app.status === 'confirmado') {
-          confirmBadge.innerHTML = '<span class="text-emerald-600 dark:text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Confirmado ' + (app.confirmed_by === 'ai' ? 'pela IA' : '') + '</span>';
+          confirmBadge.innerHTML = '<span class="text-neutral-600 dark:text-neutral-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Confirmado ' + (app.confirmed_by === 'ai' ? 'pela IA' : '') + '</span>';
         } else {
           confirmBadge.innerHTML = '';
         }

@@ -1,7 +1,7 @@
 export const INBOX_HEADER_HTML = `
 <button class="aura-nav-backdrop" onclick="closeVerticalMenu()" aria-label="Fechar navegação" tabindex="-1"></button>
 <aside id="verticalMenuContainer" class="aura-sidebar" aria-label="Navegação do Aura">
-  <a href="/inbox" class="aura-brand" aria-label="Aura, início"><span class="aura-brand-mark">a</span><span class="aura-brand-name">aura</span></a>
+  <a href="/inbox" class="aura-brand" aria-label="Aura, início"><span class="aura-brand-mark" aria-hidden="true"></span><span class="aura-brand-name">aura</span></a>
   <nav id="verticalMenuDropdown" aria-label="Menu principal">
     <button class="aura-nav-item" data-nav-tab="onboarding" aria-label="Início" title="Início" onclick="selectNavigationTab('onboarding')"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Início</span></button>
     <p class="aura-nav-label">Atendimento</p>
@@ -10,7 +10,7 @@ export const INBOX_HEADER_HTML = `
     <p class="aura-nav-label aura-nav-settings-label">Configurações</p>
     <button class="aura-nav-item" data-nav-tab="config" aria-label="Parâmetros de atendimento" title="Parâmetros de atendimento" onclick="selectNavigationTab('config')"><i class="fa-solid fa-sliders" aria-hidden="true"></i><span>Parâmetros de atendimento</span></button>
     <button class="aura-nav-item aura-nav-simulator" data-nav-tab="simulator" aria-label="Simulador da IA" title="Simulador da IA" onclick="selectNavigationTab('simulator')"><i class="fa-regular fa-message" aria-hidden="true"></i><span>Simulador da IA</span><span class="aura-nav-pill">Testar</span></button>
-    <button class="aura-nav-item" data-nav-tab="settings" aria-label="Seu número" title="Seu número" onclick="selectNavigationTab('settings')"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>Seu número</span><span id="menuWhatsappStatusDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 ml-auto" title="Verificando conexão"></span></button>
+    <button class="aura-nav-item" data-nav-tab="settings" aria-label="Seu número" title="Seu número" onclick="selectNavigationTab('settings')"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>Seu número</span><span id="menuWhatsappStatusDot" class="w-2.5 h-2.5 rounded-full bg-neutral-300 ml-auto" title="Verificando conexão"></span></button>
   </nav>
   <p id="onboardingRefreshNotice" class="hidden aura-field-hint" role="status" aria-live="polite"></p>
   <div class="hidden"><div id="topClinicNameBadge">Meu negócio</div><div id="businessSubtitle">Seu espaço no Aura</div></div>

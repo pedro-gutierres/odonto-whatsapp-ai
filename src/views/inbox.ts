@@ -1,3 +1,4 @@
+import { AURA_STYLE_LINKS } from "./brand";
 import { inboxPlanView } from "./inbox/plan-view";
 import type { PlanOffer } from "../plans";
 import { INBOX_ACCOUNT_VIEW_HTML } from "./inbox/account-view";
@@ -10,7 +11,7 @@ import { INBOX_SETTINGS_VIEW_HTML } from "./inbox/settings-view";
 import { INBOX_SIMULATOR_VIEW_HTML } from "./inbox/simulator-view";
 import { INBOX_MODALS_HTML } from "./inbox/modals";
 
-const ASSET_VERSION = "40";
+const ASSET_VERSION = "41";
 
 export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -21,50 +22,20 @@ export function inboxHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE 
   <script>try{if(sessionStorage.getItem('aura_entry_reveal')==='1'){if(!localStorage.getItem('aura_theme'))localStorage.setItem('aura_theme','light');document.documentElement.classList.toggle('dark',localStorage.getItem('aura_theme')!=='light');if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('aura-entry-pending');setTimeout(()=>{document.documentElement.classList.remove('aura-entry-pending','aura-entry-revealing');sessionStorage.removeItem('aura_entry_reveal');},12000);}}catch{}</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              DEFAULT: '#008069',
-              dark: '#006a57',
-              light: '#25d366'
-            }
-          }
-        }
-      }
-    }
+    tailwind.config = { darkMode: 'class' };
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/aura.css?v=34">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .wa-bg-light {
-      background-color: #efeae2;
-      background-image: radial-gradient(#d1d7db 1px, transparent 1px);
-      background-size: 18px 18px;
-    }
-    .wa-bg-dark {
-      background-color: #0b141a;
-      background-image: radial-gradient(#1f2c34 1px, transparent 1px);
-      background-size: 18px 18px;
-    }
-    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
-    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
-    .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
-  </style>
+  ${AURA_STYLE_LINKS}
 </head>
-<body class="aura-dashboard bg-slate-100 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 h-screen flex flex-col overflow-hidden selection:bg-[#008069] selection:text-white">
+<body class="aura-dashboard h-screen flex flex-col overflow-hidden">
 ${INBOX_HEADER_HTML}
   <header class="aura-dashboard-page-header"><h1 id="dashboardPageHeader">Conversas</h1>${INBOX_ACCOUNT_ACTIONS_HTML}</header>
 
   <!-- BANNER GLOBAL DE TRIAL EXPIRADO OU LIMITE ATINGIDO -->
-  <div id="globalTrialExpiredBanner" class="hidden bg-gradient-to-r from-amber-600 via-rose-600 to-amber-700 text-white px-4 py-2.5 text-xs shadow-md shrink-0 flex items-center justify-between z-20 transition-all">
+  <div id="globalTrialExpiredBanner" class="hidden px-4 py-2.5 text-xs shadow-md shrink-0 flex items-center justify-between z-20 transition-all">
     <div class="flex items-center gap-2.5 max-w-4xl">
       <i class="fa-solid fa-triangle-exclamation text-base animate-pulse"></i>
       <div>
@@ -75,7 +46,7 @@ ${INBOX_HEADER_HTML}
       </div>
     </div>
     <a href="#plano" onclick="selectNavigationTab('plan');return false" id="btnTrialUpgrade"
-       class="px-3.5 py-1.5 rounded-xl bg-white text-rose-700 hover:bg-slate-100 font-bold text-xs shadow-sm transition whitespace-nowrap flex items-center gap-1.5 ml-3">
+       class="px-3.5 py-1.5 rounded-xl bg-white text-rose-700 hover:bg-neutral-100 font-bold text-xs shadow-sm transition whitespace-nowrap flex items-center gap-1.5 ml-3">
       <i class="fa-solid fa-crown text-amber-500"></i>
       <span>Ver plano</span>
     </a>

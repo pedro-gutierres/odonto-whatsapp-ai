@@ -27,8 +27,8 @@
       const name = prof ? prof.name : (profName || '');
       if (!name) return '';
       const color = sanitizeHexColor(prof ? prof.color : '#0ea5e9');
-      return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-semibold text-slate-700 dark:text-slate-200 max-w-full">' +
-               '<span class="w-2 h-2 rounded-full shrink-0" style="background-color:' + color + '"></span>' +
+      return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-[10px] font-semibold text-neutral-700 dark:text-neutral-200 max-w-full">' +
+               '<span class="w-2 h-2 rounded-full shrink-0 aura-professional-dot" style="background-color:' + color + '"></span>' +
                '<span class="truncate">' + escapeHtml(name) + '</span>' +
              '</span>';
     }
@@ -90,8 +90,8 @@
       const allActive = selectedAgendaProfId === 'all';
       chipsHtml += '<button type="button" onclick="setAgendaProfFilter(&quot;all&quot;)" class="px-3 py-1.5 rounded-full text-xs font-bold border transition ' +
         (allActive
-          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-sm'
-          : 'bg-white dark:bg-[#111827] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400') +
+          ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-neutral-900 dark:border-white shadow-sm'
+          : 'bg-white dark:bg-[#171717] text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400') +
         '">Todos (' + appointments.length + ')</button>';
 
       professionals.forEach(p => {
@@ -101,10 +101,10 @@
         const isActive = Number(p.active) === 1 || p.active === true;
         chipsHtml += '<button type="button" onclick="setAgendaProfFilter(&quot;' + p.id + '&quot;)" class="px-3 py-1.5 rounded-full text-xs font-bold border transition flex items-center gap-1.5 ' +
           (isSel
-            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-            : 'bg-white dark:bg-[#111827] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-400') +
+            ? 'bg-neutral-600 text-white border-neutral-600 shadow-sm'
+            : 'bg-white dark:bg-[#171717] text-neutral-700 dark:text-neutral-200 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400') +
           (isActive ? '' : ' opacity-60') + '">' +
-          '<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:' + (isSel ? '#ffffff' : color) + '"></span>' +
+          '<span class="w-2.5 h-2.5 rounded-full shrink-0 aura-professional-dot" style="background-color:' + (isSel ? '#ffffff' : color) + '"></span>' +
           '<span>' + escapeHtml(p.name) + '</span>' +
           '<span class="text-[10px] opacity-75">(' + count + ')</span>' +
         '</button>';
@@ -115,8 +115,8 @@
         const isUnassigned = selectedAgendaProfId === 'unassigned';
         chipsHtml += '<button type="button" onclick="setAgendaProfFilter(&quot;unassigned&quot;)" class="px-3 py-1.5 rounded-full text-xs font-bold border transition ' +
           (isUnassigned
-            ? 'bg-slate-700 text-white border-slate-700 shadow-sm'
-            : 'bg-white dark:bg-[#111827] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400') +
+            ? 'bg-neutral-700 text-white border-neutral-700 shadow-sm'
+            : 'bg-white dark:bg-[#171717] text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400') +
           '">Agenda Geral (' + unassignedCount + ')</button>';
       }
 
@@ -173,11 +173,7 @@
       const input = document.getElementById('profColor');
       if (input) input.value = cleanHex;
       document.querySelectorAll('.prof-color-btn').forEach(btn => {
-        if (btn.getAttribute('data-color') === cleanHex) {
-          btn.classList.add('ring-2', 'ring-offset-2', 'ring-slate-900', 'dark:ring-white');
-        } else {
-          btn.classList.remove('ring-2', 'ring-offset-2', 'ring-slate-900', 'dark:ring-white');
-        }
+        btn.setAttribute('aria-pressed', String(btn.getAttribute('data-color') === cleanHex));
       });
     }
 
@@ -204,7 +200,7 @@
 
       container.innerHTML = names.map(name => {
         const checkedAttr = selectedSet.has(name) ? ' checked' : '';
-        return '<label class="flex items-center gap-2 p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer text-[11px]">' +
+        return '<label class="flex items-center gap-2 p-1 rounded hover:bg-neutral-50 dark:hover:bg-neutral-700/50 cursor-pointer text-[11px]">' +
           '<input type="checkbox" name="profProcedureItem" value="' + escapeHtml(name) + '"' + checkedAttr + ' class="rounded">' +
           '<span class="truncate">' + escapeHtml(name) + '</span>' +
         '</label>';
@@ -263,9 +259,9 @@
 
       if (professionals.length === 0) {
         listEl.innerHTML =
-          '<div class="p-6 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-xs space-y-2">' +
+          '<div class="p-6 text-center rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-400 text-xs space-y-2">' +
             '<i class="fa-solid fa-user-doctor text-2xl opacity-50"></i>' +
-            '<p class="font-medium text-slate-600 dark:text-slate-300">Nenhum profissional cadastrado.</p>' +
+            '<p class="font-medium text-neutral-600 dark:text-neutral-300">Nenhum profissional cadastrado.</p>' +
             '<p class="text-[11px]">Cadastre dentistas ou esteticistas ao lado para liberar agendas independentes na mesma hora.</p>' +
           '</div>';
         return;
@@ -279,29 +275,29 @@
         const breakTxt = (p.break_start && p.break_end) ? ' • Intervalo ' + p.break_start + '–' + p.break_end : '';
         const procsTxt = procs.length > 0 ? procs.length + (procs.length === 1 ? ' procedimento' : ' procedimentos') : 'Todos os procedimentos';
 
-        return '<div class="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">' +
+        return '<div class="p-3 rounded-xl bg-white dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 space-y-2">' +
           '<div class="flex items-start justify-between gap-2">' +
             '<div class="flex items-center gap-2 min-w-0">' +
-              '<span class="w-3 h-3 rounded-full shrink-0" style="background-color:' + color + '"></span>' +
+              '<span class="w-3 h-3 rounded-full shrink-0 aura-professional-dot" style="background-color:' + color + '"></span>' +
               '<div class="min-w-0">' +
-                '<div class="font-bold text-xs text-slate-900 dark:text-white truncate">' + escapeHtml(p.name) + '</div>' +
-                '<div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">' +
+                '<div class="font-bold text-xs text-neutral-900 dark:text-white truncate">' + escapeHtml(p.name) + '</div>' +
+                '<div class="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">' +
                   escapeHtml([p.specialty, p.cro_crm].filter(Boolean).join(' • ') || 'Sem especialidade informada') +
                 '</div>' +
               '</div>' +
             '</div>' +
             '<button type="button" onclick="toggleProfessionalActive(' + p.id + ', ' + (isActive ? 'false' : 'true') + ')" class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ' +
-              (isActive ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300') + '">' +
+              (isActive ? 'bg-neutral-100 dark:bg-neutral-950 text-neutral-700 dark:text-neutral-300' : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300') + '">' +
               (isActive ? 'Ativo' : 'Pausado') +
             '</button>' +
           '</div>' +
-          '<div class="text-[10px] text-slate-500 dark:text-slate-400 space-y-0.5">' +
+          '<div class="text-[10px] text-neutral-500 dark:text-neutral-400 space-y-0.5">' +
             '<div><i class="fa-regular fa-calendar mr-1"></i>' + escapeHtml(days || 'Dias não definidos') + '</div>' +
             '<div><i class="fa-regular fa-clock mr-1"></i>' + escapeHtml((p.start_hour || '08:00') + ' às ' + (p.end_hour || '18:00') + breakTxt) + '</div>' +
             '<div><i class="fa-solid fa-tooth mr-1"></i>' + escapeHtml(procsTxt) + '</div>' +
           '</div>' +
-          '<div class="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-700/60">' +
-            '<button type="button" onclick="editProfessionalInModal(' + p.id + ')" class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-600 text-[10px] font-bold hover:bg-slate-100 dark:hover:bg-slate-700">Editar</button>' +
+          '<div class="flex items-center justify-end gap-1.5 pt-1 border-t border-neutral-100 dark:border-neutral-700/60">' +
+            '<button type="button" onclick="editProfessionalInModal(' + p.id + ')" class="px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-600 text-[10px] font-bold hover:bg-neutral-100 dark:hover:bg-neutral-700">Editar</button>' +
             '<button type="button" onclick="handleDeleteProfessional(' + p.id + ')" class="px-2.5 py-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[10px] font-bold">Excluir</button>' +
           '</div>' +
         '</div>';

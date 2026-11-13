@@ -1,10 +1,11 @@
+import { AURA_STYLE_LINKS } from "./brand";
 import { planCards } from './plan-cards';
 import type { PlanOffer } from '../plans';
 export function landingHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aura · IA para clínicas de odontologia e estética</title><meta name="description" content="Transforme conversas no WhatsApp em avaliações agendadas. Teste sua IA no Simulador e ative o plano Free no WhatsApp Oficial, sem cartão."><link rel="stylesheet" href="/css/aura.css?v=7"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"></head>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aura · IA para clínicas de odontologia e estética</title><meta name="description" content="Transforme conversas no WhatsApp em avaliações agendadas. Teste sua IA no Simulador e ative o plano Free no WhatsApp Oficial, sem cartão.">${AURA_STYLE_LINKS}<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"></head>
 <body class="aura-public aura-commercial">
 <header class="aura-public-header">
-  <a href="/" class="aura-brand" aria-label="Aura, início"><span class="aura-brand-mark">a</span><span class="aura-brand-name">aura</span></a>
+  <a href="/" class="aura-brand" aria-label="Aura, início"><span class="aura-brand-mark" aria-hidden="true"></span><span class="aura-brand-name">aura</span></a>
   <nav class="aura-public-nav" aria-label="Navegação principal"><a href="#como-funciona">Como funciona</a><a href="#recursos">Recursos</a><a href="#planos">Planos</a><a href="#duvidas">Dúvidas</a><a id="navLoginBtn" href="/login">Entrar</a><a id="navRegisterBtn" href="/register" class="aura-primary">Testar IA agora <span aria-hidden="true">↗</span></a></nav>
 </header>
 <main class="aura-public-main">
@@ -14,7 +15,7 @@ export function landingHtml(offers?:Record<string,PlanOffer>) { return `<!DOCTYP
       <p class="aura-small-note">Comece no Simulador ao criar sua conta. Ative o atendimento no WhatsApp quando estiver tudo pronto, sem precisar de cartão no plano Free.</p>
     </div>
     <div class="aura-chat-preview" aria-label="Exemplo ilustrativo de agendamento no WhatsApp">
-      <div class="aura-chat-preview-head"><span class="aura-chat-avatar" aria-hidden="true">a</span><div>Aura · Recepção da clínica<span class="aura-chat-availability"><i aria-hidden="true"></i>Disponível para atender, mesmo à noite</span></div><span class="aura-chat-time">21:42</span></div>
+      <div class="aura-chat-preview-head"><span class="aura-chat-avatar" aria-hidden="true"></span><div>Aura · Recepção da clínica<span class="aura-chat-availability"><i aria-hidden="true"></i>Disponível para atender, mesmo à noite</span></div><span class="aura-chat-time">21:42</span></div>
       <div class="aura-chat-preview-body">
         <div class="aura-chat-day">Hoje · fora do expediente</div>
         <div class="aura-preview-bubble is-user">Boa noite! Quero fazer clareamento. Como funciona a avaliação?</div>

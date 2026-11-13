@@ -1,3 +1,4 @@
+import { AURA_STYLE_LINKS } from "./brand";
 import type { Env } from '../types';
 import { paddleCheckoutAvailable } from '../plan-billing';
 
@@ -11,9 +12,9 @@ export function checkoutHtml(env: Env) {
   return `<!DOCTYPE html><html lang="pt-BR"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
-<title>Checkout do plano | Aura</title><link rel="stylesheet" href="/css/aura.css?v=7">
+<title>Checkout do plano | Aura</title>${AURA_STYLE_LINKS}
 </head><body class="aura-public">
-<header class="aura-public-header"><a href="/" class="aura-brand" aria-label="Aura, início"><span class="aura-brand-mark">a</span><span class="aura-brand-name">aura</span></a><a href="/inbox#plan" class="aura-text-button">Meu painel</a></header>
+<header class="aura-public-header"><a href="/" class="aura-brand" aria-label="Aura, início"><span class="aura-brand-mark" aria-hidden="true"></span><span class="aura-brand-name">aura</span></a><a href="/inbox#plan" class="aura-text-button">Meu painel</a></header>
 <main class="aura-checkout-layout"><section class="aura-card">
 <h1 id="checkoutTitle" class="aura-auth-form-title">Checkout do plano</h1>
 <form id="planCheckoutChoices" class="aura-checkout-choices hidden" onsubmit="return false">

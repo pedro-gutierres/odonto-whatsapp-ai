@@ -259,13 +259,13 @@
 
       toastMsg.innerText = msg;
       if (color === "purple") {
-        toastIcon.className = "fa-solid fa-wand-magic-sparkles text-purple-400";
+        toastIcon.className = "fa-solid fa-wand-magic-sparkles text-neutral-400";
       } else if (color === "amber") {
         toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400";
       } else if (color === "rose") {
         toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400";
       } else {
-        toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+        toastIcon.className = "fa-solid fa-circle-check text-neutral-400";
       }
 
       toast.classList.remove('translate-y-20', 'opacity-0');
