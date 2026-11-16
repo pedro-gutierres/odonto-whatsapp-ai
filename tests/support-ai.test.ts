@@ -70,6 +70,17 @@ test("simulation reuses saved contact behavior without real booking tags or tool
   } finally { network.restore(); }
 });
 
+test("prompt asks for natural, simple WhatsApp language without deliberate spelling errors", () => {
+  const prompt = buildSystemPromptParts(JSON.parse(tenant.bot_config), { simulation: true }).staticPrompt;
+  assert.match(prompt, /português brasileiro simples, natural e correto/);
+  assert.match(prompt, /Use maiúsculas normalmente/);
+  assert.match(prompt, /Não tire acentos nem escreva palavras com erros de propósito/);
+  assert.match(prompt, /Convide para agendar quando isso fizer sentido/);
+  assert.match(prompt, /Seja persuasiva com clareza/);
+  assert.match(prompt, /SEGURANÇA CLÍNICA E LIMITES/);
+  assert.doesNotMatch(prompt, /referência em Odontologia e Estética Avançada no Brasil/);
+});
+
 test("real WhatsApp retains vision and booking protocol without patient procedure context", async () => {
   const config = JSON.parse(tenant.bot_config);
   const appointments = [{ scheduled_at: "2026-11-24 14:00", duration: "45 min", procedure: "PRIVATE PROCEDURE" }];
